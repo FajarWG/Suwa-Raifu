@@ -22,6 +22,12 @@
           "$path": "src/client"
         }
       }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "SuwaCentral": {
+        "$path": "maps/SuwaCentral.model.json"
+      }
     }
   }
 }

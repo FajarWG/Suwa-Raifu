@@ -9,9 +9,10 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
 local NPCs = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('NPCs'))
 
--- Lokasi spawn NPC. TODO: ganti dengan posisi map asli (asrama).
+-- Lokasi spawn NPC di dalam asrama (dekat pintu masuk).
+-- Part NPC tingginya 4 stud, jadi tengah ditaruh di atas permukaan lantai (y=1.5).
 local NPC_SPAWNS: { [string]: Vector3 } = {
-	teacher_sakura = Vector3.new(0, 3, 0),
+	teacher_sakura = Vector3.new(4, 3.5, 6),
 }
 
 local SpawnService = {}

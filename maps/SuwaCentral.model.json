@@ -1,0 +1,164 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "className": "Part",
+      "name": "Ground",
+      "properties": {
+        "Anchored": true,
+        "Size": [120, 1, 120],
+        "Position": [0, -0.5, 0],
+        "Color": [0.45, 0.45, 0.45],
+        "Material": "Grass"
+      }
+    },
+    {
+      "className": "Model",
+      "name": "Dorm",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Floor",
+          "properties": {
+            "Anchored": true,
+            "Size": [24, 1, 18],
+            "Position": [0, 1, 0],
+            "Color": [0.75, 0.6, 0.42],
+            "Material": "Wood"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WallBack",
+          "properties": {
+            "Anchored": true,
+            "Size": [24, 8, 1],
+            "Position": [0, 5, -9.5],
+            "Color": [0.85, 0.75, 0.6],
+            "Material": "Plaster"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WallLeft",
+          "properties": {
+            "Anchored": true,
+            "Size": [1, 8, 18],
+            "Position": [-12.5, 5, 0],
+            "Color": [0.85, 0.75, 0.6],
+            "Material": "Plaster"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WallRight",
+          "properties": {
+            "Anchored": true,
+            "Size": [1, 8, 18],
+            "Position": [12.5, 5, 0],
+            "Color": [0.85, 0.75, 0.6],
+            "Material": "Plaster"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WallFront",
+          "properties": {
+            "Anchored": true,
+            "Size": [24, 8, 1],
+            "Position": [0, 5, 9.5],
+            "Color": [0.85, 0.75, 0.6],
+            "Material": "Plaster"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Roof",
+          "properties": {
+            "Anchored": true,
+            "Size": [26, 1, 20],
+            "Position": [0, 9, 0],
+            "Color": [0.6, 0.4, 0.3],
+            "Material": "Wood"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "DoorwayTop",
+          "properties": {
+            "Anchored": true,
+            "Size": [24, 3, 1],
+            "Position": [0, 6.5, 9.5],
+            "Color": [0.85, 0.75, 0.6],
+            "Material": "Plaster"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BedFrame",
+          "properties": {
+            "Anchored": true,
+            "Size": [4, 1, 7],
+            "Position": [-8, 1.5, -5],
+            "Color": [0.55, 0.4, 0.3],
+            "Material": "Wood"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Mattress",
+          "properties": {
+            "Anchored": true,
+            "Size": [3.6, 0.5, 6],
+            "Position": [-8, 2.2, -5],
+            "Color": [0.9, 0.9, 0.9],
+            "Material": "Fabric"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Pillow",
+          "properties": {
+            "Anchored": true,
+            "Size": [3.6, 0.4, 1.2],
+            "Position": [-8, 2.6, -8.2],
+            "Color": [0.95, 0.95, 0.95],
+            "Material": "Fabric"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Desk",
+          "properties": {
+            "Anchored": true,
+            "Size": [5, 0.3, 2.5],
+            "Position": [6, 2.4, -6],
+            "Color": [0.6, 0.45, 0.3],
+            "Material": "Wood"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "DeskLeg",
+          "properties": {
+            "Anchored": true,
+            "Size": [5, 1.2, 0.3],
+            "Position": [6, 1.7, -6],
+            "Color": [0.5, 0.38, 0.26],
+            "Material": "Wood"
+          }
+        },
+        {
+          "className": "SpawnLocation",
+          "name": "PlayerSpawn",
+          "properties": {
+            "Anchored": true,
+            "Size": [4, 1, 4],
+            "Position": [0, 2.5, 3],
+            "Duration": 5
+          }
+        }
+      ]
+    }
+  ]
+}
