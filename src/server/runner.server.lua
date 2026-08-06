@@ -4,6 +4,7 @@
 -- RemoteRegistryService harus init paling awal (membuat folder remotes).
 
 local Services = {}
+local servicesFolder = script.Parent:WaitForChild('services')
 
 local function initService(module: ModuleScript)
 	local ok, service = pcall(require, module)
@@ -17,13 +18,13 @@ local function initService(module: ModuleScript)
 end
 
 -- 1. Remote registry dulu (service lain register remote padanya).
-local remoteModule = script.Parent:FindFirstChild('RemoteRegistryService')
+local remoteModule = servicesFolder:FindFirstChild('RemoteRegistryService')
 if remoteModule and remoteModule:IsA('ModuleScript') then
 	initService(remoteModule)
 end
 
 -- 2. Service lain.
-for _, module in script.Parent:GetChildren() do
+for _, module in servicesFolder:GetChildren() do
 	if module:IsA('ModuleScript') and module ~= remoteModule then
 		initService(module)
 	end

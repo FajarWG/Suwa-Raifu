@@ -60,7 +60,8 @@ local Config: GameConfig = {
 
 	spawnNpcId = 'teacher_sakura',
 
-	availableLocales = { 'ja', 'en', 'id' },
+	-- Prototype map-first memakai English saja. Resource ja/id disimpan untuk phase localization nanti.
+	availableLocales = { 'en' },
 	defaultLocale = 'en',
 }
 

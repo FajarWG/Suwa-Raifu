@@ -1,7 +1,7 @@
 --!strict
 
 -- LocalizationService (shared): resolve localization key ke string.
--- Bahasa default dari profile; fallback ke en (English).
+-- Prototype saat ini English-only; tabel lain disimpan untuk phase localization nanti.
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
@@ -34,19 +34,30 @@ function LocalizationService.get(locale: string, key: string): string
 	return key
 end
 
--- Ambil locale dari profile (sinkron dengan settings).
+local function isLocaleEnabled(locale: string): boolean
+	for _, enabledLocale in Config.availableLocales do
+		if locale == enabledLocale then
+			return true
+		end
+	end
+	return false
+end
+
+-- Ambil locale dari profile hanya jika locale tersebut aktif pada build saat ini.
 function LocalizationService.getLocaleForProfile(profile: ProfileTypes.Profile): string
 	local locale = profile.settings.translationLanguage or Config.defaultLocale
-	if tables[locale] then
+	if isLocaleEnabled(locale) and tables[locale] then
 		return locale
 	end
 	return Config.defaultLocale
 end
 
 function LocalizationService.getAvailableLocales(): { string }
-	local locales = {}
-	for locale, _ in tables do
-		table.insert(locales, locale)
+	local locales: { string } = {}
+	for _, locale in Config.availableLocales do
+		if tables[locale] then
+			table.insert(locales, locale)
+		end
 	end
 	return locales
 end

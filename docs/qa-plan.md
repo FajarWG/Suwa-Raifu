@@ -47,7 +47,7 @@
 
 ## 5. Regression checklist (MVP — PRD §22)
 
-1. [ ] Spawn di asrama.
+1. [ ] Spawn di sculpture plaza Sekicho-inspired dan menghadap ke danau.
 2. [ ] Pergi ke sekolah.
 3. [ ] Ikut 1 pelajaran.
 4. [ ] Dapat Japanese XP.
@@ -60,7 +60,7 @@
 11. [ ] Progress tersimpan.
 12. [ ] 20 pemain stabil.
 13. [ ] UI PC & mobile.
-14. [ ] Bahasa ja/en/id.
+14. [ ] UI/dialog English; papan lokasi Jepang (multi-language ditunda).
 15. [ ] Chat filtering.
 16. [ ] Tanpa nama/logo/wajah nyata tanpa izin.
 

@@ -1,0 +1,2546 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "className": "Model",
+      "name": "LakesideTrails",
+      "children": [
+        {
+          "className": "Part",
+          "name": "BikeLane",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              740,
+              0.25,
+              8
+            ],
+            "Color": [
+              0.22,
+              0.55,
+              0.72
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              0,
+              0.75,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WalkingLane",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              740,
+              0.2,
+              7
+            ],
+            "Color": [
+              0.86,
+              0.75,
+              0.55
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              0,
+              0.72,
+              -162,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              -315,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              -245,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              -175,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash04",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              -105,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash05",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              -35,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash06",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              35,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash07",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              105,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash08",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              175,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash09",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              245,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BikeDash10",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              34,
+              0.1,
+              0.5
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              315,
+              0.94,
+              -147,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "WestFishingPier",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Walkway",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              10,
+              1.5,
+              46
+            ],
+            "Color": [
+              0.47,
+              0.34,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -260,
+              1.2,
+              -186,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Platform",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              28,
+              1.5,
+              18
+            ],
+            "Color": [
+              0.47,
+              0.34,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -260,
+              1.2,
+              -213,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "RailLeft",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              3,
+              45
+            ],
+            "Color": [
+              0.25,
+              0.28,
+              0.29
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -265,
+              3,
+              -186,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "RailRight",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              3,
+              45
+            ],
+            "Color": [
+              0.25,
+              0.28,
+              0.29
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -255,
+              3,
+              -186,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              -269,
+              2.05,
+              -215,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              -260,
+              2.05,
+              -218,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              -251,
+              2.05,
+              -215,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "CentralFishingPier",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Walkway",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              10,
+              1.5,
+              42
+            ],
+            "Color": [
+              0.48,
+              0.35,
+              0.23
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -15,
+              1.2,
+              -184,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Platform",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              26,
+              1.5,
+              18
+            ],
+            "Color": [
+              0.48,
+              0.35,
+              0.23
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -15,
+              1.2,
+              -209,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              -23,
+              2.05,
+              -211,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              -15,
+              2.05,
+              -214,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              -7,
+              2.05,
+              -211,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "EastFishingPier",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Walkway",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              10,
+              1.5,
+              44
+            ],
+            "Color": [
+              0.46,
+              0.33,
+              0.21
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              345,
+              1.2,
+              -185,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Platform",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              28,
+              1.5,
+              18
+            ],
+            "Color": [
+              0.46,
+              0.33,
+              0.21
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              345,
+              1.2,
+              -211,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              336,
+              2.05,
+              -213,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              345,
+              2.05,
+              -216,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FishingSpot03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              5,
+              0.2,
+              5
+            ],
+            "Color": [
+              0.92,
+              0.7,
+              0.2
+            ],
+            "Material": "Neon",
+            "CFrame": [
+              354,
+              2.05,
+              -213,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "LakesidePlayground",
+      "children": [
+        {
+          "className": "Part",
+          "name": "PlaygroundSurface",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              92,
+              1,
+              62
+            ],
+            "Color": [
+              0.55,
+              0.72,
+              0.48
+            ],
+            "Material": "Grass",
+            "CFrame": [
+              -320,
+              0.4,
+              -94,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SlidePlatform",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              12,
+              1,
+              12
+            ],
+            "Color": [
+              0.88,
+              0.45,
+              0.24
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -340,
+              10,
+              -96,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SlideRamp",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              8,
+              1,
+              20
+            ],
+            "Color": [
+              0.26,
+              0.55,
+              0.78
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              -340,
+              5,
+              -83,
+              1,
+              0,
+              0,
+              0,
+              0.8829475929,
+              0.4694715628,
+              0,
+              -0.4694715628,
+              0.8829475929
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SlideLadderLeft",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              10,
+              1
+            ],
+            "Color": [
+              0.85,
+              0.32,
+              0.25
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -344,
+              5,
+              -102,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SlideLadderRight",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              10,
+              1
+            ],
+            "Color": [
+              0.85,
+              0.32,
+              0.25
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -336,
+              5,
+              -102,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingTop",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              28,
+              1,
+              1
+            ],
+            "Color": [
+              0.9,
+              0.55,
+              0.2
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -303,
+              12,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingPostLeft",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              12,
+              1
+            ],
+            "Color": [
+              0.9,
+              0.55,
+              0.2
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -316,
+              6,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingPostRight",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              12,
+              1
+            ],
+            "Color": [
+              0.9,
+              0.55,
+              0.2
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -290,
+              6,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingRope01A",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              0.3,
+              7,
+              0.3
+            ],
+            "Color": [
+              0.25,
+              0.25,
+              0.24
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -309,
+              8,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingRope01B",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              0.3,
+              7,
+              0.3
+            ],
+            "Color": [
+              0.25,
+              0.25,
+              0.24
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -304,
+              8,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingSeat01",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              6,
+              0.8,
+              3
+            ],
+            "Color": [
+              0.3,
+              0.4,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -306.5,
+              4.3,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingRope02A",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              0.3,
+              7,
+              0.3
+            ],
+            "Color": [
+              0.25,
+              0.25,
+              0.24
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -301,
+              8,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingRope02B",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              0.3,
+              7,
+              0.3
+            ],
+            "Color": [
+              0.25,
+              0.25,
+              0.24
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -296,
+              8,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SwingSeat02",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              6,
+              0.8,
+              3
+            ],
+            "Color": [
+              0.3,
+              0.4,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -298.5,
+              4.3,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SeesawBase",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              3,
+              3,
+              3
+            ],
+            "Color": [
+              0.3,
+              0.45,
+              0.55
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              -311,
+              2,
+              -77,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SeesawBoard",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              24,
+              1,
+              3
+            ],
+            "Color": [
+              0.86,
+              0.32,
+              0.28
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -311,
+              4,
+              -77,
+              0.9902680687,
+              -0.139173101,
+              0,
+              0.139173101,
+              0.9902680687,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "LakesideRestArea",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Floor",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              34,
+              1,
+              26
+            ],
+            "Color": [
+              0.74,
+              0.72,
+              0.66
+            ],
+            "Material": "Concrete",
+            "CFrame": [
+              40,
+              0.7,
+              -104,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Roof",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              38,
+              1.5,
+              30
+            ],
+            "Color": [
+              0.3,
+              0.48,
+              0.42
+            ],
+            "Material": "Slate",
+            "CFrame": [
+              40,
+              13,
+              -104,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Post01",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              12,
+              1
+            ],
+            "Color": [
+              0.33,
+              0.24,
+              0.17
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              25,
+              6.5,
+              -115,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Post02",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              12,
+              1
+            ],
+            "Color": [
+              0.33,
+              0.24,
+              0.17
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              55,
+              6.5,
+              -115,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Post03",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              12,
+              1
+            ],
+            "Color": [
+              0.33,
+              0.24,
+              0.17
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              25,
+              6.5,
+              -93,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Post04",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              12,
+              1
+            ],
+            "Color": [
+              0.33,
+              0.24,
+              0.17
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              55,
+              6.5,
+              -93,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Table",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              14,
+              1,
+              7
+            ],
+            "Color": [
+              0.48,
+              0.34,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              40,
+              4,
+              -104,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BenchNorth",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              14,
+              1,
+              3
+            ],
+            "Color": [
+              0.48,
+              0.34,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              40,
+              2.5,
+              -112,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BenchSouth",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              14,
+              1,
+              3
+            ],
+            "Color": [
+              0.48,
+              0.34,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              40,
+              2.5,
+              -96,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "FootbathArea",
+      "children": [
+        {
+          "className": "Part",
+          "name": "StoneBase",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              46,
+              2,
+              22
+            ],
+            "Color": [
+              0.47,
+              0.48,
+              0.46
+            ],
+            "Material": "Rock",
+            "CFrame": [
+              102,
+              1,
+              -96,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WarmWater",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              38,
+              1,
+              12
+            ],
+            "Color": [
+              0.32,
+              0.68,
+              0.76
+            ],
+            "Material": "Glass",
+            "Transparency": 0.22,
+            "CFrame": [
+              102,
+              2.1,
+              -96,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BenchNorth",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              36,
+              1,
+              4
+            ],
+            "Color": [
+              0.5,
+              0.36,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              102,
+              3,
+              -105,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "BenchSouth",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              36,
+              1,
+              4
+            ],
+            "Color": [
+              0.5,
+              0.36,
+              0.22
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              102,
+              3,
+              -87,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FootbathSign",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              12,
+              5,
+              1
+            ],
+            "Color": [
+              0.25,
+              0.43,
+              0.49
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              126,
+              3,
+              -96,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          "children": [
+            {
+              "className": "SurfaceGui",
+              "name": "JapaneseSignGui",
+              "properties": {
+                "Face": "Front",
+                "LightInfluence": 0,
+                "PixelsPerStud": 40
+              },
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "BackgroundTransparency": 1,
+                    "Font": "GothamBold",
+                    "Text": "足湯",
+                    "TextColor3": [
+                      0.95,
+                      0.95,
+                      0.88
+                    ],
+                    "TextScaled": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "LakesideFoodStall",
+      "children": [
+        {
+          "className": "Part",
+          "name": "StallBody",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              26,
+              10,
+              16
+            ],
+            "Color": [
+              0.88,
+              0.74,
+              0.48
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -75,
+              5.5,
+              -94,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Counter",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              28,
+              2,
+              5
+            ],
+            "Color": [
+              0.48,
+              0.32,
+              0.2
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -75,
+              5,
+              -83.5,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Roof",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              32,
+              2,
+              22
+            ],
+            "Color": [
+              0.84,
+              0.24,
+              0.24
+            ],
+            "Material": "Fabric",
+            "CFrame": [
+              -75,
+              12,
+              -94,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Awning",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              28,
+              1,
+              8
+            ],
+            "Color": [
+              0.95,
+              0.9,
+              0.75
+            ],
+            "Material": "Fabric",
+            "CFrame": [
+              -75,
+              10,
+              -82,
+              1,
+              0,
+              0,
+              0,
+              0.9781476007,
+              0.2079116908,
+              0,
+              -0.2079116908,
+              0.9781476007
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "FoodSign",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              16,
+              5,
+              1
+            ],
+            "Color": [
+              0.75,
+              0.19,
+              0.19
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              -75,
+              8,
+              -81.5,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          "children": [
+            {
+              "className": "SurfaceGui",
+              "name": "JapaneseSignGui",
+              "properties": {
+                "Face": "Front",
+                "LightInfluence": 0,
+                "PixelsPerStud": 40
+              },
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "BackgroundTransparency": 1,
+                    "Font": "GothamBold",
+                    "Text": "軽食",
+                    "TextColor3": [
+                      0.98,
+                      0.94,
+                      0.8
+                    ],
+                    "TextScaled": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "FireworksLaunchBarge",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Barge",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              48,
+              2,
+              28
+            ],
+            "Color": [
+              0.18,
+              0.22,
+              0.25
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              105,
+              0,
+              -252,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Launcher01",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              2,
+              9,
+              2
+            ],
+            "Color": [
+              0.35,
+              0.37,
+              0.38
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              91,
+              5,
+              -252,
+              0.9902680687,
+              0.139173101,
+              0,
+              -0.139173101,
+              0.9902680687,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Launcher02",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              2,
+              9,
+              2
+            ],
+            "Color": [
+              0.35,
+              0.37,
+              0.38
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              98,
+              5,
+              -252,
+              0.9975640503,
+              0.0697564737,
+              0,
+              -0.0697564737,
+              0.9975640503,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Launcher03",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              2,
+              9,
+              2
+            ],
+            "Color": [
+              0.35,
+              0.37,
+              0.38
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              105,
+              5,
+              -252,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Launcher04",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              2,
+              9,
+              2
+            ],
+            "Color": [
+              0.35,
+              0.37,
+              0.38
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              112,
+              5,
+              -252,
+              0.9975640503,
+              -0.0697564737,
+              0,
+              0.0697564737,
+              0.9975640503,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Launcher05",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              2,
+              9,
+              2
+            ],
+            "Color": [
+              0.35,
+              0.37,
+              0.38
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              119,
+              5,
+              -252,
+              0.9902680687,
+              -0.139173101,
+              0,
+              0.139173101,
+              0.9902680687,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Part",
+      "name": "BikeRouteSign",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          20,
+          7,
+          1
+        ],
+        "Color": [
+          0.15,
+          0.38,
+          0.5
+        ],
+        "Material": "Wood",
+        "CFrame": [
+          348,
+          4,
+          -136,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          -1,
+          0,
+          0
+        ]
+      },
+      "children": [
+        {
+          "className": "SurfaceGui",
+          "name": "JapaneseSignGui",
+          "properties": {
+            "Face": "Front",
+            "LightInfluence": 0,
+            "PixelsPerStud": 40
+          },
+          "children": [
+            {
+              "className": "TextLabel",
+              "name": "Text",
+              "properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Font": "GothamBold",
+                "Text": "自転車道",
+                "TextColor3": [
+                  0.95,
+                  0.95,
+                  0.9
+                ],
+                "TextScaled": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "className": "Part",
+      "name": "FishingAreaSign",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          18,
+          6,
+          1
+        ],
+        "Color": [
+          0.2,
+          0.43,
+          0.55
+        ],
+        "Material": "Wood",
+        "CFrame": [
+          -235,
+          4,
+          -166,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "children": [
+        {
+          "className": "SurfaceGui",
+          "name": "JapaneseSignGui",
+          "properties": {
+            "Face": "Front",
+            "LightInfluence": 0,
+            "PixelsPerStud": 40
+          },
+          "children": [
+            {
+              "className": "TextLabel",
+              "name": "Text",
+              "properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Font": "GothamBold",
+                "Text": "釣り場",
+                "TextColor3": [
+                  0.95,
+                  0.95,
+                  0.9
+                ],
+                "TextScaled": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1046 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "className": "Part",
+      "name": "Foundation",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          108,
+          2,
+          38
+        ],
+        "Color": [
+          0.62,
+          0.63,
+          0.62
+        ],
+        "Material": "Concrete",
+        "CFrame": [
+          220,
+          1,
+          60,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Part",
+      "name": "BuildingLower",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          100,
+          10,
+          30
+        ],
+        "Color": [
+          0.92,
+          0.93,
+          0.91
+        ],
+        "Material": "Plaster",
+        "CFrame": [
+          220,
+          7,
+          60,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Part",
+      "name": "BuildingUpper",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          100,
+          10,
+          30
+        ],
+        "Color": [
+          0.95,
+          0.95,
+          0.93
+        ],
+        "Material": "Plaster",
+        "CFrame": [
+          220,
+          17,
+          60,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "WedgePart",
+      "name": "RoofWest",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          54,
+          8,
+          38
+        ],
+        "Color": [
+          0.25,
+          0.38,
+          0.49
+        ],
+        "Material": "Slate",
+        "CFrame": [
+          193,
+          25,
+          60,
+          -1,
+          0,
+          0,
+          0,
+          -1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "WedgePart",
+      "name": "RoofEast",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          54,
+          8,
+          38
+        ],
+        "Color": [
+          0.25,
+          0.38,
+          0.49
+        ],
+        "Material": "Slate",
+        "CFrame": [
+          247,
+          25,
+          60,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Part",
+      "name": "SecondFloorBalcony",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          96,
+          1,
+          5
+        ],
+        "Color": [
+          0.66,
+          0.67,
+          0.66
+        ],
+        "Material": "Concrete",
+        "CFrame": [
+          220,
+          12,
+          78,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Part",
+      "name": "BalconyRailTop",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          96,
+          0.5,
+          0.5
+        ],
+        "Color": [
+          0.2,
+          0.26,
+          0.3
+        ],
+        "Material": "Metal",
+        "CFrame": [
+          220,
+          16,
+          80,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Part",
+      "name": "BalconyRailMiddle",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          96,
+          0.35,
+          0.35
+        ],
+        "Color": [
+          0.2,
+          0.26,
+          0.3
+        ],
+        "Material": "Metal",
+        "CFrame": [
+          220,
+          14.2,
+          80,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Model",
+      "name": "FrontDoors",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Door01",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              5,
+              8,
+              0.6
+            ],
+            "Color": [
+              0.3,
+              0.42,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              180,
+              6,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Door02",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              5,
+              8,
+              0.6
+            ],
+            "Color": [
+              0.3,
+              0.42,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              196,
+              6,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Door03",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              5,
+              8,
+              0.6
+            ],
+            "Color": [
+              0.3,
+              0.42,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              212,
+              6,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Door04",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              5,
+              8,
+              0.6
+            ],
+            "Color": [
+              0.3,
+              0.42,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              228,
+              6,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Door05",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              5,
+              8,
+              0.6
+            ],
+            "Color": [
+              0.3,
+              0.42,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              244,
+              6,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Door06",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              5,
+              8,
+              0.6
+            ],
+            "Color": [
+              0.3,
+              0.42,
+              0.5
+            ],
+            "Material": "Wood",
+            "CFrame": [
+              260,
+              6,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "UpperWindows",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Window01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              7,
+              5,
+              0.45
+            ],
+            "Color": [
+              0.48,
+              0.7,
+              0.82
+            ],
+            "Material": "Glass",
+            "Transparency": 0.18,
+            "CFrame": [
+              180,
+              18,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Window02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              7,
+              5,
+              0.45
+            ],
+            "Color": [
+              0.48,
+              0.7,
+              0.82
+            ],
+            "Material": "Glass",
+            "Transparency": 0.18,
+            "CFrame": [
+              196,
+              18,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Window03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              7,
+              5,
+              0.45
+            ],
+            "Color": [
+              0.48,
+              0.7,
+              0.82
+            ],
+            "Material": "Glass",
+            "Transparency": 0.18,
+            "CFrame": [
+              212,
+              18,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Window04",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              7,
+              5,
+              0.45
+            ],
+            "Color": [
+              0.48,
+              0.7,
+              0.82
+            ],
+            "Material": "Glass",
+            "Transparency": 0.18,
+            "CFrame": [
+              228,
+              18,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Window05",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              7,
+              5,
+              0.45
+            ],
+            "Color": [
+              0.48,
+              0.7,
+              0.82
+            ],
+            "Material": "Glass",
+            "Transparency": 0.18,
+            "CFrame": [
+              244,
+              18,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Window06",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              7,
+              5,
+              0.45
+            ],
+            "Color": [
+              0.48,
+              0.7,
+              0.82
+            ],
+            "Material": "Glass",
+            "Transparency": 0.18,
+            "CFrame": [
+              260,
+              18,
+              75.25,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "ExteriorStairs",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Landing",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              10,
+              1,
+              8
+            ],
+            "Color": [
+              0.55,
+              0.57,
+              0.58
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              273,
+              12,
+              77,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "StairRun",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              8,
+              1,
+              22
+            ],
+            "Color": [
+              0.52,
+              0.54,
+              0.55
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              278,
+              6,
+              88,
+              1,
+              0,
+              0,
+              0,
+              0.8829475929,
+              0.4694715628,
+              0,
+              -0.4694715628,
+              0.8829475929
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "StairRail",
+          "properties": {
+            "Anchored": true,
+            "Size": [
+              0.6,
+              3,
+              23
+            ],
+            "Color": [
+              0.2,
+              0.24,
+              0.27
+            ],
+            "Material": "Metal",
+            "CFrame": [
+              282,
+              8,
+              88,
+              1,
+              0,
+              0,
+              0,
+              0.8829475929,
+              0.4694715628,
+              0,
+              -0.4694715628,
+              0.8829475929
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Part",
+      "name": "ParkingLot",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          125,
+          1,
+          46
+        ],
+        "Color": [
+          0.25,
+          0.27,
+          0.28
+        ],
+        "Material": "Asphalt",
+        "CFrame": [
+          220,
+          0.25,
+          111,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "className": "Model",
+      "name": "ParkingLines",
+      "children": [
+        {
+          "className": "Part",
+          "name": "Line01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.5,
+              0.1,
+              18
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              180,
+              0.82,
+              111,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Line02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.5,
+              0.1,
+              18
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              198,
+              0.82,
+              111,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Line03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.5,
+              0.1,
+              18
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              216,
+              0.82,
+              111,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Line04",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.5,
+              0.1,
+              18
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              234,
+              0.82,
+              111,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Line05",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.5,
+              0.1,
+              18
+            ],
+            "Color": [
+              0.94,
+              0.94,
+              0.9
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              252,
+              0.82,
+              111,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Part",
+      "name": "DormitorySign",
+      "properties": {
+        "Anchored": true,
+        "Size": [
+          14,
+          5,
+          1
+        ],
+        "Color": [
+          0.23,
+          0.4,
+          0.51
+        ],
+        "Material": "Wood",
+        "CFrame": [
+          160,
+          3,
+          94,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "children": [
+        {
+          "className": "SurfaceGui",
+          "name": "JapaneseSignGui",
+          "properties": {
+            "Face": "Front",
+            "LightInfluence": 0,
+            "PixelsPerStud": 40
+          },
+          "children": [
+            {
+              "className": "TextLabel",
+              "name": "Text",
+              "properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Font": "GothamBold",
+                "Text": "すわ学生寮",
+                "TextColor3": [
+                  0.95,
+                  0.94,
+                  0.86
+                ],
+                "TextScaled": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

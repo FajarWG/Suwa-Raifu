@@ -1,0 +1,566 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "className": "Model",
+      "name": "DuckPedalBoat01",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "MoldedPedalBoatHull",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [
+              2.843396,
+              1.965396,
+              5.122349
+            ],
+            "MeshId": "rbxassetid://132931513179998",
+            "TextureID": "rbxassetid://106201807645897",
+            "CFrame": [
+              230.0127,
+              1.732698,
+              -245.486092,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "PedalAssembly",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.117873,
+              1.205047,
+              1.421689
+            ],
+            "MeshId": "rbxassetid://101015782922583",
+            "TextureID": "rbxassetid://137544487284153",
+            "CFrame": [
+              230.011942,
+              2.770759,
+              -247.301285,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "DuckHead",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Shape": "Ball",
+            "Size": [
+              2.448394,
+              2.448394,
+              2.448394
+            ],
+            "Color": [
+              0.973,
+              0.773,
+              0.196
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              230.005297,
+              2.8863,
+              -247.005671,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Beak",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.807148,
+              0.641246,
+              1.457378
+            ],
+            "Color": [
+              0.933,
+              0.463,
+              0.137
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              230.005297,
+              2.76971,
+              -248.696229,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "EyeLeft",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Shape": "Ball",
+            "Size": [
+              0.262328,
+              0.262328,
+              0.262328
+            ],
+            "Color": [
+              0.098,
+              0.106,
+              0.11
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              229.276608,
+              3.440103,
+              -247.96754,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "EyeRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Shape": "Ball",
+            "Size": [
+              0.262328,
+              0.262328,
+              0.262328
+            ],
+            "Color": [
+              0.098,
+              0.106,
+              0.11
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              230.733985,
+              3.440103,
+              -247.96754,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WaterproofCockpitFloor",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.9,
+              0.25,
+              2.4
+            ],
+            "Color": [
+              0.922,
+              0.867,
+              0.71
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              230.0127,
+              1.4,
+              -245.47491775000003,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "DuckPedalBoat02",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "MoldedPedalBoatHull",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [
+              2.843396,
+              1.965396,
+              5.122349
+            ],
+            "MeshId": "rbxassetid://132931513179998",
+            "TextureID": "rbxassetid://106201807645897",
+            "CFrame": [
+              244.0127,
+              1.732698,
+              -255.486092,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "PedalAssembly",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.117873,
+              1.205047,
+              1.421689
+            ],
+            "MeshId": "rbxassetid://101015782922583",
+            "TextureID": "rbxassetid://137544487284153",
+            "CFrame": [
+              244.011942,
+              2.770759,
+              -257.301285,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "DuckHead",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Shape": "Ball",
+            "Size": [
+              2.448394,
+              2.448394,
+              2.448394
+            ],
+            "Color": [
+              0.973,
+              0.773,
+              0.196
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              244.005297,
+              2.8863,
+              -257.005671,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Beak",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.807148,
+              0.641246,
+              1.457378
+            ],
+            "Color": [
+              0.933,
+              0.463,
+              0.137
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              244.005297,
+              2.76971,
+              -258.696229,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "EyeLeft",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Shape": "Ball",
+            "Size": [
+              0.262328,
+              0.262328,
+              0.262328
+            ],
+            "Color": [
+              0.098,
+              0.106,
+              0.11
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              243.276608,
+              3.440103,
+              -257.96754,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "EyeRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Shape": "Ball",
+            "Size": [
+              0.262328,
+              0.262328,
+              0.262328
+            ],
+            "Color": [
+              0.098,
+              0.106,
+              0.11
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              244.733985,
+              3.440103,
+              -257.96754,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WaterproofCockpitFloor",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.9,
+              0.25,
+              2.4
+            ],
+            "Color": [
+              0.922,
+              0.867,
+              0.71
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              244.0127,
+              1.4,
+              -255.47491775000003,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "LakeLeisureBoat",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "LeisureBoatHull",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [
+              2.6047,
+              2.396385,
+              6
+            ],
+            "MeshId": "rbxassetid://106412283654846",
+            "TextureID": "rbxassetid://113245942241308",
+            "CFrame": [
+              270.0128,
+              1.948192,
+              -274.9883,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "OutboardMotor",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.558975,
+              2.161,
+              0.807344
+            ],
+            "MeshId": "rbxassetid://125253636736713",
+            "TextureID": "rbxassetid://136093503777861",
+            "CFrame": [
+              270.011357,
+              2.162603,
+              -272.415119,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WaterproofCockpitFloor",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.7,
+              0.25,
+              2.8
+            ],
+            "Color": [
+              0.871,
+              0.918,
+              0.937
+            ],
+            "Material": "SmoothPlastic",
+            "CFrame": [
+              270.0128,
+              1.4,
+              -275.43829999999997,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

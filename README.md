@@ -33,12 +33,19 @@ rojo serve default.project.json                           # watch mode (rekomend
 
 Saat `rojo serve` aktif, edit di `src/` langsung tersinkron ke Studio.
 
+### 4. Voice chat
+
+Build mengaktifkan default proximity voice pada `VoiceChatService`. Agar berfungsi pada
+Experience yang dipublish, buka **File → Experience Settings → Communication**, aktifkan
+**Enable Microphone**, lalu publish. Fitur hanya tersedia untuk pemain yang memenuhi
+syarat Roblox; mikrofon panggung tidak membuat jalur audio custom.
+
 ## Fitur
 
 ### Fitur 1 — Interaksi NPC & Starter Quest
 
 - NPC Teacher Sakura di-spawn server-side dengan ProximityPrompt.
-- Pemain mendekat → prompt → dialog branching (localization id/en/ja).
+- Pemain mendekat → prompt → dialog branching. UI prototype memakai English.
 - Quest intro: bicara dengan guru → terima quest → dapat buku pelajaran → reward Japanese XP + Yen.
 - HUD menampilkan Yen, Japanese XP, level, dan quest aktif.
 - Data tersimpan ke DataStore (profile dengan versioning & retry).
@@ -51,6 +58,32 @@ Saat `rojo serve` aktif, edit di `src/` langsung tersinkron ke Studio.
 - Lesson yang selesai ditandai di daftar; progress tersimpan.
 - Logika grading di shared `LessonLogic` (testable) + unit test.
 
+### Map Greybox 0.3 — Compact Suwa Lakeside
+
+- Spawn berada di sculpture plaza yang terinspirasi Sekicho Park di dalam kawasan
+  Suwa Lakeside Park.
+- Urutan ruang utama: taman tepi danau → asrama generik → sekolah bahasa fiktif.
+- Compact world berisi danau Terrain Water yang luas, promenade, sungai/kanal, jalan utama, jembatan,
+  permukiman, pepohonan, dan backdrop pegunungan.
+- Model sekolah, asrama, dan sepeda dipisah agar mudah diiterasi lewat Rojo.
+- Tiga mamachari dinormalisasi terhadap ukuran avatar (5 studs panjang) dan rideable
+  dengan kontrol W/S/A/D.
+- Area danau memiliki panggung open mic dan dua booth percakapan; proximity voice
+  memakai sistem resmi Roblox untuk pemain yang memenuhi syarat.
+- Promenade memiliki jalur sepeda, jalur jalan kaki, tiga dermaga/sembilan marker
+  memancing, playground, dan rest shelter.
+- Pulau Hatsushima-inspired memiliki pohon, torii, jetty, dan launch point kembang api.
+- Dua duck pedal boat (6,5 studs) dan satu leisure boat (6 studs) tersedia dan dapat
+  dikendalikan; lambung dan lantai cockpit berada di atas waterline sehingga interior
+  tidak kemasukan air. Air di luar kendaraan tetap dapat direnangi.
+- Food stall dan footbath-inspired seating tetap tersedia sebagai greybox.
+- Sembilan titik dermaga mempunyai interaksi memancing prototype.
+- Fase map aktif dibatasi satu kotak compact lakeside/Kami-Suwa-inspired dengan grid jalan
+  lokal, trotoar, jembatan kanal/sungai, 12 rumah, tiga toko, lampu, dan crosswalk.
+- Koridor panjang menuju NICC dan ryou ditunda ke fase map berikutnya.
+- Papan dunia memakai bahasa Jepang, sementara UI/dialog prototype memakai English.
+- Detail layout: `docs/map-layout.md`.
+
 ## Struktur
 
 ```
@@ -58,7 +91,15 @@ src/
 ├── shared/    # types, constants, data defs, remotes, util, localization, services
 ├── server/    # services (Profile, Economy, Quest, NPC, Spawn), runner.server.lua
 └── client/    # controllers (Remote, Profile, Dialog, HUD), runner.client.lua
-docs/          # GDD, TDD, style guide, data schema, asset list, localization, QA plan
+maps/
+├── SuwaCentral.model.json         # environment kota, danau, jalan, sungai
+├── LanguageAcademy.model.json     # sekolah bahasa fiktif
+├── Dormitory.model.json           # asrama generik
+├── Bicycles.model.json            # mesh mamachari rideable
+├── LakeCrafts.model.json          # duck pedal boat + leisure boat mesh
+├── LakesideOpenMic.model.json     # panggung dan booth percakapan
+└── LakesideActivities.model.json  # trail, dermaga, playground, rest area
+docs/          # GDD, TDD, map layout, style guide, data schema, asset list, QA
 ```
 
 ## Lint & format
@@ -92,5 +133,6 @@ rojo test         # menjalankan unit test TestEZ
 | `docs/style-guide.md` | Art style, palet, skala |
 | `docs/data-schema.md` | Struktur data pemain & defs |
 | `docs/asset-list.md` | Daftar aset & status |
+| `docs/map-layout.md` | Layout map, skala, urutan perjalanan, dan batas privasi |
 | `docs/localization.md` | Sistem bahasa |
 | `docs/qa-plan.md` | Rencana testing |

@@ -25,8 +25,60 @@
     },
     "Workspace": {
       "$className": "Workspace",
+      "$properties": {
+        "StreamingEnabled": true,
+        "StreamingMinRadius": 128,
+        "StreamingTargetRadius": 256
+      },
       "SuwaCentral": {
         "$path": "maps/SuwaCentral.model.json"
+      },
+      "Dormitory": {
+        "$path": "maps/Dormitory.model.json"
+      },
+      "LanguageAcademy": {
+        "$path": "maps/LanguageAcademy.model.json"
+      },
+      "Bicycles": {
+        "$path": "maps/Bicycles.model.json"
+      },
+      "LakesideOpenMic": {
+        "$path": "maps/LakesideOpenMic.model.json"
+      },
+      "LakesideActivities": {
+        "$path": "maps/LakesideActivities.model.json"
+      },
+      "LakeCrafts": {
+        "$path": "maps/LakeCrafts.model.json"
+      }
+    },
+    "VoiceChatService": {
+      "$className": "VoiceChatService",
+      "$properties": {
+        "EnableDefaultVoice": true
+      }
+    },
+    "Lighting": {
+      "$className": "Lighting",
+      "$properties": {
+        "Ambient": [0.48, 0.51, 0.58],
+        "Brightness": 2.5,
+        "ClockTime": 8.25,
+        "EnvironmentDiffuseScale": 0.45,
+        "EnvironmentSpecularScale": 0.65,
+        "OutdoorAmbient": [0.68, 0.72, 0.78],
+        "ShadowSoftness": 0.35,
+        "Technology": "Future"
+      },
+      "MorningAtmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Color": [0.77,0.88,0.95],
+          "Decay": [0.42,0.56,0.67],
+          "Density": 0.18,
+          "Glare": 0.08,
+          "Haze": 0.65
+        }
       }
     }
   }
