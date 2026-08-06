@@ -12,7 +12,6 @@ export type RemoteNames = {
 	questClaim: string,
 	npcInteract: string,
 	schoolCheckIn: string,
-	quizAnswer: string,
 	bikeRequest: string,
 	getProfile: string,
 	getShopCatalog: string,
@@ -35,9 +34,9 @@ local Remotes: RemoteDefinitions = {
 		'QuestClaim',
 		'NPCInteract',
 		'SchoolCheckIn',
-		'QuizAnswer',
 		'BikeRequest',
 		'NPCOpenDialog',
+		'QuizSubmit',
 	},
 	functions = {
 		'GetProfile',
@@ -45,6 +44,7 @@ local Remotes: RemoteDefinitions = {
 		'GetQuestLog',
 		'GetTimeInfo',
 		'NPCGetDialog',
+		'LessonGet',
 	},
 }
 

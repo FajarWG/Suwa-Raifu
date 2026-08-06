@@ -43,6 +43,14 @@ Saat `rojo serve` aktif, edit di `src/` langsung tersinkron ke Studio.
 - HUD menampilkan Yen, Japanese XP, level, dan quest aktif.
 - Data tersimpan ke DataStore (profile dengan versioning & retry).
 
+### Fitur 2 — Kelas & Quiz Bahasa Jepang
+
+- Tombol "School" di HUD membuka panel daftar 5 lesson (id/en/ja).
+- Klik lesson → quiz pilihan ganda (vocab Jepang).
+- Server menilai jawaban (60% lulus), beri Japanese XP + attendance.
+- Lesson yang selesai ditandai di daftar; progress tersimpan.
+- Logika grading di shared `LessonLogic` (testable) + unit test.
+
 ## Struktur
 
 ```

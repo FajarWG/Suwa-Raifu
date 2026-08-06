@@ -25,9 +25,11 @@ function ProfileController.init()
 		if type(result) == 'table' then
 			profile = result
 			local locale = LocalizationService.getLocaleForProfile(result)
-			-- Set locale untuk dialog controller
+			-- Set locale untuk dialog & school controller
 			local DialogController = require(script.Parent:WaitForChild('DialogController'))
 			DialogController.setLocale(locale)
+			local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
+			SchoolController.setLocale(locale)
 		end
 	end)
 end

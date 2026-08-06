@@ -68,8 +68,61 @@ local LESSONS = {
 		quiz = {
 			{
 				promptKey = 'lesson.01.q1',
-				choices = { 'a', 'b', 'c' },
+				choices = { 'lesson.01.q1.a', 'lesson.01.q1.b', 'lesson.01.q1.c' },
 				answer = 1,
+			},
+			{
+				promptKey = 'lesson.01.q2',
+				choices = { 'lesson.01.q2.a', 'lesson.01.q2.b', 'lesson.01.q2.c' },
+				answer = 0,
+			},
+		},
+	},
+	lesson_02 = {
+		id = 'lesson_02',
+		titleKey = 'lesson.02.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.02.q1',
+				choices = { 'lesson.02.q1.a', 'lesson.02.q1.b', 'lesson.02.q1.c' },
+				answer = 2,
+			},
+		},
+	},
+	lesson_03 = {
+		id = 'lesson_03',
+		titleKey = 'lesson.03.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.03.q1',
+				choices = { 'lesson.03.q1.a', 'lesson.03.q1.b', 'lesson.03.q1.c' },
+				answer = 1,
+			},
+		},
+	},
+	lesson_04 = {
+		id = 'lesson_04',
+		titleKey = 'lesson.04.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.04.q1',
+				choices = { 'lesson.04.q1.a', 'lesson.04.q1.b', 'lesson.04.q1.c' },
+				answer = 0,
+			},
+		},
+	},
+	lesson_05 = {
+		id = 'lesson_05',
+		titleKey = 'lesson.05.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.05.q1',
+				choices = { 'lesson.05.q1.a', 'lesson.05.q1.b', 'lesson.05.q1.c' },
+				answer = 2,
 			},
 		},
 	},

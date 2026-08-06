@@ -93,6 +93,21 @@ local function createGui(): ScreenGui
 	questList.BackgroundTransparency = 1
 	questList.Parent = questPanel
 
+	-- Tombol buka panel sekolah
+	local schoolBtn = Instance.new('TextButton')
+	schoolBtn.Name = 'SchoolButton'
+	schoolBtn.Position = UDim2.new(0, 10, 0, 90)
+	schoolBtn.Size = UDim2.new(0, 110, 0, 30)
+	schoolBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+	schoolBtn.Font = Enum.Font.Gotham
+	schoolBtn.Text = LocalizationService.get(currentLocale, 'ui.school.open')
+	schoolBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	schoolBtn.Parent = gui
+	schoolBtn.Activated:Connect(function()
+		local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
+		SchoolController.open()
+	end)
+
 	hudGui = gui
 	return gui
 end
