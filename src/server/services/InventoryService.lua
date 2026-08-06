@@ -40,8 +40,17 @@ function InventoryService.removeItem(playerId: number, itemId: string, count: nu
 	return { ok = true, data = profile.inventory.items[itemId] }
 end
 
+-- Cek jumlah item yang dimiliki.
+function InventoryService.countItem(playerId: number, itemId: string): number
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return 0
+	end
+	return profile.inventory.items[itemId] or 0
+end
+
 function InventoryService.init()
-	-- Skeleton
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
 end
 
 return InventoryService

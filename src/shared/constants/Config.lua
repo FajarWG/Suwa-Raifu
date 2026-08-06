@@ -23,6 +23,14 @@ export type GameConfig = {
 	dataStoreName: string,
 	profileKeyPrefix: string,
 	profileVersion: number,
+	dataStoreRetries: number,
+
+	-- Quest
+	initialQuestId: string,
+	textbookItemId: string,
+
+	-- NPC
+	spawnNpcId: string,
 
 	-- Bahasa
 	availableLocales: { string },
@@ -45,6 +53,12 @@ local Config: GameConfig = {
 	dataStoreName = 'SuwaLife_Profiles',
 	profileKeyPrefix = 'player_',
 	profileVersion = 1,
+	dataStoreRetries = 3,
+
+	initialQuestId = 'quest_intro',
+	textbookItemId = 'textbook',
+
+	spawnNpcId = 'teacher_sakura',
 
 	availableLocales = { 'ja', 'en', 'id' },
 	defaultLocale = 'en',

@@ -1,7 +1,8 @@
 --!strict
 
--- Data definitions statis. Nanti diganti file data (JSON) atau isi dari sini.
--- Katalog contoh untuk skeleton.
+-- Data definitions statis (single source of truth untuk item/quest/lesson).
+-- Referensi tipe: shared/types/Definitions.lua (ItemDef),
+-- shared/types/QuestDefTypes.lua (QuestDef).
 
 local ITEMS = {
 	onigiri = {
@@ -40,6 +41,7 @@ local ITEMS = {
 }
 
 local QUESTS = {
+	-- Quest pembuka: kenalan dengan guru & dapatkan buku pelajaran.
 	quest_intro = {
 		id = 'quest_intro',
 		titleKey = 'quest.intro.title',
@@ -47,9 +49,14 @@ local QUESTS = {
 		giverNpcId = 'teacher_sakura',
 		requirements = { japaneseLevel = 1 },
 		objectives = {
-			{ type = 'talk', target = 'teacher_sakura', count = 1 },
+			{ id = 'talk_sakura', type = 'talk', target = 'teacher_sakura', requiredCount = 1 },
+			{ id = 'get_textbook', type = 'collect', target = 'textbook', requiredCount = 1 },
 		},
-		rewards = { xp = 100, yen = 0, items = { 'textbook' } },
+		rewards = {
+			xp = 100,
+			yen = 500,
+			items = {},
+		},
 	},
 }
 

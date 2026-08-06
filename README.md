@@ -33,13 +33,23 @@ rojo serve default.project.json                           # watch mode (rekomend
 
 Saat `rojo serve` aktif, edit di `src/` langsung tersinkron ke Studio.
 
+## Fitur
+
+### Fitur 1 — Interaksi NPC & Starter Quest
+
+- NPC Teacher Sakura di-spawn server-side dengan ProximityPrompt.
+- Pemain mendekat → prompt → dialog branching (localization id/en/ja).
+- Quest intro: bicara dengan guru → terima quest → dapat buku pelajaran → reward Japanese XP + Yen.
+- HUD menampilkan Yen, Japanese XP, level, dan quest aktif.
+- Data tersimpan ke DataStore (profile dengan versioning & retry).
+
 ## Struktur
 
 ```
 src/
-├── shared/    # types, constants, data defs, remotes, util
-├── server/    # services, entry runner.server.lua
-└── client/    # controllers, entry runner.client.lua
+├── shared/    # types, constants, data defs, remotes, util, localization, services
+├── server/    # services (Profile, Economy, Quest, NPC, Spawn), runner.server.lua
+└── client/    # controllers (Remote, Profile, Dialog, HUD), runner.client.lua
 docs/          # GDD, TDD, style guide, data schema, asset list, localization, QA plan
 ```
 

@@ -32,7 +32,13 @@
       "Shell(\"%USERPROFILE%\\.rokit\\bin\\selene.exe\" validate-config 2>&1; echo EXIT:%errorlevel%)",
       "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && del roblox.yml testez.yml 2>nul & \"%USERPROFILE%\\.rokit\\bin\\stylua.exe\" --check src tests 2>&1)",
       "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && mkdir build 2>nul & \"%USERPROFILE%\\.rokit\\bin\\rojo.exe\" build default.project.json --output build\\SuwaLife.rbxlx 2>&1)",
-      "Shell(where cargo 2>nul & echo --- & cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && \"%USERPROFILE%\\.rokit\\bin\\selene.exe\" src && \"%USERPROFILE%\\.rokit\\bin\\stylua.exe\" --check src tests\\Math.spec.lua && echo LINT_AND_FORMAT_OK)"
+      "Shell(where cargo 2>nul & echo --- & cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && \"%USERPROFILE%\\.rokit\\bin\\selene.exe\" src && \"%USERPROFILE%\\.rokit\\bin\\stylua.exe\" --check src tests\\Math.spec.lua && echo LINT_AND_FORMAT_OK)",
+      "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && git commit -F - <<'EOF' chore: initial project setup for Suwa Life: Nihongo Days - Init git repo with Roblox/Rojo .gitignore - Install toolchain via Rokit (Rojo, Selene, StyLua, Wally) - Add design docs: GDD, TDD, style guide, data schema, asset list, localization, QA plan - Add Rojo project structure (shared/server/client) with services, controllers, remotes registry, and data definitions - Add TestEZ unit test scaffold with example spec - Add Selene + StyLua config; verified lint, format, and Rojo build Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
+      "Shell(del:*)",
+      "config",
+      "Shell(powershell -Command Get-Content -Path 'src\\shared\\data\\localization\\en.lua' -Encoding Byte -TotalCount 10 | ForEach-Object { ToString('X2') })",
+      "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && dir src\\shared\\services src\\client\\controllers src\\server\\services 2>nul)",
+      "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && mkdir tests\\specs 2>nul && move tests\\Math.spec.lua tests\\specs\\Math.spec.lua && move tests\\QuestLogic.spec.lua tests\\specs\\QuestLogic.spec.lua)"
     ],
     "deny": [],
     "defaultMode": "default"

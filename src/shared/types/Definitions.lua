@@ -12,24 +12,6 @@ export type ItemDef = {
 	tags: { string },
 }
 
-export type QuestDef = {
-	id: string,
-	titleKey: string,
-	descKey: string,
-	giverNpcId: string,
-	requirements: { japaneseLevel: number? },
-	objectives: { type: string, target: string, count: number },
-	rewards: { xp: number, yen: number, items: { string } },
-}
-
-export type DialogueLine = {
-	npcId: string,
-	level: string,
-	intent: string,
-	japanese: string,
-	reading: string,
-	romaji: string,
-	translations: { [string]: string },
-}
+export type Items = { [string]: ItemDef }
 
 return nil

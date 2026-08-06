@@ -55,7 +55,7 @@ function EconomyService.addJapaneseXp(playerId: number, xp: number): Types.Resul
 end
 
 function EconomyService.init()
-	-- Skeleton: remote hookups akan didaftarkan di sini oleh fitur.
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
 end
 
 return EconomyService

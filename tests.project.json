@@ -1,6 +1,5 @@
 {
   "name": "suwa-life-dev",
-  "globIgnorePaths": ["**/*.spec.lua", "**/*.test.lua"],
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -33,7 +32,7 @@
         "$path": "tests/testez"
       },
       "TestModules": {
-        "$path": "tests"
+        "$path": "tests/specs"
       }
     }
   }

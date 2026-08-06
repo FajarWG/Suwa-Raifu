@@ -37,12 +37,14 @@ local Remotes: RemoteDefinitions = {
 		'SchoolCheckIn',
 		'QuizAnswer',
 		'BikeRequest',
+		'NPCOpenDialog',
 	},
 	functions = {
 		'GetProfile',
 		'GetShopCatalog',
 		'GetQuestLog',
 		'GetTimeInfo',
+		'NPCGetDialog',
 	},
 }
 
