@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(where rojo selene stylua wally rokit node npm 2>nul; echo \"---\"; node --version 2>nul; npm --version 2>nul)",
+      "Shell(git:*)",
+      "Shell(rokit:*)",
+      "Shell(where cargo 2>nul; where scoop 2>nul; where winget 2>nul; where choco 2>nul)",
+      "Shell(powershell -Command \"& { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $r = Invoke-RestMethod -Uri 'https://api.github.com/repos/rojo-rbx/rokit/releases/latest'; $asset = $r.assets | Where-Object { $_.name -match 'windows' -and $_.name -match 'x86_64' } | Select-Object -First 1; Write-Output $asset.name; Write-Output $asset.browser_download_url }\")",
+      "Shell(powershell -Command \"& { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $u = 'https://github.com/rojo-rbx/rokit/releases/download/v1.2.0/rokit-1.2.0-windows-x86_64.zip'; $z = \\\"$env:TEMP\\rokit.zip\\\"; Invoke-WebRequest -Uri $u -OutFile $z; $d = \\\"$env:LOCALAPPDATA\\rokit\\bin\\\"; New-Item -ItemType Directory -Force -Path $d | Out-Null; Expand-Archive -Path $z -DestinationPath $d -Force; Write-Output 'Installed to:'; Write-Output $d; Get-ChildItem $d }\")",
+      "Shell(set:*)",
+      "Shell(%PATH%:*)",
+      "Shell(where:*)",
+      "Shell(rojo:*)",
+      "Shell(selene:*)",
+      "Shell(stylua:*)",
+      "Shell(wally:*)",
+      "Shell(dir:*)",
+      "Shell(.rokitbinrojo:*)",
+      "Shell(.rokitbinselene:*)",
+      "Shell(.rokitbinstylua:*)",
+      "Shell(.rokitbinwally:*)",
+      "Shell(set PATH=%LOCALAPPDATA%\\rokit\\bin;%PATH% && rokit install && dir .rokit\\bin 2>nul || echo NO_ROKIT_DIR)",
+      "Shell(dir /s /b \"%LOCALAPPDATA%\\rokit\" 2>nul)",
+      "Shell(dir /s /b \"%LOCALAPPDATA%\\rokit\" 2>nul & echo --- & set PATH=%LOCALAPPDATA%\\rokit\\bin;%PATH% && rokit list)",
+      "Shell(dir /s /b \"%USERPROFILE%\\.rokit\" 2>nul & echo --- & set ROKIT_HOME & echo --- & dir /s /b rojo.exe selene.exe stylua.exe wally.exe 2>nul)",
+      "Shell(%USERPROFILE%\\.rokit\\bin\\rojo.exe:*)",
+      "Shell(%USERPROFILE%\\.rokit\\bin\\selene.exe:*)",
+      "Shell(%USERPROFILE%\\.rokit\\bin\\stylua.exe:*)",
+      "Shell(%USERPROFILE%\\.rokit\\bin\\wally.exe:*)",
+      "Shell(rmdir:*)",
+      "Shell(findstr:*)",
+      "Shell(\"%USERPROFILE%\\.rokit\\bin\\selene.exe\" validate-config 2>&1; echo EXIT:%errorlevel%)",
+      "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && del roblox.yml testez.yml 2>nul & \"%USERPROFILE%\\.rokit\\bin\\stylua.exe\" --check src tests 2>&1)",
+      "Shell(cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && mkdir build 2>nul & \"%USERPROFILE%\\.rokit\\bin\\rojo.exe\" build default.project.json --output build\\SuwaLife.rbxlx 2>&1)",
+      "Shell(where cargo 2>nul & echo --- & cd /d \"D:\\Roblox\\諏訪ライフ ～日本語学校の日々～\" && \"%USERPROFILE%\\.rokit\\bin\\selene.exe\" src && \"%USERPROFILE%\\.rokit\\bin\\stylua.exe\" --check src tests\\Math.spec.lua && echo LINT_AND_FORMAT_OK)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

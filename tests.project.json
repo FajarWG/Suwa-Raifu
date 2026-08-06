@@ -1,0 +1,40 @@
+{
+  "name": "suwa-life-dev",
+  "globIgnorePaths": ["**/*.spec.lua", "**/*.test.lua"],
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "ReplicatedFirst": {
+      "$className": "ReplicatedFirst",
+      "TestRunner": {
+        "$path": "tests/TestRunner.server.lua"
+      },
+      "TestEZ": {
+        "$path": "tests/testez"
+      },
+      "TestModules": {
+        "$path": "tests"
+      }
+    }
+  }
+}

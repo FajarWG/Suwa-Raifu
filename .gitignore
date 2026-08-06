@@ -1,0 +1,30 @@
+# Rojo
+*.rbxlx
+*.rbxl
+*.rbxlx.backup
+*.rbxl.backup
+serve.project.json
+build/
+
+# Rokit
+.rokit/
+
+# Wally
+.wally/
+wally.lock
+
+# Node
+node_modules/
+
+# IDE / OS
+.vscode/
+.idea/
+*.code-workspace
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# TestEZ vendor (library)
+tests/testez/
