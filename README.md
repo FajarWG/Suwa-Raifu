@@ -58,28 +58,68 @@ syarat Roblox; mikrofon panggung tidak membuat jalur audio custom.
 - Lesson yang selesai ditandai di daftar; progress tersimpan.
 - Logika grading di shared `LessonLogic` (testable) + unit test.
 
-### Map Greybox 0.3 — Compact Suwa Lakeside
+### Map Visual Pass 0.9 — Grounding, Wildlife, and Festival Polish
 
 - Spawn berada di sculpture plaza yang terinspirasi Sekicho Park di dalam kawasan
   Suwa Lakeside Park.
 - Urutan ruang utama: taman tepi danau → asrama generik → sekolah bahasa fiktif.
-- Compact world berisi danau Terrain Water yang luas, promenade, sungai/kanal, jalan utama, jembatan,
+- Open-zone berisi danau Terrain Water yang luas, dual track lakeside, sungai/kanal, jalan utama, jembatan,
   permukiman, pepohonan, dan backdrop pegunungan.
+- Air danau merupakan volume Terrain Water yang dapat direnangi, bukan part datar.
+  Tiga belas shelf/teluk dangkal membentuk tepian melengkung; tiga genangan hujan kecil
+  menambah variasi permukaan basah pada kantong rumput tanpa memotong trek utama.
+- Koridor tepi danau mengikuti foto `assets/*.jpg`: trek jogging tartan marun di sisi air,
+  jalur aspal sepeda/jalan bermarka putih, bangku menghadap Suwako, serta shoreline
+  pasir/kerikil/rumput tanpa dinding beton kaku.
+- Trek utama membentang sekitar 1.340 stud dalam rangkaian lengkung dan beda elevasi;
+  cabang ramp, loop taman, serta lawn bertingkat memecah bentuk koridor lurus dan datar.
+- Sepuluh dedalu dengan foliage menjuntai, shelter beratap Jepang, ashiyu berair biru, dermaga
+  perahu bebek, lampu minimalis, dan papan kayu membentuk identitas taman.
+- Zona inland mencakup plaza kerikil organik dengan alat fitness, toilet publik, vending
+  machine, parkir mamachari beratap, serta display statis lokomotif uap D51 824.
 - Model sekolah, asrama, dan sepeda dipisah agar mudah diiterasi lewat Rojo.
-- Tiga mamachari dinormalisasi terhadap ukuran avatar (5 studs panjang) dan rideable
-  dengan kontrol W/S/A/D.
+- Mamachari dinormalisasi langsung per-MeshPart ke panjang 2,35 stud dan rideable
+  dengan kontrol W/S/A/D; parkir beratap menyediakan delapan unit aktif, collider padat,
+  serta kursi bonceng.
 - Area danau memiliki panggung open mic dan dua booth percakapan; proximity voice
   memakai sistem resmi Roblox untuk pemain yang memenuhi syarat.
-- Promenade memiliki jalur sepeda, jalur jalan kaki, tiga dermaga/sembilan marker
-  memancing, playground, dan rest shelter.
-- Pulau Hatsushima-inspired memiliki pohon, torii, jetty, dan launch point kembang api.
-- Dua duck pedal boat (6,5 studs) dan satu leisure boat (6 studs) tersedia dan dapat
+- Lakeside park memiliki dual track, tiga dermaga/sembilan marker memancing,
+  playground, rest shelter, dan ashiyu.
+- Pulau Hatsushima-inspired diperbesar menjadi footprint organik sekitar 180 stud dan
+  berkapasitas desain 20 pemain. Fondasi batu berada di bawah air; permukaan pulau
+  memiliki pantai pasir menyatu, lawn festival terbuka,
+  shrine, torii, enam pohon perimeter, jetty, toko festival, serta 12 launch point.
+- Konsol festival menjalankan pertunjukan kembang api aman selama 10 menit; pada
+  15 Agustus waktu Jepang durasinya otomatis menjadi 1 jam. Shell kecil dan besar
+  memiliki tinggi, burst, cadence, serta positional launch/burst sound berbeda.
+- Mamachari dinormalisasi ke panjang 2,35 stud berdasarkan sumbu horizontal sebenarnya;
+  delapan sepeda taman ditempatkan pada slot terpisah di rak beratap. Bangku, vending
+  machine, papan, alat fitness, dan D51 juga diaudit
+  ulang terhadap tinggi avatar sekitar 5,5 stud.
+- Dua duck pedal boat (6,2 stud) dan satu leisure boat (8,5 stud) tersedia dan dapat
   dikendalikan; lambung dan lantai cockpit berada di atas waterline sehingga interior
-  tidak kemasukan air. Air di luar kendaraan tetap dapat direnangi.
-- Food stall dan footbath-inspired seating tetap tersedia sebagai greybox.
-- Sembilan titik dermaga mempunyai interaksi memancing prototype.
-- Fase map aktif dibatasi satu kotak compact lakeside/Kami-Suwa-inspired dengan grid jalan
-  lokal, trotoar, jembatan kanal/sungai, 12 rumah, tiga toko, lampu, dan crosswalk.
+  tidak kemasukan air. Pemeriksaan haluan/sisi mencegah perahu menembus pulau dan
+  shoreline. Setiap perahu memiliki dek padat yang dapat diinjak, kursi penumpang,
+  dan suara gerak air. Air di luar kendaraan tetap dapat direnangi.
+- Ashiyu memiliki basin batu cekung sedalam 4 stud, Terrain Water dan permukaan biru
+  yang terlihat, tangga masuk, uap, serta tempat duduk fungsional;
+  plaza kerikil dipindahkan dari playground agar ayunan tidak tertanam di pasir.
+- Terrain memiliki pad fasilitas lokal yang rata tanpa menghilangkan kontur taman.
+  Trek, bangku, lampu, pohon, toko, dan bangunan pulau memakai terrain raycast agar
+  menyentuh tanah dan tidak melayang pada tanjakan/turunan.
+- Danau memiliki 18 ikan visual yang berenang di sekitar tiga dermaga dan pulau,
+  enam bebek yang mengapung, serta dua burung kuntul di pulau.
+- Bangku, ashiyu, ayunan, jungkat-jungkit, dan slide dapat digunakan. Sepeda mengikuti
+  permukaan melalui raycast dan berhenti pada lereng yang terlalu curam agar tidak menembus tanah.
+- Tiga dermaga/sembilan titik memancing memakai state casting–waiting–bite–reeling,
+  weighted catch, model ikan, modal hasil, level memancing, dan penyimpanan ke tas.
+- Tas pemain, toko alat pancing, toko es krim, dan toko festival pulau sudah interaktif;
+  item dapat dibeli, disimpan, dikeluarkan, dan consumable dapat digunakan.
+- Fase map aktif dibatasi satu distrik lakeside/Kami-Suwa-inspired dengan grid jalan
+  lokal, trotoar, jembatan kanal/sungai, 12 rumah 1–2 lantai, ryokan empat lantai, tiga
+  toko, tiang/kabel listrik, drain grate, cermin tikungan, vending machine, lampu, dan crosswalk.
+- Generator kota menghapus model skyline metropolitan/skyscraper yang tidak kompatibel;
+  bangunan tinggi tidak menjadi bagian dari bahasa visual map.
 - Koridor panjang menuju NICC dan ryou ditunda ke fase map berikutnya.
 - Papan dunia memakai bahasa Jepang, sementara UI/dialog prototype memakai English.
 - Detail layout: `docs/map-layout.md`.

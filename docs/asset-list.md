@@ -28,14 +28,15 @@
 - [~] Lakeside park + Sekicho-inspired spawn plaza (greybox)
 - [~] Jalur promenade/jogging (greybox)
 - [~] Panggung open mic + bangku + dua booth percakapan (greybox)
-- [~] Tiga dermaga + sembilan prompt spot memancing (hasil masih prototype)
-- [~] Playground: slide, ayunan, jungkat-jungkit (prop statis)
+- [x] Tiga dermaga + sembilan spot memancing dengan waiting/bite/reel, hasil, dan tas
+- [x] Playground: slide, ayunan, jungkat-jungkit fungsional
 - [~] Rest shelter tepi danau
-- [~] Food stall fiktif (exterior prop)
-- [~] Footbath-inspired area (prop statis)
-- [~] Pulau Hatsushima-inspired + torii + tiga launch point (VFX belum dibuat)
+- [x] Toko pancing, toko es krim, dan toko festival pulau
+- [x] Ashiyu dengan basin, air biru, uap, dan seating fungsional
+- [x] Pulau festival ±180 stud + torii + 12 launch point + VFX 10 menit/1 jam
 - [x] Dua duck pedal boat mesh + satu leisure boat mesh (rideable, kontrol arcade)
 - [x] Terrain Water luas dan swimmable
+- [x] 18 ikan visual, 6 bebek, dan 2 burung kuntul lakeside
 
 ## Place 3 — Tateishi Hills
 
@@ -48,21 +49,21 @@
 
 ## Place 4 — Seasonal Event Grounds
 
-- [ ] Festival stall
+- [x] Festival stall di pulau danau
 - [ ] Ring toss game
 - [ ] Dance area (bon-odori)
-- [ ] Fireworks launch area
+- [x] Fireworks launch area di pulau danau
 
 ## Props & items
 
-- [x] Tiga mesh mamachari rideable: taman, asrama, sekolah
+- [x] Tiga mesh mamachari rideable skala 4 stud: taman, asrama, sekolah
 - [ ] Interior asrama fiktif (detail tempat tinggal nyata tidak direplikasi)
 - [ ] Seragam & pakaian awal
-- [ ] Peralatan memancing
+- [x] Peralatan memancing dasar + rod, bobber, line, bait, dan tackle box
 - [ ] Peralatan hiking
 - [ ] Laptop (arubaito programmer)
-- [ ] Makanan icon set
-- [ ] Ikan model set (koi, wakasagi, dll.)
+- [~] Makanan model dasar (es krim, ramune, yakisoba); icon final belum dibuat
+- [~] Ikan procedural/display set (koi, wakasagi, dll.); mesh final belum dibuat
 - [ ] Yukata (festival)
 
 ## UI / audio
@@ -71,7 +72,7 @@
 - [ ] Icon set (skill, quest, shop)
 - [ ] Music loop santai
 - [ ] SFX: sepeda bell, uang, ikan, stamp, dialog
-- [ ] SFX kembang api (volume terpisah)
+- [x] Positional SFX launch/burst untuk kembang api kecil dan besar
 - [ ] SFX panggung/open mic (setelah audio dan moderasi disetujui)
 
 ## Referensi

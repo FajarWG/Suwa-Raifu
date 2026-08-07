@@ -6,12 +6,12 @@
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
 local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
-local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
 
 local InventoryService = {}
 
 -- Tambah item ke inventori (stackable di-merge).
-function InventoryService.addItem(playerId: number, itemId: string, count: number): Types.Result<number>
+function InventoryService.addItem(playerId: number, itemId: string, count: number): ProfileTypes.Result<number>
 	if count <= 0 then
 		return { ok = false, error = 'Invalid count' }
 	end
@@ -24,7 +24,7 @@ function InventoryService.addItem(playerId: number, itemId: string, count: numbe
 end
 
 -- Ambil item (cek jumlah cukup).
-function InventoryService.removeItem(playerId: number, itemId: string, count: number): Types.Result<number>
+function InventoryService.removeItem(playerId: number, itemId: string, count: number): ProfileTypes.Result<number>
 	if count <= 0 then
 		return { ok = false, error = 'Invalid count' }
 	end
@@ -38,6 +38,31 @@ function InventoryService.removeItem(playerId: number, itemId: string, count: nu
 	end
 	profile.inventory.items[itemId] = current - count
 	return { ok = true, data = profile.inventory.items[itemId] }
+end
+
+function InventoryService.addFish(playerId: number, fishId: string, count: number): ProfileTypes.Result<number>
+	if count <= 0 then
+		return { ok = false, error = 'Invalid count' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.inventory.fish[fishId] = (profile.inventory.fish[fishId] or 0) + count
+	return { ok = true, data = profile.inventory.fish[fishId] }
+end
+
+function InventoryService.getSnapshot(playerId: number): any
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return nil
+	end
+	return {
+		items = table.clone(profile.inventory.items),
+		fish = table.clone(profile.inventory.fish),
+		yen = profile.economy.yen,
+		fishingLevel = profile.progress.fishingLevel,
+	}
 end
 
 -- Cek jumlah item yang dimiliki.

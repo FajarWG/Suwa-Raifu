@@ -61,23 +61,23 @@
     "Lighting": {
       "$className": "Lighting",
       "$properties": {
-        "Ambient": [0.48, 0.51, 0.58],
-        "Brightness": 2.5,
-        "ClockTime": 8.25,
-        "EnvironmentDiffuseScale": 0.45,
-        "EnvironmentSpecularScale": 0.65,
-        "OutdoorAmbient": [0.68, 0.72, 0.78],
-        "ShadowSoftness": 0.35,
+        "Ambient": [0.46, 0.49, 0.54],
+        "Brightness": 2.15,
+        "ClockTime": 17.55,
+        "EnvironmentDiffuseScale": 0.5,
+        "EnvironmentSpecularScale": 0.8,
+        "OutdoorAmbient": [0.64, 0.62, 0.58],
+        "ShadowSoftness": 0.5,
         "Technology": "Future"
       },
-      "MorningAtmosphere": {
+      "SuwaTwilightAtmosphere": {
         "$className": "Atmosphere",
         "$properties": {
-          "Color": [0.77,0.88,0.95],
-          "Decay": [0.42,0.56,0.67],
-          "Density": 0.18,
-          "Glare": 0.08,
-          "Haze": 0.65
+          "Color": [0.88,0.82,0.75],
+          "Decay": [0.46,0.54,0.62],
+          "Density": 0.2,
+          "Glare": 0.12,
+          "Haze": 0.8
         }
       }
     }

@@ -7,12 +7,14 @@
 
 local Players = game:GetService('Players')
 local DataStoreService = game:GetService('DataStoreService')
+local RunService = game:GetService('RunService')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
 local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
 local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
 
-local store = DataStoreService:GetDataStore(Config.dataStoreName)
+local store: any = nil
+local usingStudioFallback = false
 
 local profiles: { [number]: ProfileTypes.Profile } = {}
 local loading: { [number]: boolean } = {}
@@ -106,11 +108,23 @@ end
 
 -- Ambil profile, session-lock via DataStore (Anti-Abuse).
 local function loadOrCreate(playerId: number): ProfileTypes.Profile?
+	if not store then
+		local fresh = defaultProfile(playerId)
+		profiles[playerId] = fresh
+		return fresh
+	end
 	local ok, data = withRetry(function()
 		return store:GetAsync(keyOf(playerId))
 	end, Config.dataStoreRetries)
 
 	if not ok then
+		if RunService:IsStudio() then
+			store = nil
+			usingStudioFallback = true
+			local fresh = defaultProfile(playerId)
+			profiles[playerId] = fresh
+			return fresh
+		end
 		warn(`[ProfileService] Load failed for {playerId} after retries`)
 		return nil
 	end
@@ -132,6 +146,9 @@ local function save(playerId: number)
 	if not profile then
 		return
 	end
+	if not store then
+		return
+	end
 	profile.lastSaved = DateTime.now():ToIsoDate()
 	local ok, err = withRetry(function()
 		return store:SetAsync(keyOf(playerId), profile)
@@ -144,7 +161,22 @@ end
 local ProfileService = {}
 
 function ProfileService.init()
-	Players.PlayerAdded:Connect(function(player)
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(Config.dataStoreName)
+	end)
+	if ok then
+		store = result
+	else
+		usingStudioFallback = RunService:IsStudio()
+		if not usingStudioFallback then
+			warn(`[ProfileService] DataStore unavailable: {result}`)
+		end
+	end
+
+	local function loadPlayer(player: Player)
+		if profiles[player.UserId] or loading[player.UserId] then
+			return
+		end
 		loading[player.UserId] = true
 		task.spawn(function()
 			local profile = loadOrCreate(player.UserId)
@@ -152,11 +184,21 @@ function ProfileService.init()
 			if profile then
 				ProfileLoadedEvent:Fire(player, profile)
 			else
-				-- Gagal load: kick agar tidak main tanpa data
-				player:Kick('Gagal memuat data. Silakan coba lagi.')
+				if RunService:IsStudio() then
+					local fallback = defaultProfile(player.UserId)
+					profiles[player.UserId] = fallback
+					ProfileLoadedEvent:Fire(player, fallback)
+				else
+					player:Kick('Failed to load data. Please try again.')
+				end
 			end
 		end)
-	end)
+	end
+
+	Players.PlayerAdded:Connect(loadPlayer)
+	for _, player in Players:GetPlayers() do
+		loadPlayer(player)
+	end
 
 	Players.PlayerRemoving:Connect(function(player)
 		-- Tunggu load selesai sebelum save (hindari save data kosong)
@@ -174,6 +216,10 @@ function ProfileService.init()
 			save(userId)
 		end
 	end)
+end
+
+function ProfileService.isUsingStudioFallback(): boolean
+	return usingStudioFallback or store == nil
 end
 
 function ProfileService.onProfileLoaded(callback: (player: Player, profile: ProfileTypes.Profile) -> ())

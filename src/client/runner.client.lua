@@ -2,7 +2,9 @@
 
 -- Entry point client. Memuat controller.
 
-for _, module in script.Parent:GetChildren() do
+-- Controllers live in Client/controllers. Descendants keeps the entry point
+-- working if controllers are later grouped into feature subfolders too.
+for _, module in script.Parent:GetDescendants() do
 	if module:IsA('ModuleScript') and module.Name:match('Controller$') then
 		local ok, controller = pcall(require, module)
 		if ok and typeof(controller) == 'table' and controller.init then

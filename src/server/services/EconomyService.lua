@@ -7,12 +7,12 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
 local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
 local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
-local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
 
 local EconomyService = {}
 
 -- Tambah yen ke profil. Return Result.
-function EconomyService.addYen(playerId: number, amount: number): Types.Result<number>
+function EconomyService.addYen(playerId: number, amount: number): ProfileTypes.Result<number>
 	if amount <= 0 then
 		return { ok = false, error = 'Invalid amount' }
 	end
@@ -25,7 +25,7 @@ function EconomyService.addYen(playerId: number, amount: number): Types.Result<n
 end
 
 -- Kurangi yen (validasi saldo cukup).
-function EconomyService.spendYen(playerId: number, amount: number): Types.Result<number>
+function EconomyService.spendYen(playerId: number, amount: number): ProfileTypes.Result<number>
 	if amount <= 0 then
 		return { ok = false, error = 'Invalid amount' }
 	end
@@ -41,7 +41,7 @@ function EconomyService.spendYen(playerId: number, amount: number): Types.Result
 end
 
 -- Beri Japanese XP; auto naik level sesuai threshold.
-function EconomyService.addJapaneseXp(playerId: number, xp: number): Types.Result<number>
+function EconomyService.addJapaneseXp(playerId: number, xp: number): ProfileTypes.Result<number>
 	if xp <= 0 then
 		return { ok = false, error = 'Invalid XP' }
 	end

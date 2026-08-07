@@ -37,6 +37,11 @@ local Remotes: RemoteDefinitions = {
 		'BikeRequest',
 		'NPCOpenDialog',
 		'QuizSubmit',
+		'FishingState',
+		'InventoryUpdated',
+		'OpenShop',
+		'ShopResult',
+		'InventoryAction',
 	},
 	functions = {
 		'GetProfile',
@@ -45,6 +50,7 @@ local Remotes: RemoteDefinitions = {
 		'GetTimeInfo',
 		'NPCGetDialog',
 		'LessonGet',
+		'GetInventory',
 	},
 }
 

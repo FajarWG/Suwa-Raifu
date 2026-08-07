@@ -11,7 +11,7 @@ local InventoryService = require(script.Parent:WaitForChild('InventoryService'))
 local Items = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Items'))
 local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
 local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
-local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
 local QuestTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('QuestTypes'))
 local QuestDefTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('QuestDefTypes'))
 local QuestLogic = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('QuestLogic'))
@@ -98,7 +98,7 @@ function QuestService.progressCollect(playerId: number, itemId: string)
 end
 
 -- Mulai quest (validasi requirement). Return Result.
-function QuestService.acceptQuest(playerId: number, questId: string): Types.Result<QuestDefTypes.QuestDef>
+function QuestService.acceptQuest(playerId: number, questId: string): ProfileTypes.Result<QuestDefTypes.QuestDef>
 	local def = Items.QUESTS[questId]
 	if not def then
 		return { ok = false, error = 'Quest not found' }
@@ -128,7 +128,7 @@ function QuestService.acceptQuest(playerId: number, questId: string): Types.Resu
 end
 
 -- Selesaikan quest & beri reward. Return Result.
-function QuestService.completeQuest(playerId: number, questId: string): Types.Result<QuestDefTypes.QuestDef>
+function QuestService.completeQuest(playerId: number, questId: string): ProfileTypes.Result<QuestDefTypes.QuestDef>
 	local def = Items.QUESTS[questId]
 	if not def then
 		return { ok = false, error = 'Quest not found' }

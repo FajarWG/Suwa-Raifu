@@ -10,7 +10,7 @@ local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
 local Items = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Items'))
 local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
 local LessonLogic = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('LessonLogic'))
-local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
 local LessonTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('LessonTypes'))
 
 -- XP dasar per lesson (MVP).
@@ -19,7 +19,7 @@ local BASE_LESSON_XP = 50
 local SchoolService = {}
 
 -- Check-in kelas: tambah attendance, beri XP kecil.
-function SchoolService.checkIn(playerId: number): Types.Result<number>
+function SchoolService.checkIn(playerId: number): ProfileTypes.Result<number>
 	local profile = ProfileService.getProfile(playerId)
 	if not profile then
 		return { ok = false, error = 'Profile not loaded' }
@@ -68,7 +68,7 @@ function SchoolService.submitQuiz(
 	playerId: number,
 	lessonId: string,
 	answers: { [number]: number }
-): Types.Result<LessonTypes.QuizResult>
+): ProfileTypes.Result<LessonTypes.QuizResult>
 	local lesson = Items.LESSONS[lessonId]
 	if not lesson then
 		return { ok = false, error = 'Lesson not found' }

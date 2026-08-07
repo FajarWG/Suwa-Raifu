@@ -82,6 +82,7 @@ local function createGui(): ScreenGui
 	questTitle.Size = UDim2.new(1, 0, 0, 24)
 	questTitle.BackgroundTransparency = 1
 	questTitle.Font = Enum.Font.GothamBold
+	questTitle.Text = LocalizationService.get(currentLocale, 'ui.questlog.title')
 	questTitle.TextColor3 = Color3.fromRGB(255, 220, 120)
 	questTitle.TextXAlignment = Enum.TextXAlignment.Left
 	questTitle.Parent = questPanel
@@ -164,6 +165,10 @@ end
 
 function HUDController.setLocale(locale: string)
 	currentLocale = locale
+	if hudGui then
+		hudGui.QuestPanel.Title.Text = LocalizationService.get(currentLocale, 'ui.questlog.title')
+		hudGui.SchoolButton.Text = LocalizationService.get(currentLocale, 'ui.school.open')
+	end
 end
 
 function HUDController.refresh(profile: ProfileTypes.Profile, quests: { { id: string } })

@@ -36,6 +36,11 @@ local RemoteRegistry = {
 	functions = functions,
 }
 
+function RemoteRegistry.init()
+	-- Instances are created at module load because this registry is required
+	-- before every other service. The init hook keeps runner diagnostics clean.
+end
+
 function RemoteRegistry.getEvent(name: string): RemoteEvent
 	return events[name]
 end
