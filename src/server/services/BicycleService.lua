@@ -5,10 +5,11 @@
 -- mobile and avoids a fragile wheel-constraint setup during this map phase.
 
 local RunService = game:GetService('RunService')
+local Players = game:GetService('Players')
 
-local BICYCLE_VERSION = 8
-local TARGET_LENGTH = 2.35
-local GROUND_CLEARANCE = 0.06
+local BICYCLE_VERSION = 9
+local TARGET_LENGTH = 3.6
+local GROUND_CLEARANCE = 0.08
 local TOP_SPEED = 24
 local ACCELERATION = 22
 local BRAKING = 30
@@ -18,7 +19,7 @@ local BicycleService = {}
 local speeds: { [Model]: number } = {}
 local groundOffsets: { [Model]: number } = {}
 
-local function isOverheadPart(part: BasePart): boolean
+local function isOverheadPart(part: Instance): boolean
 	local lowerName = string.lower(part.Name)
 	return string.find(lowerName, 'roof') ~= nil
 		or string.find(lowerName, 'canopy') ~= nil
@@ -29,23 +30,37 @@ local function isOverheadPart(part: BasePart): boolean
 		or string.find(lowerName, 'sign') ~= nil
 end
 
+local function buildRaycastExclusions(currentBicycle: Model): { Instance }
+	local exclusions: { Instance } = { currentBicycle }
+	local bicyclesFolder = workspace:FindFirstChild('Bicycles')
+	if bicyclesFolder then
+		table.insert(exclusions, bicyclesFolder)
+	end
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(exclusions, player.Character)
+		end
+	end
+	return exclusions
+end
+
 local function surfaceHeight(model: Model, position: Vector3): number
-	local exclusions: { Instance } = { model }
+	local exclusions = buildRaycastExclusions(model)
 	local parameters = RaycastParams.new()
 	parameters.FilterType = Enum.RaycastFilterType.Exclude
 	parameters.FilterDescendantsInstances = exclusions
 	parameters.IgnoreWater = true
-	local origin = position + Vector3.new(0, 28, 0)
-	for _ = 1, 12 do
-		local result = workspace:Raycast(origin, Vector3.new(0, -90, 0), parameters)
+	local origin = position + Vector3.new(0, 30, 0)
+	for _ = 1, 15 do
+		local result = workspace:Raycast(origin, Vector3.new(0, -100, 0), parameters)
 		if not result then
 			return 0
 		end
 		local hit = result.Instance
-		if hit:IsA('BasePart') and ((not hit.CanCollide) or isOverheadPart(hit)) then
+		if isOverheadPart(hit) or (hit:IsA('BasePart') and not hit.CanCollide) then
 			table.insert(exclusions, hit)
 			parameters.FilterDescendantsInstances = exclusions
-			origin = result.Position - Vector3.new(0, 0.04, 0)
+			origin = result.Position - Vector3.new(0, 0.05, 0)
 		else
 			return result.Position.Y
 		end
@@ -64,9 +79,6 @@ local function scaleGeometryToLength(model: Model, targetLength: number)
 	if math.abs(factor - 1) <= 0.01 then
 		return
 	end
-	-- Scale mesh geometry and its offset from the pivot directly. Model:ScaleTo
-	-- retained a non-unit imported scale for these meshes and produced bicycles
-	-- much larger than the requested bounding length.
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA('BasePart') then
 			local relative = pivot:ToObjectSpace(descendant.CFrame)
@@ -101,14 +113,14 @@ local function makeSeat(model: Model): VehicleSeat
 	else
 		seat = Instance.new('VehicleSeat')
 		seat.Name = 'RideSeat'
-		seat.Size = Vector3.new(0.68, 0.3, 0.72)
+		seat.Size = Vector3.new(0.75, 0.3, 0.8)
 		seat.Color = Color3.fromRGB(38, 34, 31)
 		seat.Material = Enum.Material.Leather
 		seat.Transparency = 1
 		seat.Anchored = true
 		seat.CanCollide = false
 		seat.Massless = true
-		seat.CFrame = model:GetPivot() * CFrame.new(0, 0.42, 0.02)
+		seat.CFrame = model:GetPivot() * CFrame.new(0, 0.55, 0.1)
 		seat.Parent = model
 	end
 
@@ -118,8 +130,8 @@ local function makeSeat(model: Model): VehicleSeat
 	end
 	local prompt = Instance.new('ProximityPrompt')
 	prompt.Name = 'RidePrompt'
-	prompt.ActionText = 'Ride bicycle'
-	prompt.ObjectText = 'Mamachari'
+	prompt.ActionText = 'Naik Sepeda'
+	prompt.ObjectText = 'Mamachari (Kemudi)'
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
@@ -142,14 +154,14 @@ local function makePassengerSeat(model: Model)
 	end
 	local seat = Instance.new('Seat')
 	seat.Name = 'PassengerSeat'
-	seat.Size = Vector3.new(0.65, 0.28, 0.65)
-	seat.CFrame = model:GetPivot() * CFrame.new(0, 0.42, 0.72)
+	seat.Size = Vector3.new(0.75, 0.3, 0.75)
+	seat.CFrame = model:GetPivot() * CFrame.new(0, 0.55, 1.1)
 	seat.Transparency = 1
 	seat.Anchored = true
 	seat.CanCollide = false
 	seat.CanTouch = false
 	seat.Parent = model
-	addSitPrompt(seat, 'Ride passenger', 'Mamachari rear seat')
+	addSitPrompt(seat, 'Bonceng Sepeda', 'Mamachari (Kursi Belakang)')
 end
 
 local function makeCollisionBody(model: Model, visualBottom: number)
@@ -160,8 +172,8 @@ local function makeCollisionBody(model: Model, visualBottom: number)
 	local boundingCFrame, boundingSize = model:GetBoundingBox()
 	local collider = Instance.new('Part')
 	collider.Name = 'SolidBicycleCollider'
-	collider.Size = Vector3.new(math.max(0.75, boundingSize.X * 0.7), 0.42, TARGET_LENGTH * 0.72)
-	collider.CFrame = CFrame.new(boundingCFrame.X, visualBottom + 0.48, boundingCFrame.Z) * model:GetPivot().Rotation
+	collider.Size = Vector3.new(math.max(0.85, boundingSize.X * 0.8), 0.5, TARGET_LENGTH * 0.85)
+	collider.CFrame = CFrame.new(boundingCFrame.X, visualBottom + 0.55, boundingCFrame.Z) * model:GetPivot().Rotation
 	collider.Transparency = 1
 	collider.Anchored = true
 	collider.CanCollide = true
@@ -225,7 +237,7 @@ local function configureBicycle(model: Model, parkingSlot: number?)
 end
 
 local function findRideSurface(model: Model, position: Vector3, occupant: Humanoid?): (number?, boolean)
-	local exclusions: { Instance } = { model }
+	local exclusions = buildRaycastExclusions(model)
 	if occupant and occupant.Parent then
 		table.insert(exclusions, occupant.Parent)
 	end
@@ -234,14 +246,14 @@ local function findRideSurface(model: Model, position: Vector3, occupant: Humano
 	parameters.FilterDescendantsInstances = exclusions
 	parameters.IgnoreWater = true
 
-	local origin = position + Vector3.new(0, 16, 0)
-	for _ = 1, 10 do
-		local result = workspace:Raycast(origin, Vector3.new(0, -70, 0), parameters)
+	local origin = position + Vector3.new(0, 20, 0)
+	for _ = 1, 12 do
+		local result = workspace:Raycast(origin, Vector3.new(0, -80, 0), parameters)
 		if not result then
 			return nil, false
 		end
 		local hit = result.Instance
-		if hit:IsA('BasePart') and ((not hit.CanCollide) or isOverheadPart(hit)) then
+		if isOverheadPart(hit) or (hit:IsA('BasePart') and not hit.CanCollide) then
 			table.insert(exclusions, hit)
 			parameters.FilterDescendantsInstances = exclusions
 			origin = result.Position - Vector3.new(0, 0.05, 0)

@@ -329,7 +329,7 @@ local function makePassengerSeat(model: Model, name: string, cframe: CFrame, obj
 	end
 	local seat = Instance.new('Seat')
 	seat.Name = name
-	seat.Size = Vector3.new(0.9, 0.35, 0.9)
+	seat.Size = Vector3.new(1.1, 0.35, 1.1)
 	seat.CFrame = cframe
 	seat.Transparency = 1
 	seat.Anchored = true
@@ -339,10 +339,10 @@ local function makePassengerSeat(model: Model, name: string, cframe: CFrame, obj
 
 	local prompt = Instance.new('ProximityPrompt')
 	prompt.Name = 'PassengerPrompt'
-	prompt.ActionText = 'Ride passenger'
+	prompt.ActionText = 'Bonceng Perahu'
 	prompt.ObjectText = objectText
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.MaxActivationDistance = 10
+	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = seat
 	prompt.Triggered:Connect(function(player)
@@ -355,20 +355,36 @@ local function makePassengerSeat(model: Model, name: string, cframe: CFrame, obj
 end
 
 local function makeMovementSound(model: Model, parent: BasePart, isDuckBoat: boolean)
-	local previous = model:FindFirstChild('WaterMovementSound', true)
-	if previous then
-		previous:Destroy()
+	local previousWater = model:FindFirstChild('WaterMovementSound', true)
+	if previousWater then
+		previousWater:Destroy()
 	end
-	local sound = Instance.new('Sound')
-	sound.Name = 'WaterMovementSound'
-	sound.SoundId = 'rbxasset://sounds/action_swim.mp3'
-	sound.Looped = true
-	sound.Volume = if isDuckBoat then 0.28 else 0.34
-	sound.PlaybackSpeed = if isDuckBoat then 0.82 else 0.72
-	sound.RollOffMode = Enum.RollOffMode.InverseTapered
-	sound.RollOffMinDistance = 8
-	sound.RollOffMaxDistance = 75
-	sound.Parent = parent
+	local previousEngine = model:FindFirstChild('EngineMovementSound', true)
+	if previousEngine then
+		previousEngine:Destroy()
+	end
+
+	local waterSound = Instance.new('Sound')
+	waterSound.Name = 'WaterMovementSound'
+	waterSound.SoundId = 'rbxasset://sounds/action_swim.mp3'
+	waterSound.Looped = true
+	waterSound.Volume = if isDuckBoat then 0.35 else 0.45
+	waterSound.PlaybackSpeed = if isDuckBoat then 0.85 else 0.75
+	waterSound.RollOffMode = Enum.RollOffMode.InverseTapered
+	waterSound.RollOffMinDistance = 10
+	waterSound.RollOffMaxDistance = 90
+	waterSound.Parent = parent
+
+	local engineSound = Instance.new('Sound')
+	engineSound.Name = 'EngineMovementSound'
+	engineSound.SoundId = if isDuckBoat then 'rbxassetid://9114221586' else 'rbxassetid://9114223179'
+	engineSound.Looped = true
+	engineSound.Volume = 0
+	engineSound.PlaybackSpeed = if isDuckBoat then 1.0 else 0.85
+	engineSound.RollOffMode = Enum.RollOffMode.InverseTapered
+	engineSound.RollOffMinDistance = 10
+	engineSound.RollOffMaxDistance = 100
+	engineSound.Parent = parent
 end
 
 local function configureCraft(model: Model)
@@ -398,6 +414,14 @@ local function configureCraft(model: Model)
 	boundingCFrame, boundingSize = model:GetBoundingBox()
 	craftHeights[model] = model:GetPivot().Y
 
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA('BasePart') and descendant.Name ~= 'DriveSeat' and descendant.Name ~= 'PassengerSeat01' and descendant.Name ~= 'PassengerSeat02' and descendant.Name ~= 'PassengerSeat03' then
+			descendant.CanCollide = true
+			descendant.CanTouch = true
+			descendant.CanQuery = true
+		end
+	end
+
 	local floor = model:FindFirstChild('WaterproofCockpitFloor')
 	if not floor or not floor:IsA('Part') then
 		floor = part(
@@ -409,12 +433,12 @@ local function configureCraft(model: Model)
 			Enum.Material.SmoothPlastic
 		)
 	end
-	floor.Size = if isDuckBoat then Vector3.new(2.1, 0.25, 3) else Vector3.new(2.8, 0.25, 4.8)
+	floor.Size = if isDuckBoat then Vector3.new(2.4, 0.3, 3.4) else Vector3.new(3.2, 0.3, 5.2)
 	floor.Color = if isDuckBoat then Color3.fromRGB(235, 221, 181) else Color3.fromRGB(222, 234, 239)
 	floor.CanCollide = true
 	floor.CanTouch = true
 	floor.CanQuery = true
-	floor.Transparency = 0.08
+	floor.Transparency = 0.05
 	local floorOffset = if isDuckBoat then 0.55 else -0.4
 	floor.CFrame = CFrame.new(boundingCFrame.X, WATERLINE_CLEARANCE + 0.55, boundingCFrame.Z + floorOffset)
 		* oldPivot.Rotation
@@ -423,7 +447,7 @@ local function configureCraft(model: Model)
 	local deck = part(
 		model,
 		'WalkableDeckCollider',
-		if isDuckBoat then Vector3.new(2.9, 0.35, 5.1) else Vector3.new(3.8, 0.35, 7.1),
+		if isDuckBoat then Vector3.new(3.2, 0.4, 5.5) else Vector3.new(4.2, 0.4, 7.5),
 		base * CFrame.new(0, WATERLINE_CLEARANCE + 0.68 - boundingCFrame.Y, 0),
 		Color3.fromRGB(230, 230, 220),
 		Enum.Material.SmoothPlastic
@@ -436,30 +460,30 @@ local function configureCraft(model: Model)
 	local driverSeat = makeSeat(
 		model,
 		base * CFrame.new(0, WATERLINE_CLEARANCE + 1.45 - boundingCFrame.Y, if isDuckBoat then -0.9 else -1.55),
-		if isDuckBoat then 'Duck pedal boat' else 'Lake boat'
+		if isDuckBoat then 'Boat Bebek (Kemudi)' else 'Perahu Danau (Kemudi)'
 	)
 	if isDuckBoat then
 		makePassengerSeat(
 			model,
 			'PassengerSeat01',
-			base * CFrame.new(-0.72, WATERLINE_CLEARANCE + 1.38 - boundingCFrame.Y, 0.9),
-			'Duck boat passenger'
+			base * CFrame.new(-0.75, WATERLINE_CLEARANCE + 1.38 - boundingCFrame.Y, 0.9),
+			'Boat Bebek (Boncengan Kiri)'
 		)
 		makePassengerSeat(
 			model,
 			'PassengerSeat02',
-			base * CFrame.new(0.72, WATERLINE_CLEARANCE + 1.38 - boundingCFrame.Y, 0.9),
-			'Duck boat passenger'
+			base * CFrame.new(0.75, WATERLINE_CLEARANCE + 1.38 - boundingCFrame.Y, 0.9),
+			'Boat Bebek (Boncengan Kanan)'
 		)
 	else
 		for index, offset in
 			{
-				Vector3.new(-1, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 0.2),
-				Vector3.new(1, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 0.2),
+				Vector3.new(-1.1, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 0.2),
+				Vector3.new(1.1, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 0.2),
 				Vector3.new(0, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 1.85),
 			}
 		do
-			makePassengerSeat(model, `PassengerSeat0{index}`, base * CFrame.new(offset), 'Lake boat passenger')
+			makePassengerSeat(model, `PassengerSeat0{index}`, base * CFrame.new(offset), `Perahu Danau (Penumpang {index})`)
 		end
 	end
 	makeMovementSound(model, driverSeat, isDuckBoat)
@@ -533,6 +557,22 @@ local function updateCraft(model: Model, deltaTime: number)
 			end
 		elseif movementSound.IsPlaying then
 			movementSound:Stop()
+		end
+	end
+	local engineSound = model:FindFirstChild('EngineMovementSound', true)
+	if engineSound and engineSound:IsA('Sound') then
+		local isMoving = math.abs(speed) > 0.35 and seat.Occupant ~= nil
+		if isMoving then
+			engineSound.Volume = math.clamp(0.2 + (math.abs(speed) / 16) * 0.45, 0.2, 0.65)
+			engineSound.PlaybackSpeed = 0.9 + (math.abs(speed) / 16) * 0.4
+			if not engineSound.IsPlaying then
+				engineSound:Play()
+			end
+		else
+			engineSound.Volume = math.max(0, engineSound.Volume - deltaTime * 1.5)
+			if engineSound.Volume <= 0.01 and engineSound.IsPlaying then
+				engineSound:Stop()
+			end
 		end
 	end
 	craftSpeeds[model] = speed
