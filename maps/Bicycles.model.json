@@ -17,9 +17,9 @@
               3.6
             ],
             "CFrame": [
-              318.014017,
-              1.290651,
-              -89.974335,
+              410,
+              1.31,
+              -70,
               1,
               0,
               0,
@@ -46,9 +46,9 @@
               0.429092
             ],
             "CFrame": [
-              318.012024,
-              2.42451,
-              -90.533952,
+              410,
+              2.445,
+              -70.56,
               1,
               0,
               0,
@@ -75,9 +75,9 @@
               0.181331
             ],
             "CFrame": [
-              318.013114,
-              0.661125,
-              -89.787353,
+              410,
+              0.681,
+              -69.813,
               1,
               0,
               0,
@@ -91,12 +91,98 @@
             "MeshId": "rbxassetid://103681995324668",
             "TextureID": "rbxassetid://91481322667336"
           }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              410,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              410,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              410,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
         }
       ]
     },
     {
       "className": "Model",
-      "name": "DormMamachari",
+      "name": "ParkMamachari02",
       "children": [
         {
           "className": "MeshPart",
@@ -110,9 +196,9 @@
               3.6
             ],
             "CFrame": [
-              178.014017,
-              1.290651,
-              112.025665,
+              415.5,
+              1.31,
+              -70,
               1,
               0,
               0,
@@ -139,9 +225,9 @@
               0.429092
             ],
             "CFrame": [
-              178.012024,
-              2.42451,
-              111.466048,
+              415.5,
+              2.445,
+              -70.56,
               1,
               0,
               0,
@@ -168,9 +254,9 @@
               0.181331
             ],
             "CFrame": [
-              178.013114,
-              0.661125,
-              112.212647,
+              415.5,
+              0.681,
+              -69.813,
               1,
               0,
               0,
@@ -184,12 +270,98 @@
             "MeshId": "rbxassetid://103681995324668",
             "TextureID": "rbxassetid://91481322667336"
           }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              415.5,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              415.5,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              415.5,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
         }
       ]
     },
     {
       "className": "Model",
-      "name": "SchoolMamachari",
+      "name": "ParkMamachari03",
       "children": [
         {
           "className": "MeshPart",
@@ -203,9 +375,9 @@
               3.6
             ],
             "CFrame": [
-              -275.985983,
-              1.290651,
-              94.025665,
+              421,
+              1.31,
+              -70,
               1,
               0,
               0,
@@ -232,9 +404,9 @@
               0.429092
             ],
             "CFrame": [
-              -275.987976,
-              2.42451,
-              93.466048,
+              421,
+              2.445,
+              -70.56,
               1,
               0,
               0,
@@ -261,9 +433,9 @@
               0.181331
             ],
             "CFrame": [
-              -275.986886,
-              0.661125,
-              94.212647,
+              421,
+              0.681,
+              -69.813,
               1,
               0,
               0,
@@ -276,6 +448,987 @@
             ],
             "MeshId": "rbxassetid://103681995324668",
             "TextureID": "rbxassetid://91481322667336"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              421,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              421,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              421,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "ParkMamachari04",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "BodyAndWheels",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.719588,
+              2.081301,
+              3.6
+            ],
+            "CFrame": [
+              426.5,
+              1.31,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://74673162001305",
+            "TextureID": "rbxassetid://97309290475089"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Handlebars",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.499221,
+              0.414858,
+              0.429092
+            ],
+            "CFrame": [
+              426.5,
+              2.445,
+              -70.56,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://83658583052874",
+            "TextureID": "rbxassetid://112463237208712"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Pedals",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.93486,
+              0.335472,
+              0.181331
+            ],
+            "CFrame": [
+              426.5,
+              0.681,
+              -69.813,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://103681995324668",
+            "TextureID": "rbxassetid://91481322667336"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              426.5,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              426.5,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              426.5,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "ParkMamachari05",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "BodyAndWheels",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.719588,
+              2.081301,
+              3.6
+            ],
+            "CFrame": [
+              432,
+              1.31,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://74673162001305",
+            "TextureID": "rbxassetid://97309290475089"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Handlebars",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.499221,
+              0.414858,
+              0.429092
+            ],
+            "CFrame": [
+              432,
+              2.445,
+              -70.56,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://83658583052874",
+            "TextureID": "rbxassetid://112463237208712"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Pedals",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.93486,
+              0.335472,
+              0.181331
+            ],
+            "CFrame": [
+              432,
+              0.681,
+              -69.813,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://103681995324668",
+            "TextureID": "rbxassetid://91481322667336"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              432,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              432,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              432,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "ParkMamachari06",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "BodyAndWheels",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.719588,
+              2.081301,
+              3.6
+            ],
+            "CFrame": [
+              437.5,
+              1.31,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://74673162001305",
+            "TextureID": "rbxassetid://97309290475089"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Handlebars",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.499221,
+              0.414858,
+              0.429092
+            ],
+            "CFrame": [
+              437.5,
+              2.445,
+              -70.56,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://83658583052874",
+            "TextureID": "rbxassetid://112463237208712"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Pedals",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.93486,
+              0.335472,
+              0.181331
+            ],
+            "CFrame": [
+              437.5,
+              0.681,
+              -69.813,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://103681995324668",
+            "TextureID": "rbxassetid://91481322667336"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              437.5,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              437.5,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              437.5,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "ParkMamachari07",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "BodyAndWheels",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.719588,
+              2.081301,
+              3.6
+            ],
+            "CFrame": [
+              443,
+              1.31,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://74673162001305",
+            "TextureID": "rbxassetid://97309290475089"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Handlebars",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.499221,
+              0.414858,
+              0.429092
+            ],
+            "CFrame": [
+              443,
+              2.445,
+              -70.56,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://83658583052874",
+            "TextureID": "rbxassetid://112463237208712"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Pedals",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.93486,
+              0.335472,
+              0.181331
+            ],
+            "CFrame": [
+              443,
+              0.681,
+              -69.813,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://103681995324668",
+            "TextureID": "rbxassetid://91481322667336"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              443,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              443,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              443,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "ParkMamachari08",
+      "children": [
+        {
+          "className": "MeshPart",
+          "name": "BodyAndWheels",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.719588,
+              2.081301,
+              3.6
+            ],
+            "CFrame": [
+              448.5,
+              1.31,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://74673162001305",
+            "TextureID": "rbxassetid://97309290475089"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Handlebars",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              1.499221,
+              0.414858,
+              0.429092
+            ],
+            "CFrame": [
+              448.5,
+              2.445,
+              -70.56,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://83658583052874",
+            "TextureID": "rbxassetid://112463237208712"
+          }
+        },
+        {
+          "className": "MeshPart",
+          "name": "Pedals",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [
+              0.93486,
+              0.335472,
+              0.181331
+            ],
+            "CFrame": [
+              448.5,
+              0.681,
+              -69.813,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ],
+            "MeshId": "rbxassetid://103681995324668",
+            "TextureID": "rbxassetid://91481322667336"
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SolidBicycleCollider",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "CanTouch": true,
+            "CanQuery": true,
+            "Transparency": 1,
+            "Size": [
+              0.85,
+              0.5,
+              3.06
+            ],
+            "CFrame": [
+              448.5,
+              1.23,
+              -70,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "VehicleSeat",
+          "name": "RideSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.8
+            ],
+            "CFrame": [
+              448.5,
+              1.23,
+              -69.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 1,
+            "Size": [
+              0.75,
+              0.3,
+              0.75
+            ],
+            "CFrame": [
+              448.5,
+              1.23,
+              -68.9,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1
+            ]
           }
         }
       ]
