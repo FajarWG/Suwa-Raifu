@@ -7,9 +7,9 @@
 local RunService = game:GetService('RunService')
 local Players = game:GetService('Players')
 
-local BICYCLE_VERSION = 9
-local TARGET_LENGTH = 3.6
-local GROUND_CLEARANCE = 0.08
+local BICYCLE_VERSION = 10
+local TARGET_LENGTH = 2.6
+local GROUND_CLEARANCE = 0.4
 local TOP_SPEED = 24
 local ACCELERATION = 22
 local BRAKING = 30
@@ -69,7 +69,6 @@ local function surfaceHeight(model: Model, position: Vector3): number
 end
 
 local function scaleGeometryToLength(model: Model, targetLength: number)
-	local pivot = model:GetPivot()
 	local _, initialSize = model:GetBoundingBox()
 	local initialLength = math.max(initialSize.X, initialSize.Z)
 	if initialLength <= 0.01 then
@@ -79,13 +78,8 @@ local function scaleGeometryToLength(model: Model, targetLength: number)
 	if math.abs(factor - 1) <= 0.01 then
 		return
 	end
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA('BasePart') then
-			local relative = pivot:ToObjectSpace(descendant.CFrame)
-			descendant.Size *= factor
-			descendant.CFrame = pivot * CFrame.new(relative.Position * factor) * relative.Rotation
-		end
-	end
+	-- Use native Model:ScaleTo for flawless scaling
+	model:ScaleTo(model:GetScale() * factor)
 end
 
 local function addSitPrompt(seat: Seat, actionText: string, objectText: string)
