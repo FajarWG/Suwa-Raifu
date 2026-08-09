@@ -143,18 +143,51 @@ function jsonToXml(node) {
 
 const bicyclesXml = jsonToXml({ className: 'Model', name: 'Bicycles', children: bicyclesDoc.children });
 
+function replaceItemInXml(xmlContent, targetName, replacementXml) {
+	const searchStr = `<string name="Name">${targetName}</string>`;
+	let idx = xmlContent.indexOf(searchStr);
+	if (idx === -1) return xmlContent;
+
+	// Find the opening <Item class="Model" ...> before this Name
+	const openTagStr = '<Item ';
+	let startIdx = xmlContent.lastIndexOf(openTagStr, idx);
+	
+	// Balance the tags to find the end
+	let pos = startIdx;
+	let depth = 1;
+	while (pos < xmlContent.length && pos !== -1) {
+		const nextOpen = xmlContent.indexOf('<Item ', pos + 1);
+		const nextClose = xmlContent.indexOf('</Item>', pos + 1);
+
+		if (nextOpen !== -1 && nextOpen < nextClose) {
+			depth++;
+			pos = nextOpen;
+		} else if (nextClose !== -1) {
+			depth--;
+			pos = nextClose;
+			if (depth === 0) {
+				const endIdx = pos + '</Item>'.length;
+				return xmlContent.slice(0, startIdx) + replacementXml + xmlContent.slice(endIdx);
+			}
+		} else {
+			break;
+		}
+	}
+	return xmlContent;
+}
+
 // Update place files XML for Workspace.Bicycles
 for (const version of ['v19', 'v20']) {
 	const placeFile = path.join(buildDir, `SuwaLife-SuwaLakeside-${version}.rbxlx`);
 	if (!fs.existsSync(placeFile)) continue;
 	let content = fs.readFileSync(placeFile, 'utf8');
 
-	// Replace existing Bicycles model item in Workspace
-	const regex = /<Item class="Model" referent="[^"]*">\s*<Properties>\s*<string name="Name">Bicycles<\/string>[\s\S]*?<\/Item>/g;
-	if (regex.test(content)) {
-		content = content.replace(regex, bicyclesXml);
-		fs.writeFileSync(placeFile, content, 'utf8');
+	const newContent = replaceItemInXml(content, 'Bicycles', bicyclesXml);
+	if (newContent !== content) {
+		fs.writeFileSync(placeFile, newContent, 'utf8');
 		console.log(`Updated Workspace.Bicycles in ${version}.rbxlx`);
+	} else {
+		console.warn(`Could not find Bicycles model in ${version}.rbxlx`);
 	}
 }
 
