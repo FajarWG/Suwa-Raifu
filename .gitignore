@@ -1,10 +1,10 @@
 # Rojo
-*.rbxlx
-*.rbxl
+# *.rbxlx
+# *.rbxl
 *.rbxlx.backup
 *.rbxl.backup
 serve.project.json
-build/
+# build/
 
 # Rokit
 .rokit/

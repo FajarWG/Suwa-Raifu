@@ -1,0 +1,856 @@
+      <bool name="StreamingEnabled">true</bool>
+      <int name="StreamingMinRadius">128</int>
+      <int name="StreamingTargetRadius">256</int>
+    </Properties>
+    <Item class="Model" referent="BAKE_8000">
+<Properties>
+<string name="Name">Bicycles</string>
+</Properties>
+<Item class="Model" referent="BAKE_8001">
+<Properties>
+<string name="Name">ParkMamachari</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8002">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>410</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8003">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>410</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8004">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>410</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8005">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>410</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8006">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>410</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8007">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>410</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8008">
+<Properties>
+<string name="Name">ParkMamachari02</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8009">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>415.5</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8010">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>415.5</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8011">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>415.5</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8012">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>415.5</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8013">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>415.5</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8014">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>415.5</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8015">
+<Properties>
+<string name="Name">ParkMamachari03</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8016">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>421</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8017">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>421</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8018">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>421</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8019">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>421</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8020">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>421</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8021">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>421</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8022">
+<Properties>
+<string name="Name">ParkMamachari04</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8023">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>426.5</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8024">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>426.5</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8025">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>426.5</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8026">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>426.5</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8027">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>426.5</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8028">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>426.5</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8029">
+<Properties>
+<string name="Name">ParkMamachari05</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8030">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>432</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8031">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>432</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8032">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>432</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8033">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>432</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8034">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>432</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8035">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>432</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8036">
+<Properties>
+<string name="Name">ParkMamachari06</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8037">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>437.5</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8038">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>437.5</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8039">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>437.5</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8040">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>437.5</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8041">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>437.5</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8042">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>437.5</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8043">
+<Properties>
+<string name="Name">ParkMamachari07</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8044">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>443</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8045">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>443</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8046">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>443</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8047">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>443</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8048">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>443</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8049">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>443</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+<Item class="Model" referent="BAKE_8050">
+<Properties>
+<string name="Name">ParkMamachari08</string>
+</Properties>
+<Item class="MeshPart" referent="BAKE_8051">
+<Properties>
+<string name="Name">BodyAndWheels</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.719588</X><Y>2.081301</Y><Z>3.6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>448.5</X><Y>1.31</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://74673162001305</url></Content>
+<Content name="TextureID"><url>rbxassetid://97309290475089</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8052">
+<Properties>
+<string name="Name">Handlebars</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1.499221</X><Y>0.414858</Y><Z>0.429092</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>448.5</X><Y>2.445</Y><Z>-70.56</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://83658583052874</url></Content>
+<Content name="TextureID"><url>rbxassetid://112463237208712</url></Content>
+</Properties>
+</Item>
+<Item class="MeshPart" referent="BAKE_8053">
+<Properties>
+<string name="Name">Pedals</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.93486</X><Y>0.335472</Y><Z>0.181331</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>448.5</X><Y>0.681</Y><Z>-69.813</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Content name="MeshId"><url>rbxassetid://103681995324668</url></Content>
+<Content name="TextureID"><url>rbxassetid://91481322667336</url></Content>
+</Properties>
+</Item>
+<Item class="Part" referent="BAKE_8054">
+<Properties>
+<string name="Name">SolidBicycleCollider</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<bool name="CanTouch">true</bool>
+<bool name="CanQuery">true</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.85</X><Y>0.5</Y><Z>3.06</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>448.5</X><Y>1.23</Y><Z>-70</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="VehicleSeat" referent="BAKE_8055">
+<Properties>
+<string name="Name">RideSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>448.5</X><Y>1.23</Y><Z>-69.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+<Item class="Seat" referent="BAKE_8056">
+<Properties>
+<string name="Name">PassengerSeat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<float name="Transparency">1</float>
+<Vector3 name="size"><X>0.75</X><Y>0.3</Y><Z>0.75</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>448.5</X><Y>1.23</Y><Z>-68.9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+</Properties>
+</Item>
+</Item>
+</Item>
+
+        <Item class="MeshPart" referent="68">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>318.01202</X>
+              <Y>3.270153</Y>
+              <Z>-90.75158</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://83658583052874</url>
+            </Content>
+            <Vector3 name="size">
+              <X>2.082251</X>
+              <Y>0.576192</Y>
+              <Z>0.595961</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://112463237208712</url>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="69">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>318.01355</X>
+              <Y>0.821007</Y>
+              <Z>-89.71464</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://103681995324668</url>
+            </Content>
+            <Vector3 name="size">
+              <X>1.298417</X>
+              <Y>0.465933</Y>
+              <Z>0.251849</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://91481322667336</url>
+            </Content>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="70">
+        <Properties>
+          <string name="Name">DormMamachari</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="71">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>178.01479</X>
+              <Y>1.695348</Y>
+              <Z>112.025665</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://74673162001305</url>
+            </Content>
+            <Vector3 name="size">
+              <X>0.999428</X>
+              <Y>2.890696</Y>
+              <Z>5</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://97309290475089</url>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="72">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>178.01202</X>
+              <Y>3.270153</Y>
+              <Z>111.24842</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://83658583052874</url>
+            </Content>
+            <Vector3 name="size">
+              <X>2.082251</X>
+              <Y>0.576192</Y>
+              <Z>0.595961</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://112463237208712</url>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="73">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>178.01353</X>
+              <Y>0.821007</Y>
+              <Z>112.28536</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://103681995324668</url>
+            </Content>
+            <Vector3 name="size">
+              <X>1.298417</X>
+              <Y>0.465933</Y>
+              <Z>0.251849</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://91481322667336</url>
+            </Content>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="74">
+        <Properties>
+          <string name="Name">SchoolMamachari</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="75">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>-275.9852</X>
+              <Y>1.695348</Y>
+              <Z>94.025665</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://74673162001305</url>
+            </Content>
+            <Vector3 name="size">
+              <X>0.999428</X>
+              <Y>2.890696</Y>
+              <Z>5</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://97309290475089</url>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="76">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>-275.98798</X>
+              <Y>3.270153</Y>
+              <Z>93.24842</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://83658583052874</url>
+            </Content>
+            <Vector3 name="size">
+              <X>2.082251</X>
+              <Y>0.576192</Y>
+              <Z>0.595961</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://112463237208712</url>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="77">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>-275.98645</X>
+              <Y>0.821007</Y>
+              <Z>94.28536</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshId">
+              <url>rbxassetid://103681995324668</url>
+            </Content>
+            <Vector3 name="size">
+              <X>1.298417</X>
+              <Y>0.465933</Y>
+              <Z>0.251849</Z>
+            </Vector3>
+            <Content name="TextureID">
+              <url>rbxassetid://91481322667336</url>
+            </Content>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+    <Item class="Model" referent="78">
+      <Properties>
+        <string name="Name">Dormitory</string>
+        <bool name="NeedsPivotMigration">false</bool>
+      </Properties>
+      <Item class="Part" referent="79">
+        <Properties>
+          <string name="Name">Foundation</string>
+          <bool name="Anchored">true</bool>
+          <CoordinateFrame name="CFrame">
+            <X>220</X>
+            <Y>1</Y>
+            <Z>60</Z>
+            <R00>1</R00>
+            <R01>0</R01>
+            <R02>0</R02>
