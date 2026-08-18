@@ -2,99 +2,90 @@
 
 ## Suwa Life: Nihongo Days
 
-**Versi:** 0.1
-**Status:** Draft
-**Referensi:** PRD.md §13 (Arsitektur Teknis)
+**Versi:** 0.2  
+**Status:** Active design (sinkron dengan kode saat ini)
 
 ---
 
-## 1. Arsitektur
+## 1. Arsitektur runtime
 
 ```
-Client (LocalScript / UI)  <--Remote-->  Server (ModuleScript / Script)  <--> DataStoreService
-        |                                        |
-        +-------- Shared (types, defs) ----------+
+Client Controllers  <->  Remote Registry  <->  Server Services  <->  DataStore
+        |                                                 |
+        +---------------- Shared (types/data/util) -------+
 ```
 
-- Semua state otoritatif di **server**.
-- **Client** hanya mengirim intent, menerima state yang sudah divalidasi.
+Prinsip:
 
-## 2. Struktur folder (Rojo)
+1. State gameplay otoritatif ada di server.
+2. Client hanya mengirim intent, render UI, dan menampilkan feedback.
+3. Semua nama remote terpusat di `src/shared/remotes.lua`.
 
-```
-src/
-├── shared/
-│   ├── types/            # TypeScript-like type definition
-│   ├── constants/
-│   ├── data/             # Item, quest, dialogue, lesson definitions
-│   ├── remotes.lua       # Definisi & API RemoteEvent/Function
-│   └── util/
-├── server/
-│   ├── services/         # ModuleScript: Profile, Economy, Inventory, Quest, School...
-│   ├── runner.server.lua # Entry point server
-│   └── util/
-└── client/
-    ├── controllers/      # ModuleScript UI/input controller
-    ├── runner.client.lua # Entry point client
-    └── util/
-```
+## 2. Startup order server
 
-## 3. Service (server)
+Urutan init server (`src/server/runner.server.lua`):
 
-| Service | Tanggung jawab | Dependensi |
-|---|---|---|
-| ProfileService | Load/save profile ke DataStore, session lock, migrasi versi | DataStoreService |
-| EconomyService | Saldo Yen, transaksi, log | ProfileService |
-| InventoryService | Item, clothing, furniture | ProfileService |
-| QuestService | State quest aktif/selesai, objective progress | ProfileService |
-| SchoolService | Attendance, kelas, quiz, XP | ProfileService |
-| WorkService | Arubaito session & reward | ProfileService |
-| FishingService | Hasil memancing (server RNG) | ProfileService |
-| ShopService | Katalog, beli, jual | InventoryService, EconomyService |
-| TimeService | Day/season/weather (server clock) | — |
-| NPCService | NPC state & schedule | TimeService |
-| EventService | Festival state, countdown, badge | TimeService |
+1. `RemoteRegistryService`
+2. `TerrainService`
+3. Service lain (kecuali service yang perlu urutan khusus)
+4. `BicycleService`
+5. `ParkInteractionService`
 
-## 4. Remote contracts
+Urutan ini menghindari asset map dibangun di elevasi yang belum final.
 
-Semua remote didefinisikan di `shared/remotes.lua` (satu sumber kebenaran). Nama remote dibatasi regex `^[A-Z][A-Za-z0-9]*$`.
+## 3. Service aktif di kode saat ini
 
-```
-RemoteEvent (client -> server):
-  WorkRequest(action)
-  FishCast(position)
-  FishReel()
-  ShopBuy(itemId, qty)
-  QuestAccept(questId)
-  QuestClaim(questId)
-  NPCInteract(npcId)
-  SchoolCheckIn()
-  QuizAnswer(lessonId, answers)
-  BikeRequest(action)
+| Service                  | Status   | Peran                                                           |
+| ------------------------ | -------- | --------------------------------------------------------------- |
+| RemoteRegistryService    | Aktif    | Membuat remotes + rate limit + register helper                  |
+| ProfileService           | Aktif    | Load/save profile + fallback studio                             |
+| ProfileAPI               | Aktif    | Remote `GetProfile`, `QuestAccept`, `QuestClaim`, `GetQuestLog` |
+| EconomyService           | Aktif    | Operasi yen/xp level dasar                                      |
+| InventoryService         | Aktif    | Item/fish snapshot dan mutasi server-side                       |
+| QuestService             | Aktif    | Accept/progress/complete quest                                  |
+| SchoolService            | Aktif    | Lesson list, quiz submit, reward xp                             |
+| NPCDialogService         | Aktif    | Interaksi NPC dan dialog flow                                   |
+| SpawnService             | Aktif    | Spawn NPC + prompt                                              |
+| TerrainService           | Aktif    | Danau/terrain pondasi map                                       |
+| LakesideParkService      | Aktif    | Elemen taman lakeside                                           |
+| TownRoadService          | Aktif    | Grid jalan dan lingkungan kota kecil                            |
+| BicycleService           | Aktif    | Kendaraan sepeda rideable                                       |
+| LakeActivityService      | Aktif    | Boat rideable + aktivitas pulau                                 |
+| FishingGameService       | Aktif    | Fishing state machine + shop + inventory action                 |
+| FireworksFestivalService | Aktif    | Festival fireworks timered event                                |
+| WorldWildlifeService     | Aktif    | Fauna visual ambience                                           |
+| ParkInteractionService   | Aktif    | Interaksi duduk/playground                                      |
+| TimeService              | Skeleton | Tick waktu dasar, belum jadi orchestrator sistem                |
 
-RemoteFunction (client -> server):
-  GetProfile() -> Profile
-  GetShopCatalog() -> Catalog
-  GetQuestLog() -> Quests
-  GetTimeInfo() -> TimeInfo
-```
+## 4. Remote contract saat ini
 
-Semua remote dilindungi rate limit di server (mis. maks N call/detik per pemain).
+Remote events utama:
 
-## 5. DataStore schema
+1. `QuestAccept`, `QuestClaim`, `NPCInteract`
+2. `SchoolCheckIn`, `QuizSubmit`
+3. `FishCast`, `FishReel`, `FishingState`
+4. `ShopBuy`, `OpenShop`, `ShopResult`
+5. `InventoryAction`, `InventoryUpdated`
 
-- Key: `player_<userId>` di scope game.
-- Struct: lihat `docs/data-schema.md`.
-- Migrasi: `profile.version` diincrement → ProfileService punya migrator table.
-- Retry: DataStore dengan retry (bounded) + session lock (`Attempt` data) untuk anti double-save.
+Remote functions utama:
 
-## 6. Konvensi kode
+1. `GetProfile`
+2. `GetQuestLog`
+3. `LessonGet`
+4. `GetInventory`
+5. `GetShopCatalog`
+6. `NPCGetDialog`
 
-- Luau, selene + stylua standar.
-- ModuleScript di `server/services` sebagai singleton: `return ServiceModule` dengan method `ServiceModule.init()`.
-- Error handling: return `{ ok = true, data = ... }` / `{ ok = false, error = ... }` dari service.
-- Tidak ada `task.wait` panjang di server selain TimeService (pakai scheduler).
+Semua remote harus didaftarkan di `src/shared/remotes.lua` terlebih dahulu.
 
-## 7. Sumber kebenaran konfigurasi
+## 5. Testing strategy teknis
 
-- Item, quest, dialog, lesson, shop, fish → file data di `src/shared/data/*` (bukan hardcode di script).
+1. Pure logic ditempatkan di `src/shared/util` dan diuji via TestEZ specs.
+2. Service gameplay diuji dengan playtest manual terstruktur per fase.
+3. Regression minimal wajib dijalankan sebelum merge (lihat `docs/qa-plan.md`).
+
+## 6. Ruang yang belum final
+
+1. `TimeService` baru skeleton.
+2. Validasi anti-exploit berbasis posisi/state machine masih perlu diperluas.
+3. Integrasi test service-level belum ada automation lengkap.

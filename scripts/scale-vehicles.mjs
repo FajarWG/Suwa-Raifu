@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const jobs = [
-  { file: 'maps/Bicycles.model.json', lengths: { ParkMamachari: 3.6, DormMamachari: 3.6, SchoolMamachari: 3.6 }, bottom: 0.25 },
+  { file: 'maps/Bicycles.model.json', lengths: { ParkMamachari: 2.1, DormMamachari: 2.1, SchoolMamachari: 2.1 }, bottom: 0.25 },
   { file: 'maps/LakeCrafts.model.json', lengths: { DuckPedalBoat01: 6.5, DuckPedalBoat02: 6.5, LakeLeisureBoat: 6 }, bottom: 0.75, waterproofFloors: true },
 ];
 

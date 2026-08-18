@@ -108,7 +108,13 @@ end
 
 function SchoolService.init()
 	RemoteRegistry.registerEvent('SchoolCheckIn', function(player: Player)
-		SchoolService.checkIn(player.UserId)
+		local result = SchoolService.checkIn(player.UserId)
+		if result.ok then
+			local profile = ProfileService.getProfile(player.UserId)
+			if profile then
+				RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+			end
+		end
 	end)
 
 	RemoteRegistry.registerFunction('LessonGet', function(player: Player)
@@ -124,7 +130,14 @@ function SchoolService.init()
 		if type(lessonId) ~= 'string' or type(answers) ~= 'table' then
 			return
 		end
-		SchoolService.submitQuiz(player.UserId, lessonId, answers)
+		local result = SchoolService.submitQuiz(player.UserId, lessonId, answers)
+		if result.ok and result.data then
+			RemoteRegistry.fireClient(player, 'QuizResult', result.data)
+			local profile = ProfileService.getProfile(player.UserId)
+			if profile then
+				RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+			end
+		end
 	end)
 end
 

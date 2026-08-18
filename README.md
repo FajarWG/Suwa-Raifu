@@ -6,6 +6,11 @@ Social life simulation Roblox: kehidupan siswa asing di Suwa, Nagano — belajar
 
 > Dokumentasi lengkap produk: **PRD.md** (root). Detail desain: **docs/**.
 
+> Dokumen eksekusi aktif (wajib dibaca sebelum implementasi):
+>
+> - `docs/IMPLEMENTATION_FLOW.md`
+> - `docs/IMPLEMENTATION_STATUS.md`
+
 ## Setup
 
 ### 1. Toolchain
@@ -153,8 +158,8 @@ stylua --check src  # cek format (CI)
 ## Test
 
 ```sh
-rojo build default.project.json --output build/test.rbxlx
-rojo test         # menjalankan unit test TestEZ
+rojo build tests.project.json --output build/SuwaLife-Test.rbxlx
+# Jalankan TestEZ di Roblox Studio pada place test (tests.project.json)
 ```
 
 ## Git
@@ -165,14 +170,16 @@ rojo test         # menjalankan unit test TestEZ
 
 ## Dokumen terkait
 
-| Dokumen | Isi |
-|---|---|
-| `PRD.md` | Konsep produk, scope, roadmap |
-| `docs/GDD.md` | Aturan gameplay & progression |
-| `docs/TDD.md` | Arsitektur teknis, service, remote |
-| `docs/style-guide.md` | Art style, palet, skala |
-| `docs/data-schema.md` | Struktur data pemain & defs |
-| `docs/asset-list.md` | Daftar aset & status |
-| `docs/map-layout.md` | Layout map, skala, urutan perjalanan, dan batas privasi |
-| `docs/localization.md` | Sistem bahasa |
-| `docs/qa-plan.md` | Rencana testing |
+| Dokumen                         | Isi                                                     |
+| ------------------------------- | ------------------------------------------------------- |
+| `PRD.md`                        | Konsep produk, scope, roadmap                           |
+| `docs/IMPLEMENTATION_FLOW.md`   | Urutan implementasi satu fitur per fase + gate manual   |
+| `docs/IMPLEMENTATION_STATUS.md` | Status aktual fitur berdasarkan audit kode              |
+| `docs/GDD.md`                   | Aturan gameplay & progression                           |
+| `docs/TDD.md`                   | Arsitektur teknis, service, remote                      |
+| `docs/style-guide.md`           | Art style, palet, skala                                 |
+| `docs/data-schema.md`           | Struktur data pemain & defs                             |
+| `docs/asset-list.md`            | Daftar aset & status                                    |
+| `docs/map-layout.md`            | Layout map, skala, urutan perjalanan, dan batas privasi |
+| `docs/localization.md`          | Sistem bahasa                                           |
+| `docs/qa-plan.md`               | Rencana testing                                         |

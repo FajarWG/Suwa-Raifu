@@ -167,14 +167,8 @@ local function makeDuck(parent: Instance, position: Vector3, index: number): Mod
 	local headColor = if isMallard then Color3.fromRGB(25, 115, 75) else bodyColor
 	local beakColor = if isMallard then Color3.fromRGB(240, 175, 35) else Color3.fromRGB(245, 140, 30)
 
-	local body = part(
-		model,
-		'Body',
-		Vector3.new(1.4, 0.9, 2.3),
-		CFrame.new(position),
-		bodyColor,
-		Enum.Material.SmoothPlastic
-	)
+	local body =
+		part(model, 'Body', Vector3.new(1.4, 0.9, 2.3), CFrame.new(position), bodyColor, Enum.Material.SmoothPlastic)
 	body.Shape = Enum.PartType.Ball
 
 	if isMallard then
@@ -185,7 +179,8 @@ local function makeDuck(parent: Instance, position: Vector3, index: number): Mod
 			CFrame.new(position + Vector3.new(0, 0.35, -0.7)),
 			Color3.fromRGB(250, 250, 250),
 			Enum.Material.SmoothPlastic
-		).Shape = Enum.PartType.Cylinder
+		).Shape =
+			Enum.PartType.Cylinder
 	end
 
 	local head = part(
@@ -360,14 +355,17 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 		CFrame.new(center.X, ground + 1.9, center.Z),
 		bellyColor,
 		Enum.Material.SmoothPlastic
-	).Shape = Enum.PartType.Ball
+	).Shape =
+		Enum.PartType.Ball
 
-	for _, spec in {
-		{ -0.6, 1.35, -1.1 },
-		{ 0.6, 1.35, -1.1 },
-		{ -0.6, 1.35, 1.1 },
-		{ 0.6, 1.35, 1.1 },
-	} do
+	for _, spec in
+		{
+			{ -0.6, 1.35, -1.1 },
+			{ 0.6, 1.35, -1.1 },
+			{ -0.6, 1.35, 1.1 },
+			{ 0.6, 1.35, 1.1 },
+		}
+	do
 		part(
 			model,
 			'Leg',
@@ -442,7 +440,8 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 				model,
 				'AntlerMain',
 				Vector3.new(0.12, 1.5, 0.12),
-				CFrame.new(center.X + side * 0.28, ground + 5.2, center.Z - 1.75) * CFrame.Angles(math.rad(-15), 0, math.rad(side * 18)),
+				CFrame.new(center.X + side * 0.28, ground + 5.2, center.Z - 1.75)
+					* CFrame.Angles(math.rad(-15), 0, math.rad(side * 18)),
 				Color3.fromRGB(210, 195, 170),
 				Enum.Material.Wood
 			)
@@ -450,7 +449,8 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 				model,
 				'AntlerTine',
 				Vector3.new(0.1, 0.7, 0.1),
-				CFrame.new(center.X + side * 0.42, ground + 5.4, center.Z - 1.9) * CFrame.Angles(math.rad(-45), 0, math.rad(side * 30)),
+				CFrame.new(center.X + side * 0.42, ground + 5.4, center.Z - 1.9)
+					* CFrame.Angles(math.rad(-45), 0, math.rad(side * 30)),
 				Color3.fromRGB(210, 195, 170),
 				Enum.Material.Wood
 			)
@@ -467,7 +467,8 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 			CFrame.new(center.X + side * 0.72, ground + 2.7, center.Z + zOff),
 			Color3.fromRGB(250, 245, 235),
 			Enum.Material.SmoothPlastic
-		).Shape = Enum.PartType.Ball
+		).Shape =
+			Enum.PartType.Ball
 	end
 
 	part(
@@ -584,13 +585,13 @@ local function updateWildlife()
 			local angle = swimmer.phase + now * swimmer.speed
 			local bobOffset = math.sin(now * 2.2 + swimmer.phase) * swimmer.bob
 			local position = swimmer.center
-				+ Vector3.new(
-					math.cos(angle) * swimmer.radiusX,
-					bobOffset,
-					math.sin(angle) * swimmer.radiusZ
-				)
+				+ Vector3.new(math.cos(angle) * swimmer.radiusX, bobOffset, math.sin(angle) * swimmer.radiusZ)
 			local nextPosition = swimmer.center
-				+ Vector3.new(math.cos(angle + 0.05) * swimmer.radiusX, bobOffset, math.sin(angle + 0.05) * swimmer.radiusZ)
+				+ Vector3.new(
+					math.cos(angle + 0.05) * swimmer.radiusX,
+					bobOffset,
+					math.sin(angle + 0.05) * swimmer.radiusZ
+				)
 
 			local targetCFrame = CFrame.lookAt(position, nextPosition)
 

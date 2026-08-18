@@ -1,0 +1,3315 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="1">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="Folder" referent="2">
+        <Properties>
+          <string name="Name">constants</string>
+        </Properties>
+        <Item class="ModuleScript" referent="3">
+          <Properties>
+            <string name="Name">Config</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Global konfigurasi game (single source of truth).
+-- PRD: pemain/server, ekonomi, time system.
+
+export type GameConfig = {
+	-- Server & gameplay
+	maxPlayersPerServer: number,
+	dailyLoopDurationMinutes: number, -- durasi 1 hari game (real menit)
+	dayPhases: { string },
+
+	-- Ekonomi
+	startingYen: number,
+	startingEnergy: number,
+	startingHunger: number,
+	maxEnergy: number,
+	maxHunger: number,
+
+	-- Remote rate limit (calls per second per player)
+	remoteRateLimit: number,
+
+	-- DataStore
+	dataStoreName: string,
+	profileKeyPrefix: string,
+	profileVersion: number,
+	dataStoreRetries: number,
+
+	-- Quest
+	initialQuestId: string,
+	textbookItemId: string,
+
+	-- NPC
+	spawnNpcId: string,
+
+	-- Bahasa
+	availableLocales: { string },
+	defaultLocale: string,
+}
+
+local Config: GameConfig = {
+	maxPlayersPerServer = 30,
+	dailyLoopDurationMinutes = 20,
+	dayPhases = { 'morning', 'daytime', 'evening', 'night', 'late_night' },
+
+	startingYen = 5000,
+	startingEnergy = 100,
+	startingHunger = 0,
+	maxEnergy = 100,
+	maxHunger = 100,
+
+	remoteRateLimit = 10,
+
+	dataStoreName = 'SuwaLife_Profiles',
+	profileKeyPrefix = 'player_',
+	profileVersion = 1,
+	dataStoreRetries = 3,
+
+	initialQuestId = 'quest_intro',
+	textbookItemId = 'textbook',
+
+	spawnNpcId = 'teacher_sakura',
+
+	availableLocales = { 'ja', 'en', 'id' },
+	defaultLocale = 'en',
+}
+
+return Config
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="4">
+        <Properties>
+          <string name="Name">data</string>
+        </Properties>
+        <Item class="ModuleScript" referent="5">
+          <Properties>
+            <string name="Name">Items</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Data definitions statis (single source of truth untuk item/quest/lesson).
+-- Referensi tipe: shared/types/Definitions.lua (ItemDef),
+-- shared/types/QuestDefTypes.lua (QuestDef).
+
+local ITEMS = {
+	onigiri = {
+		id = 'onigiri',
+		nameKey = 'item.onigiri.name',
+		category = 'food',
+		price = 150,
+		stackable = true,
+		consumable = true,
+		effects = { hunger = -30, energy = 5 },
+		icon = '',
+		tags = { 'food', 'japanese' },
+	},
+	textbook = {
+		id = 'textbook',
+		nameKey = 'item.textbook.name',
+		category = 'school',
+		price = 800,
+		stackable = false,
+		consumable = false,
+		effects = {},
+		icon = '',
+		tags = { 'school' },
+	},
+	fishing_rod = {
+		id = 'fishing_rod',
+		nameKey = 'item.fishing_rod.name',
+		category = 'fishing',
+		price = 2000,
+		stackable = false,
+		consumable = false,
+		effects = {},
+		icon = '',
+		tags = { 'fishing' },
+	},
+}
+
+local QUESTS = {
+	-- Quest pembuka: kenalan dengan guru & dapatkan buku pelajaran.
+	quest_intro = {
+		id = 'quest_intro',
+		titleKey = 'quest.intro.title',
+		descKey = 'quest.intro.desc',
+		giverNpcId = 'teacher_sakura',
+		requirements = { japaneseLevel = 1 },
+		objectives = {
+			{ id = 'talk_sakura', type = 'talk', target = 'teacher_sakura', requiredCount = 1 },
+			{ id = 'get_textbook', type = 'collect', target = 'textbook', requiredCount = 1 },
+		},
+		rewards = {
+			xp = 100,
+			yen = 500,
+			items = {},
+		},
+	},
+}
+
+local LESSONS = {
+	lesson_01 = {
+		id = 'lesson_01',
+		titleKey = 'lesson.01.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.01.q1',
+				choices = { 'lesson.01.q1.a', 'lesson.01.q1.b', 'lesson.01.q1.c' },
+				answer = 1,
+			},
+			{
+				promptKey = 'lesson.01.q2',
+				choices = { 'lesson.01.q2.a', 'lesson.01.q2.b', 'lesson.01.q2.c' },
+				answer = 0,
+			},
+		},
+	},
+	lesson_02 = {
+		id = 'lesson_02',
+		titleKey = 'lesson.02.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.02.q1',
+				choices = { 'lesson.02.q1.a', 'lesson.02.q1.b', 'lesson.02.q1.c' },
+				answer = 2,
+			},
+		},
+	},
+	lesson_03 = {
+		id = 'lesson_03',
+		titleKey = 'lesson.03.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.03.q1',
+				choices = { 'lesson.03.q1.a', 'lesson.03.q1.b', 'lesson.03.q1.c' },
+				answer = 1,
+			},
+		},
+	},
+	lesson_04 = {
+		id = 'lesson_04',
+		titleKey = 'lesson.04.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.04.q1',
+				choices = { 'lesson.04.q1.a', 'lesson.04.q1.b', 'lesson.04.q1.c' },
+				answer = 0,
+			},
+		},
+	},
+	lesson_05 = {
+		id = 'lesson_05',
+		titleKey = 'lesson.05.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.05.q1',
+				choices = { 'lesson.05.q1.a', 'lesson.05.q1.b', 'lesson.05.q1.c' },
+				answer = 2,
+			},
+		},
+	},
+}
+
+return {
+	ITEMS = ITEMS,
+	QUESTS = QUESTS,
+	LESSONS = LESSONS,
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="6">
+          <Properties>
+            <string name="Name">NPCs</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi NPC statis.
+-- Referensi tipe: shared/types/NpcTypes.lua (NPCDef).
+
+local NPCS: {
+	[string]: NPCDef,
+} = {
+	teacher_sakura = {
+		id = 'teacher_sakura',
+		displayNameKey = 'npc.teacher_sakura.name',
+		titleKey = 'npc.teacher_sakura.title',
+		defaultIntent = 'greeting',
+		dialogFlows = {
+			greeting = {
+				id = 'greeting',
+				rootNodeId = 'start',
+				nodes = {
+					start = {
+						id = 'start',
+						lines = {
+							{ key = 'dialog.sakura.greet1' },
+							{ key = 'dialog.sakura.greet2' },
+						},
+						choices = {
+							{ textKey = 'dialog.sakura.choice.intro', next = 'intro' },
+							{ textKey = 'dialog.sakura.choice.bye', next = nil },
+						},
+					},
+					intro = {
+						id = 'intro',
+						lines = {
+							{ key = 'dialog.sakura.intro1' },
+							{ key = 'dialog.sakura.intro2' },
+						},
+						next = 'quest_offer',
+					},
+					quest_offer = {
+						id = 'quest_offer',
+						lines = {
+							{ key = 'dialog.sakura.quest_offer' },
+						},
+						choices = {
+							{
+								textKey = 'dialog.sakura.choice.accept',
+								next = nil,
+								action = 'quest_accept:quest_intro',
+							},
+							{ textKey = 'dialog.sakura.choice.decline', next = nil },
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+return NPCS
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="Folder" referent="7">
+          <Properties>
+            <string name="Name">localization</string>
+          </Properties>
+          <Item class="ModuleScript" referent="8">
+            <Properties>
+              <string name="Name">en</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- Localization: Bahasa Inggris (en) — fallback utama.
+
+local STRINGS: { [string]: string } = {
+	-- UI umum
+	['ui.app.title'] = 'Suwa Life: Nihongo Days',
+	['ui.questlog.title'] = 'Quests',
+	['ui.questlog.empty'] = 'No active quests.',
+	['ui.dialog.continue'] = 'Continue',
+	['ui.dialog.close'] = 'Close',
+
+	-- NPC
+	['npc.teacher_sakura.name'] = 'Teacher Sakura',
+	['npc.teacher_sakura.title'] = 'Japanese Language Teacher',
+
+	-- Dialog
+	['dialog.sakura.greet1'] = 'Good morning! You must be the new student.',
+	['dialog.sakura.greet2'] = 'Welcome to the Japanese language school.',
+	['dialog.sakura.choice.intro'] = 'Could you introduce yourself?',
+	['dialog.sakura.choice.bye'] = 'See you later.',
+	['dialog.sakura.intro1'] = 'Nice to meet you!',
+	['dialog.sakura.intro2'] = "I'm Sakura, your Japanese teacher.",
+	['dialog.sakura.quest_offer'] = 'How about you start learning with this textbook?',
+	['dialog.sakura.choice.accept'] = 'Accept quest!',
+	['dialog.sakura.choice.decline'] = 'Not yet.',
+	['dialog.sakura.quest_accepted'] = "Great! Don't forget to pick up your textbook.",
+	['dialog.sakura.quest_completed'] = 'Well done! You earned Japanese XP.',
+
+	-- Item
+	['item.onigiri.name'] = 'Onigiri',
+	['item.textbook.name'] = 'Textbook',
+	['item.fishing_rod.name'] = 'Fishing Rod',
+
+	-- Quest
+	['quest.intro.title'] = 'Meet Your Teacher',
+	['quest.intro.desc'] = 'Talk to Teacher Sakura and pick up your textbook.',
+
+	-- School
+	['ui.school.title'] = 'Lessons',
+	['ui.school.open'] = 'School',
+	['lesson.01.title'] = 'Greetings',
+	['lesson.01.q1'] = 'What does "おはよう" mean?',
+	['lesson.01.q1.a'] = 'Good evening',
+	['lesson.01.q1.b'] = 'Good morning',
+	['lesson.01.q1.c'] = 'Good night',
+	['lesson.01.q2'] = 'What does "ありがとう" mean?',
+	['lesson.01.q2.a'] = 'Thank you',
+	['lesson.01.q2.b'] = 'Sorry',
+	['lesson.01.q2.c'] = 'Goodbye',
+	['lesson.02.title'] = 'Numbers',
+	['lesson.02.q1'] = 'What is いち (ichi)?',
+	['lesson.02.q1.a'] = 'Two',
+	['lesson.02.q1.b'] = 'Three',
+	['lesson.02.q1.c'] = 'One',
+	['lesson.03.title'] = 'Food',
+	['lesson.03.q1'] = 'What does たべる (taberu) mean?',
+	['lesson.03.q1.a'] = 'To drink',
+	['lesson.03.q1.b'] = 'To eat',
+	['lesson.03.q1.c'] = 'To cook',
+	['lesson.04.title'] = 'Places',
+	['lesson.04.q1'] = 'What does がっこう (gakkou) mean?',
+	['lesson.04.q1.a'] = 'School',
+	['lesson.04.q1.b'] = 'Station',
+	['lesson.04.q1.c'] = 'Hospital',
+	['lesson.05.title'] = 'Daily Verbs',
+	['lesson.05.q1'] = 'What does いく (iku) mean?',
+	['lesson.05.q1.a'] = 'To come',
+	['lesson.05.q1.b'] = 'To sleep',
+	['lesson.05.q1.c'] = 'To go',
+}
+
+return STRINGS
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="9">
+            <Properties>
+              <string name="Name">id</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- Localization: Bahasa Indonesia (id).
+-- Key yang belum diterjemahkan tampil apa adanya (fallback).
+
+local STRINGS: { [string]: string } = {
+	-- UI umum
+	['ui.app.title'] = 'Suwa Life: Nihongo Days',
+	['ui.questlog.title'] = 'Quest',
+	['ui.questlog.empty'] = 'Belum ada quest aktif.',
+	['ui.dialog.continue'] = 'Lanjutkan',
+	['ui.dialog.close'] = 'Tutup',
+
+	-- NPC
+	['npc.teacher_sakura.name'] = 'Guru Sakura',
+	['npc.teacher_sakura.title'] = 'Guru Bahasa Jepang',
+
+	-- Dialog (key tunggal; jangan pakai format)
+	['dialog.sakura.greet1'] = 'Selamat pagi! Kamu siswa baru ya?',
+	['dialog.sakura.greet2'] = 'Selamat datang di sekolah bahasa Jepang.',
+	['dialog.sakura.choice.intro'] = 'Boleh perkenalan?',
+	['dialog.sakura.choice.bye'] = 'Sampai nanti.',
+	['dialog.sakura.intro1'] = 'Senang bertemu denganmu!',
+	['dialog.sakura.intro2'] = 'Namaku Sakura, guru bahasa Jepang.',
+	['dialog.sakura.quest_offer'] = 'Bagaimana kalau kamu mulai belajar dengan buku ini?',
+	['dialog.sakura.choice.accept'] = 'Terima quest!',
+	['dialog.sakura.choice.decline'] = 'Belum dulu.',
+	['dialog.sakura.quest_accepted'] = 'Bagus! Ambil buku pelajaranmu, ya.',
+	['dialog.sakura.quest_completed'] = 'Hebat! Kamu dapat XP bahasa Jepang.',
+
+	-- Item
+	['item.onigiri.name'] = 'Onigiri',
+	['item.textbook.name'] = 'Buku Pelajaran',
+	['item.fishing_rod.name'] = 'Pancing',
+
+	-- Quest
+	['quest.intro.title'] = 'Kenalan dengan Guru',
+	['quest.intro.desc'] = 'Bicaralah dengan Guru Sakura dan ambil buku pelajaranmu.',
+
+	-- School
+	['ui.school.title'] = 'Pelajaran',
+	['ui.school.open'] = 'Sekolah',
+	['lesson.01.title'] = 'Sapaan',
+	['lesson.01.q1'] = 'Apa arti "おはよう"?',
+	['lesson.01.q1.a'] = 'Selamat malam',
+	['lesson.01.q1.b'] = 'Selamat pagi',
+	['lesson.01.q1.c'] = 'Selamat tidur',
+	['lesson.01.q2'] = 'Apa arti "ありがとう"?',
+	['lesson.01.q2.a'] = 'Terima kasih',
+	['lesson.01.q2.b'] = 'Maaf',
+	['lesson.01.q2.c'] = 'Selamat tinggal',
+	['lesson.02.title'] = 'Angka',
+	['lesson.02.q1'] = 'Berapa いち (ichi)?',
+	['lesson.02.q1.a'] = 'Dua',
+	['lesson.02.q1.b'] = 'Tiga',
+	['lesson.02.q1.c'] = 'Satu',
+	['lesson.03.title'] = 'Makanan',
+	['lesson.03.q1'] = 'Apa arti たべる (taberu)?',
+	['lesson.03.q1.a'] = 'Minum',
+	['lesson.03.q1.b'] = 'Makan',
+	['lesson.03.q1.c'] = 'Memasak',
+	['lesson.04.title'] = 'Tempat',
+	['lesson.04.q1'] = 'Apa arti がっこう (gakkou)?',
+	['lesson.04.q1.a'] = 'Sekolah',
+	['lesson.04.q1.b'] = 'Stasiun',
+	['lesson.04.q1.c'] = 'Rumah sakit',
+	['lesson.05.title'] = 'Kata Kerja Sehari-hari',
+	['lesson.05.q1'] = 'Apa arti いく (iku)?',
+	['lesson.05.q1.a'] = 'Datang',
+	['lesson.05.q1.b'] = 'Tidur',
+	['lesson.05.q1.c'] = 'Pergi',
+}
+
+return STRINGS
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="10">
+            <Properties>
+              <string name="Name">ja</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- Localization: Bahasa Jepang (ja).
+
+local STRINGS: { [string]: string } = {
+	-- UI umum
+	['ui.app.title'] = 'Suwa Life: Nihongo Days',
+	['ui.questlog.title'] = 'クエスト',
+	['ui.questlog.empty'] = '進行中のクエストはありません。',
+	['ui.dialog.continue'] = 'つづける',
+	['ui.dialog.close'] = 'とじる',
+
+	-- NPC
+	['npc.teacher_sakura.name'] = 'さくら先生',
+	['npc.teacher_sakura.title'] = '日本語の先生',
+
+	-- Dialog
+	['dialog.sakura.greet1'] = 'おはようございます！新入生ですか？',
+	['dialog.sakura.greet2'] = '日本語学校へようこそ。',
+	['dialog.sakura.choice.intro'] = 'じこしょうかいしてもいいですか？',
+	['dialog.sakura.choice.bye'] = 'またあとで。',
+	['dialog.sakura.intro1'] = 'はじめまして！',
+	['dialog.sakura.intro2'] = 'さくらです。日本語の先生です。',
+	['dialog.sakura.quest_offer'] = 'このきょうかしょでべんきょうをはじめませんか？',
+	['dialog.sakura.choice.accept'] = 'クエストをうける！',
+	['dialog.sakura.choice.decline'] = 'まだいいです。',
+	['dialog.sakura.quest_accepted'] = 'いいですね！きょうかしょをとってください。',
+	['dialog.sakura.quest_completed'] = 'よくできました！日本語XPをゲット。',
+
+	-- Item
+	['item.onigiri.name'] = 'おにぎり',
+	['item.textbook.name'] = 'きょうかしょ',
+	['item.fishing_rod.name'] = 'つりざお',
+
+	-- Quest
+	['quest.intro.title'] = '先生にあいさつしよう',
+	['quest.intro.desc'] = 'さくら先生とはなして、きょうかしょをゲットしよう。',
+
+	-- School
+	['ui.school.title'] = 'レッスン',
+	['ui.school.open'] = 'がっこう',
+	['lesson.01.title'] = 'あいさつ',
+	['lesson.01.q1'] = '「おはよう」はどういういみ？',
+	['lesson.01.q1.a'] = 'こんばんは',
+	['lesson.01.q1.b'] = 'おはよう（あさのあいさつ）',
+	['lesson.01.q1.c'] = 'おやすみ',
+	['lesson.01.q2'] = '「ありがとう」はどういういみ？',
+	['lesson.01.q2.a'] = 'ありがとう（かんしゃ）',
+	['lesson.01.q2.b'] = 'ごめんなさい',
+	['lesson.01.q2.c'] = 'さようなら',
+	['lesson.02.title'] = 'すうじ',
+	['lesson.02.q1'] = '「いち」はいくつ？',
+	['lesson.02.q1.a'] = 'に',
+	['lesson.02.q1.b'] = 'さん',
+	['lesson.02.q1.c'] = 'いち（1）',
+	['lesson.03.title'] = 'たべもの',
+	['lesson.03.q1'] = '「たべる」はどういういみ？',
+	['lesson.03.q1.a'] = 'のむ',
+	['lesson.03.q1.b'] = 'たべる',
+	['lesson.03.q1.c'] = 'りょうりする',
+	['lesson.04.title'] = 'ばしょ',
+	['lesson.04.q1'] = '「がっこう」はどういういみ？',
+	['lesson.04.q1.a'] = 'がっこう（スクール）',
+	['lesson.04.q1.b'] = 'えき',
+	['lesson.04.q1.c'] = 'びょういん',
+	['lesson.05.title'] = 'まいにちのどうし',
+	['lesson.05.q1'] = '「いく」はどういういみ？',
+	['lesson.05.q1.a'] = 'くる',
+	['lesson.05.q1.b'] = 'ねる',
+	['lesson.05.q1.c'] = 'いく（いく）',
+}
+
+return STRINGS
+]]></string>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">remotes</string>
+          <string name="Source"><![CDATA[--!strict
+
+-- Registry remote API. Satu sumber kebenaran nama RemoteEvent/RemoteFunction.
+-- Server & client memakai nama yang sama.
+
+export type RemoteNames = {
+	workRequest: string,
+	fishCast: string,
+	fishReel: string,
+	shopBuy: string,
+	questAccept: string,
+	questClaim: string,
+	npcInteract: string,
+	schoolCheckIn: string,
+	bikeRequest: string,
+	getProfile: string,
+	getShopCatalog: string,
+	getQuestLog: string,
+	getTimeInfo: string,
+}
+
+export type RemoteDefinitions = {
+	events: { string },
+	functions: { string },
+}
+
+local Remotes: RemoteDefinitions = {
+	events = {
+		'WorkRequest',
+		'FishCast',
+		'FishReel',
+		'ShopBuy',
+		'QuestAccept',
+		'QuestClaim',
+		'NPCInteract',
+		'SchoolCheckIn',
+		'BikeRequest',
+		'NPCOpenDialog',
+		'QuizSubmit',
+	},
+	functions = {
+		'GetProfile',
+		'GetShopCatalog',
+		'GetQuestLog',
+		'GetTimeInfo',
+		'NPCGetDialog',
+		'LessonGet',
+	},
+}
+
+-- Helper: cek apakah nama remote valid (cegah typo).
+local function assertValid(name: string)
+	for _, existing in Remotes.events do
+		if existing == name then
+			return
+		end
+	end
+	for _, existing in Remotes.functions do
+		if existing == name then
+			return
+		end
+	end
+	error(`Remote "{name}" is not defined in Remotes registry`, 2)
+end
+
+return {
+	events = Remotes.events,
+	functions = Remotes.functions,
+	assertValid = assertValid,
+}
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Folder" referent="12">
+        <Properties>
+          <string name="Name">services</string>
+        </Properties>
+        <Item class="ModuleScript" referent="13">
+          <Properties>
+            <string name="Name">LocalizationService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- LocalizationService (shared): resolve localization key ke string.
+-- Bahasa default dari profile; fallback ke en (English).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local localizationFolder = ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('localization')
+
+local tables: { [string]: { [string]: string } } = {}
+
+-- Load semua bahasa dari folder.
+for _, module in localizationFolder:GetChildren() do
+	if module:IsA('ModuleScript') then
+		tables[module.Name] = require(module)
+	end
+end
+
+local LocalizationService = {}
+
+-- Resolve key untuk bahasa tertentu (fallback en, lalu key asli).
+function LocalizationService.get(locale: string, key: string): string
+	local table_ = tables[locale]
+	if table_ and table_[key] then
+		return table_[key]
+	end
+	local enTable = tables['en']
+	if enTable and enTable[key] then
+		return enTable[key]
+	end
+	return key
+end
+
+-- Ambil locale dari profile (sinkron dengan settings).
+function LocalizationService.getLocaleForProfile(profile: ProfileTypes.Profile): string
+	local locale = profile.settings.translationLanguage or Config.defaultLocale
+	if tables[locale] then
+		return locale
+	end
+	return Config.defaultLocale
+end
+
+function LocalizationService.getAvailableLocales(): { string }
+	local locales = {}
+	for locale, _ in tables do
+		table.insert(locales, locale)
+	end
+	return locales
+end
+
+return LocalizationService
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="14">
+        <Properties>
+          <string name="Name">types</string>
+        </Properties>
+        <Item class="ModuleScript" referent="15">
+          <Properties>
+            <string name="Name">Definitions</string>
+            <string name="Source"><![CDATA[--!strict
+
+export type ItemDef = {
+	id: string,
+	nameKey: string,
+	category: string,
+	price: number,
+	stackable: boolean,
+	consumable: boolean,
+	effects: { hunger: number?, energy: number?, happiness: number? },
+	icon: string,
+	tags: { string },
+}
+
+export type Items = { [string]: ItemDef }
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="16">
+          <Properties>
+            <string name="Name">LessonTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi tipe untuk sistem sekolah (lesson & quiz).
+
+export type QuizQuestion = {
+	promptKey: string,
+	choices: { string }, -- localization keys
+	answer: number, -- index jawaban benar
+}
+
+export type LessonDef = {
+	id: string,
+	titleKey: string,
+	level: string,
+	quiz: { QuizQuestion },
+}
+
+export type LessonDefs = { [string]: LessonDef }
+
+-- Hasil submit quiz dari client.
+export type QuizSubmission = {
+	lessonId: string,
+	answers: { [number]: number }, -- questionIndex -> answerIndex
+}
+
+-- Hasil penilaian quiz (server).
+export type QuizResult = {
+	lessonId: string,
+	correct: number,
+	total: number,
+	passed: boolean,
+	earnedXp: number,
+}
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="17">
+          <Properties>
+            <string name="Name">NpcTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi NPC & dialog.
+
+-- Struktur satu baris dialog. Semua teks pakai localization key,
+-- kecuali reading/romaji yang opsional untuk materi bahasa.
+export type DialogLine = {
+	key: string,
+	reading: string?,
+	romaji: string?,
+}
+
+export type DialogChoice = {
+	textKey: string,
+	next: string?,
+	action: string?,
+}
+
+export type DialogNode = {
+	id: string,
+	lines: { DialogLine },
+	choices: { DialogChoice }?,
+	next: string?,
+	action: string?,
+}
+
+export type DialogFlow = {
+	id: string,
+	rootNodeId: string,
+	nodes: { [string]: DialogNode },
+}
+
+export type NPCDef = {
+	id: string,
+	displayNameKey: string,
+	titleKey: string,
+	dialogFlows: { [string]: DialogFlow },
+	defaultIntent: string,
+}
+
+export type NPCs = { [string]: NPCDef }
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="18">
+          <Properties>
+            <string name="Name">ProfileTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+export type JapaneseLevel = 'beginner1' | 'beginner2' | 'elementary' | 'intermediate' | 'advanced'
+
+export type Profile = {
+	version: number,
+	playerId: number,
+	profile: {
+		displayName: string,
+		homeCountry: string,
+		preferredLanguage: string,
+	},
+	progress: {
+		japaneseXp: number,
+		japaneseLevel: number,
+		workReputation: number,
+		explorationRank: number,
+		fishingLevel: number,
+		hikingLevel: number,
+		cookingLevel: number,
+		reputation: number,
+		happiness: number,
+		energy: number,
+		hunger: number,
+	},
+	economy: {
+		yen: number,
+	},
+	inventory: {
+		items: { [string]: number },
+		clothing: { [string]: number },
+		furniture: { [string]: number },
+		fish: { [string]: number },
+	},
+	school: {
+		attendance: number,
+		completedLessons: { string },
+		examResults: { [string]: number },
+	},
+	quests: {
+		active: { string },
+		completed: { string },
+	},
+	friendship: { [string]: number },
+	bike: {
+		owned: boolean,
+		upgrades: { [string]: boolean },
+	},
+	settings: {
+		showFurigana: boolean,
+		showRomaji: boolean,
+		translationLanguage: string,
+	},
+	lastSaved: string,
+}
+
+export type Result<T> = { ok: true, data: T } | { ok: false, error: string }
+
+export type TimeInfo = {
+	dayNumber: number,
+	hour: number,
+	minute: number,
+	season: string,
+	weather: string,
+}
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="19">
+          <Properties>
+            <string name="Name">QuestDefTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Quest definition (statis, data).
+
+export type QuestObjectiveDef = {
+	id: string,
+	type: string,
+	target: string,
+	requiredCount: number,
+}
+
+export type QuestDef = {
+	id: string,
+	titleKey: string,
+	descKey: string,
+	giverNpcId: string,
+	requirements: {
+		japaneseLevel: number?,
+	},
+	objectives: { QuestObjectiveDef },
+	rewards: {
+		xp: number,
+		yen: number,
+		items: { string },
+	},
+}
+
+export type QuestDefs = { [string]: QuestDef }
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="20">
+          <Properties>
+            <string name="Name">QuestTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi tipe shared untuk sistem game.
+
+export type JapaneseLevel = 'beginner1' | 'beginner2' | 'elementary' | 'intermediate' | 'advanced'
+
+export type Result<T> = { ok: true, data: T } | { ok: false, error: string }
+
+export type TimeInfo = {
+	dayNumber: number,
+	hour: number,
+	minute: number,
+	season: string,
+	weather: string,
+}
+
+-- Objective quest: type menentukan cara progress.
+-- talk = bicara ke NPC target, collect = punya item target.
+export type QuestObjective = {
+	id: string,
+	type: 'talk' | 'collect',
+	target: string,
+	requiredCount: number,
+	currentCount: number,
+	complete: boolean,
+}
+
+export type QuestState = {
+	id: string,
+	objectives: { QuestObjective },
+	acceptedAt: number,
+}
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="21">
+        <Properties>
+          <string name="Name">util</string>
+        </Properties>
+        <Item class="ModuleScript" referent="22">
+          <Properties>
+            <string name="Name">LessonLogic</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- LessonLogic (shared): logika grading quiz murni (tanpa dependensi Roblox).
+-- Testable & dipakai SchoolService server.
+
+export type QuizQuestion = {
+	promptKey: string,
+	choices: { string },
+	answer: number,
+}
+
+-- Nilai jawaban player terhadap soal. Return benar/salah.
+local function gradeAnswer(question: QuizQuestion, playerAnswer: number): boolean
+	return question.answer == playerAnswer
+end
+
+-- Hitung jumlah benar dari semua soal.
+local function countCorrect(questions: { QuizQuestion }, answers: { [number]: number }): number
+	local correct = 0
+	for index, question in questions do
+		if gradeAnswer(question, answers[index] or -1) then
+			correct += 1
+		end
+	end
+	return correct
+end
+
+-- Ambang lulus: 60% benar (configurable).
+local PASS_RATIO = 0.6
+
+-- Cek lulus berdasarkan jumlah benar / total.
+local function isPassed(correct: number, total: number): boolean
+	if total <= 0 then
+		return false
+	end
+	return correct / total >= PASS_RATIO
+end
+
+-- Hitung XP yang didapat dari hasil quiz.
+-- Lulus: xp = baseXp * (benar/total). Gagal: xp kecil (partisipasi).
+local function calculateXp(correct: number, total: number, baseXp: number): number
+	if total <= 0 then
+		return 0
+	end
+	local ratio = correct / total
+	if isPassed(correct, total) then
+		return math.floor(baseXp * ratio)
+	end
+	return math.floor(baseXp * 0.2)
+end
+
+return {
+	gradeAnswer = gradeAnswer,
+	countCorrect = countCorrect,
+	isPassed = isPassed,
+	calculateXp = calculateXp,
+	PASS_RATIO = PASS_RATIO,
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="23">
+          <Properties>
+            <string name="Name">Math</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Util shared: generic helpers (di-testable tanpa Roblox).
+
+-- Clamp number ke range.
+local function clamp(value: number, min: number, max: number): number
+	return math.max(min, math.min(max, value))
+end
+
+-- Cek apakah player memenuhi level bahasa minimum.
+local function meetsLevel(level: number, required: number): boolean
+	return level >= required
+end
+
+-- Hitung level bahasa dari XP (tabel threshold, di-testable).
+local LEVEL_THRESHOLDS = { 0, 1000, 2500, 5000, 7500 }
+
+local function levelFromXp(xp: number): number
+	local level = 1
+	for i, threshold in LEVEL_THRESHOLDS do
+		if xp >= threshold then
+			level = i
+		end
+	end
+	return level
+end
+
+-- Rate limit sederhana (window per detik).
+local function makeRateLimiter(maxCallsPerSecond: number)
+	local calls: { [string]: number } = {}
+	local lastWindow: { [string]: number } = {}
+
+	return function(key: string, now: number): boolean
+		if lastWindow[key] ~= now then
+			lastWindow[key] = now
+			calls[key] = 0
+		end
+		calls[key] += 1
+		return calls[key] <= maxCallsPerSecond
+	end
+end
+
+return {
+	clamp = clamp,
+	meetsLevel = meetsLevel,
+	levelFromXp = levelFromXp,
+	makeRateLimiter = makeRateLimiter,
+	LEVEL_THRESHOLDS = LEVEL_THRESHOLDS,
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="24">
+          <Properties>
+            <string name="Name">QuestLogic</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- QuestLogic (shared): logika quest murni (tanpa dependensi Roblox service).
+-- Testable & dipakai QuestService server.
+
+export type ObjectiveDef = {
+	id: string,
+	type: 'talk' | 'collect',
+	target: string,
+	requiredCount: number,
+}
+
+export type ObjectiveState = {
+	id: string,
+	type: 'talk' | 'collect',
+	target: string,
+	requiredCount: number,
+	currentCount: number,
+	complete: boolean,
+}
+
+export type QuestDef = {
+	id: string,
+	titleKey: string,
+	descKey: string,
+	giverNpcId: string,
+	requirements: { japaneseLevel: number? },
+	objectives: { ObjectiveDef },
+	rewards: { xp: number, yen: number, items: { string } },
+}
+
+-- Buat state objective dari def.
+local function createObjectives(defs: { ObjectiveDef }): { ObjectiveState }
+	local states: { ObjectiveState } = {}
+	for _, def in defs do
+		table.insert(states, {
+			id = def.id,
+			type = def.type,
+			target = def.target,
+			requiredCount = def.requiredCount,
+			currentCount = 0,
+			complete = false,
+		})
+	end
+	return states
+end
+
+-- Cek semua objective selesai.
+local function allComplete(objectives: { ObjectiveState }): boolean
+	for _, obj in objectives do
+		if not obj.complete then
+			return false
+		end
+	end
+	return true
+end
+
+-- Progress objective talk (bicara ke NPC).
+-- Return questIds yang jadi selesai (agar caller beri reward).
+local function progressTalk(objectives: { ObjectiveState }, npcId: string, questId: string): { string }
+	local completed: { string } = {}
+	for _, obj in objectives do
+		if obj.type == 'talk' and obj.target == npcId and not obj.complete then
+			obj.currentCount += 1
+			if obj.currentCount >= obj.requiredCount then
+				obj.complete = true
+			end
+		end
+	end
+	if allComplete(objectives) then
+		table.insert(completed, questId)
+	end
+	return completed
+end
+
+-- Progress objective collect (punya item).
+local function progressCollect(
+	objectives: { ObjectiveState },
+	itemId: string,
+	count: number,
+	questId: string
+): { string }
+	local completed: { string } = {}
+	for _, obj in objectives do
+		if obj.type == 'collect' and obj.target == itemId and not obj.complete then
+			obj.currentCount = count
+			if obj.currentCount >= obj.requiredCount then
+				obj.complete = true
+			end
+		end
+	end
+	if allComplete(objectives) then
+		table.insert(completed, questId)
+	end
+	return completed
+end
+
+-- Hitung reward quest (untuk player progress). Murni kalkulasi.
+local function calculateReward(def: QuestDef): { xp: number, yen: number, items: { string } }
+	return {
+		xp = def.rewards.xp,
+		yen = def.rewards.yen,
+		items = def.rewards.items,
+	}
+end
+
+-- Cek requirement terpenuhi.
+local function meetsRequirements(def: QuestDef, japaneseLevel: number): boolean
+	if def.requirements.japaneseLevel and japaneseLevel < def.requirements.japaneseLevel then
+		return false
+	end
+	return true
+end
+
+return {
+	createObjectives = createObjectives,
+	allComplete = allComplete,
+	progressTalk = progressTalk,
+	progressCollect = progressCollect,
+	calculateReward = calculateReward,
+	meetsRequirements = meetsRequirements,
+}
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="25">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="26">
+      <Properties>
+        <string name="Name">Server</string>
+      </Properties>
+      <Item class="Script" referent="27">
+        <Properties>
+          <string name="Name">runner</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[--!strict
+
+-- Entry point server. Semua service di-init di sini.
+-- RemoteRegistryService harus init paling awal (membuat folder remotes).
+
+local Services = {}
+
+local function initService(module: ModuleScript)
+	local ok, service = pcall(require, module)
+	if ok and typeof(service) == 'table' and service.init then
+		service.init()
+		Services[module.Name] = service
+		print(`[Server] Loaded {module.Name}`)
+	else
+		warn(`[Server] Failed to load {module.Name}: {service}`)
+	end
+end
+
+-- 1. Remote registry dulu (service lain register remote padanya).
+local remoteModule = script.Parent:FindFirstChild('RemoteRegistryService')
+if remoteModule and remoteModule:IsA('ModuleScript') then
+	initService(remoteModule)
+end
+
+-- 2. Service lain.
+for _, module in script.Parent:GetChildren() do
+	if module:IsA('ModuleScript') and module ~= remoteModule then
+		initService(module)
+	end
+end
+
+print('[Server] Suwa Life server runner ready.')
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Folder" referent="28">
+        <Properties>
+          <string name="Name">services</string>
+        </Properties>
+        <Item class="ModuleScript" referent="29">
+          <Properties>
+            <string name="Name">EconomyService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- EconomyService: transaksi yen (server-authoritative).
+-- Semua perubahan yen lewat sini (anti-exploit).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+
+local EconomyService = {}
+
+-- Tambah yen ke profil. Return Result.
+function EconomyService.addYen(playerId: number, amount: number): Types.Result<number>
+	if amount <= 0 then
+		return { ok = false, error = 'Invalid amount' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.economy.yen += amount
+	return { ok = true, data = profile.economy.yen }
+end
+
+-- Kurangi yen (validasi saldo cukup).
+function EconomyService.spendYen(playerId: number, amount: number): Types.Result<number>
+	if amount <= 0 then
+		return { ok = false, error = 'Invalid amount' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if profile.economy.yen < amount then
+		return { ok = false, error = 'Insufficient funds' }
+	end
+	profile.economy.yen -= amount
+	return { ok = true, data = profile.economy.yen }
+end
+
+-- Beri Japanese XP; auto naik level sesuai threshold.
+function EconomyService.addJapaneseXp(playerId: number, xp: number): Types.Result<number>
+	if xp <= 0 then
+		return { ok = false, error = 'Invalid XP' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.progress.japaneseXp += xp
+	profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+	return { ok = true, data = profile.progress.japaneseLevel }
+end
+
+function EconomyService.init()
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+end
+
+return EconomyService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="30">
+          <Properties>
+            <string name="Name">InventoryService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- InventoryService: item, clothing, furniture, fish.
+-- Operasi di server; client tidak mengubah langsung.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+
+local InventoryService = {}
+
+-- Tambah item ke inventori (stackable di-merge).
+function InventoryService.addItem(playerId: number, itemId: string, count: number): Types.Result<number>
+	if count <= 0 then
+		return { ok = false, error = 'Invalid count' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.inventory.items[itemId] = (profile.inventory.items[itemId] or 0) + count
+	return { ok = true, data = profile.inventory.items[itemId] }
+end
+
+-- Ambil item (cek jumlah cukup).
+function InventoryService.removeItem(playerId: number, itemId: string, count: number): Types.Result<number>
+	if count <= 0 then
+		return { ok = false, error = 'Invalid count' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	local current = profile.inventory.items[itemId] or 0
+	if current < count then
+		return { ok = false, error = 'Not enough items' }
+	end
+	profile.inventory.items[itemId] = current - count
+	return { ok = true, data = profile.inventory.items[itemId] }
+end
+
+-- Cek jumlah item yang dimiliki.
+function InventoryService.countItem(playerId: number, itemId: string): number
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return 0
+	end
+	return profile.inventory.items[itemId] or 0
+end
+
+function InventoryService.init()
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+end
+
+return InventoryService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="31">
+          <Properties>
+            <string name="Name">NPCDialogService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- NPCDialogService (server): menyajikan dialog tree NPC & memproses aksi.
+-- Remote: NPCInteract (event, client -> server), NPCGetDialog (function).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+local QuestService = require(script.Parent:WaitForChild('QuestService'))
+local NPCs = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('NPCs'))
+
+local function handleInteract(player: Player, npcId: string)
+	local npc = NPCs[npcId]
+	if not npc then
+		warn(`[NPC] Unknown NPC: {npcId}`)
+		return
+	end
+
+	-- Progress quest 'talk' objective untuk NPC ini
+	QuestService.progressTalk(player.UserId, npcId)
+
+	-- Beri client dialog (client akan fetch node via RemoteFunction)
+	RemoteRegistry.fireClient(player, 'NPCOpenDialog', {
+		npcId = npcId,
+		intent = npc.defaultIntent,
+	})
+end
+
+local function getDialogForPlayer(npcId: string, nodeId: string?)
+	local npc = NPCs[npcId]
+	if not npc then
+		return nil
+	end
+	local flow = npc.dialogFlows[npc.defaultIntent]
+	if not flow then
+		return nil
+	end
+	local node = nodeId and flow.nodes[nodeId] or flow.nodes[flow.rootNodeId]
+	if not node then
+		return nil
+	end
+	return {
+		npcId = npcId,
+		node = node,
+	}
+end
+
+local NPCDialogService = {}
+
+function NPCDialogService.init()
+	RemoteRegistry.registerEvent('NPCInteract', function(player: Player, npcId: unknown)
+		if type(npcId) ~= 'string' then
+			return
+		end
+		handleInteract(player, npcId)
+	end)
+
+	RemoteRegistry.registerFunction('NPCGetDialog', function(_player: Player, npcId: unknown, nodeId: unknown)
+		if type(npcId) ~= 'string' then
+			return nil
+		end
+		local nodeIdStr = type(nodeId) == 'string' and nodeId or nil
+		return getDialogForPlayer(npcId, nodeIdStr)
+	end)
+end
+
+return NPCDialogService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="32">
+          <Properties>
+            <string name="Name">ProfileAPI</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- ProfileAPI (server): hookup remote GetProfile & QuestAccept/Claim.
+-- Tempat mendaftarkan remote yang melayani client.
+
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local QuestService = require(script.Parent:WaitForChild('QuestService'))
+
+local ProfileAPI = {}
+
+function ProfileAPI.init()
+	-- Beri client profile (sanitized, tanpa data sensitif)
+	RemoteRegistry.registerFunction('GetProfile', function(player: Player)
+		return ProfileService.getProfile(player.UserId)
+	end)
+
+	-- Client accept quest (quest service menangani pemberian item & reward)
+	RemoteRegistry.registerEvent('QuestAccept', function(player: Player, questId: unknown)
+		if type(questId) ~= 'string' then
+			return
+		end
+		QuestService.acceptQuest(player.UserId, questId)
+	end)
+
+	-- Client claim quest reward
+	RemoteRegistry.registerEvent('QuestClaim', function(player: Player, questId: unknown)
+		if type(questId) ~= 'string' then
+			return
+		end
+		QuestService.completeQuest(player.UserId, questId)
+	end)
+
+	-- Client ambil quest aktif (untuk HUD)
+	RemoteRegistry.registerFunction('GetQuestLog', function(player: Player)
+		return QuestService.getActiveQuests(player.UserId)
+	end)
+end
+
+return ProfileAPI
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="33">
+          <Properties>
+            <string name="Name">ProfileService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- ProfileService: load/save profile dari DataStoreService.
+-- - Session lock (Anti-Abuse) mencegah data tertimpa jika pemain reconnect cepat.
+-- - Migrasi versi profile (profiles[version]).
+-- - Retry terbatas pada load/save.
+
+local Players = game:GetService('Players')
+local DataStoreService = game:GetService('DataStoreService')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local store = DataStoreService:GetDataStore(Config.dataStoreName)
+
+local profiles: { [number]: ProfileTypes.Profile } = {}
+local loading: { [number]: boolean } = {}
+
+local ProfileLoadedEvent = Instance.new('BindableEvent')
+ProfileLoadedEvent.Name = 'ProfileLoaded'
+
+local function defaultProfile(playerId: number): ProfileTypes.Profile
+	return {
+		version = Config.profileVersion,
+		playerId = playerId,
+		profile = {
+			displayName = '',
+			homeCountry = '',
+			preferredLanguage = Config.defaultLocale,
+		},
+		progress = {
+			japaneseXp = 0,
+			japaneseLevel = 1,
+			workReputation = 0,
+			explorationRank = 0,
+			fishingLevel = 0,
+			hikingLevel = 0,
+			cookingLevel = 0,
+			reputation = 0,
+			happiness = 50,
+			energy = Config.startingEnergy,
+			hunger = Config.startingHunger,
+		},
+		economy = { yen = Config.startingYen },
+		inventory = {
+			items = {},
+			clothing = {},
+			furniture = {},
+			fish = {},
+		},
+		school = {
+			attendance = 0,
+			completedLessons = {},
+			examResults = {},
+		},
+		quests = { active = {}, completed = {} },
+		friendship = {},
+		bike = { owned = false, upgrades = {} },
+		settings = {
+			showFurigana = true,
+			showRomaji = false,
+			translationLanguage = Config.defaultLocale,
+		},
+		lastSaved = DateTime.now():ToIsoDate(),
+	}
+end
+
+-- Migrasi profile lama ke versi terbaru (forward chain).
+local MIGRATIONS: { [number]: (profile: any) -> any } = {}
+
+local function migrate(profile: any): ProfileTypes.Profile
+	local version = profile.version or 1
+	while version < Config.profileVersion do
+		local migrator = MIGRATIONS[version]
+		if not migrator then
+			warn(`[ProfileService] No migration path from v{version}`)
+			break
+		end
+		profile = migrator(profile)
+		version = profile.version
+	end
+	profile.version = Config.profileVersion
+	return profile
+end
+
+-- Retry helper: jalankan fn, retry sampai maxAttempts.
+local function withRetry(fn: () -> any, maxAttempts: number): (boolean, any)
+	local attempts = 0
+	while attempts < maxAttempts do
+		local ok, result = pcall(fn)
+		if ok then
+			return true, result
+		end
+		attempts += 1
+		if attempts < maxAttempts then
+			task.wait(0.2 * attempts)
+		end
+	end
+	return false, nil
+end
+
+local function keyOf(playerId: number): string
+	return Config.profileKeyPrefix .. tostring(playerId)
+end
+
+-- Ambil profile, session-lock via DataStore (Anti-Abuse).
+local function loadOrCreate(playerId: number): ProfileTypes.Profile?
+	local ok, data = withRetry(function()
+		return store:GetAsync(keyOf(playerId))
+	end, Config.dataStoreRetries)
+
+	if not ok then
+		warn(`[ProfileService] Load failed for {playerId} after retries`)
+		return nil
+	end
+
+	if typeof(data) == 'table' then
+		local migrated = migrate(data)
+		profiles[playerId] = migrated
+		return migrated
+	end
+
+	-- Player baru
+	local fresh = defaultProfile(playerId)
+	profiles[playerId] = fresh
+	return fresh
+end
+
+local function save(playerId: number)
+	local profile = profiles[playerId]
+	if not profile then
+		return
+	end
+	profile.lastSaved = DateTime.now():ToIsoDate()
+	local ok, err = withRetry(function()
+		return store:SetAsync(keyOf(playerId), profile)
+	end, Config.dataStoreRetries)
+	if not ok then
+		warn(`[ProfileService] Save failed for {playerId}: {err}`)
+	end
+end
+
+local ProfileService = {}
+
+function ProfileService.init()
+	Players.PlayerAdded:Connect(function(player)
+		loading[player.UserId] = true
+		task.spawn(function()
+			local profile = loadOrCreate(player.UserId)
+			loading[player.UserId] = nil
+			if profile then
+				ProfileLoadedEvent:Fire(player, profile)
+			else
+				-- Gagal load: kick agar tidak main tanpa data
+				player:Kick('Gagal memuat data. Silakan coba lagi.')
+			end
+		end)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		-- Tunggu load selesai sebelum save (hindari save data kosong)
+		task.spawn(function()
+			while loading[player.UserId] do
+				task.wait(0.1)
+			end
+			save(player.UserId)
+			profiles[player.UserId] = nil
+		end)
+	end)
+
+	game:BindToClose(function()
+		for userId, _ in profiles do
+			save(userId)
+		end
+	end)
+end
+
+function ProfileService.onProfileLoaded(callback: (player: Player, profile: ProfileTypes.Profile) -> ())
+	return ProfileLoadedEvent.Event:Connect(callback)
+end
+
+function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
+	return profiles[playerId]
+end
+
+function ProfileService.setProfile(playerId: number, profile: ProfileTypes.Profile)
+	profiles[playerId] = profile
+end
+
+-- Export untuk unit test / tools
+ProfileService.defaultProfile = defaultProfile
+ProfileService.migrate = migrate
+
+return ProfileService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="34">
+          <Properties>
+            <string name="Name">QuestService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- QuestService: state quest aktif/selesai, objective progress, reward.
+-- Logika murni di shared/util/QuestLogic.lua (testable); service ini
+-- menghubungkan ke profile & inventory.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local InventoryService = require(script.Parent:WaitForChild('InventoryService'))
+local Items = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Items'))
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local QuestTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('QuestTypes'))
+local QuestDefTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('QuestDefTypes'))
+local QuestLogic = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('QuestLogic'))
+
+local QuestService = {}
+
+-- Cek apakah quest sudah selesai.
+function QuestService.isCompleted(playerId: number, questId: string): boolean
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return false
+	end
+	for _, id in profile.quests.completed do
+		if id == questId then
+			return true
+		end
+	end
+	return false
+end
+
+-- Ambil QuestState aktif untuk questId (nil jika tidak aktif).
+function QuestService.getActiveQuest(playerId: number, questId: string): QuestTypes.QuestState?
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return nil
+	end
+	for _, state in profile.quests.active do
+		if state.id == questId then
+			return state
+		end
+	end
+	return nil
+end
+
+-- Cek apakah quest aktif.
+function QuestService.isActive(playerId: number, questId: string): boolean
+	return QuestService.getActiveQuest(playerId, questId) ~= nil
+end
+
+-- Buat QuestState baru dari QuestDef (pakai QuestLogic).
+local function newQuestState(def: QuestDefTypes.QuestDef): QuestTypes.QuestState
+	return {
+		id = def.id,
+		objectives = QuestLogic.createObjectives(def.objectives),
+		acceptedAt = os.clock(),
+	}
+end
+
+-- Progress objective 'talk' (bicara ke NPC).
+function QuestService.progressTalk(playerId: number, npcId: string)
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return
+	end
+	local completed: { string } = {}
+	for _, state in profile.quests.active do
+		local done = QuestLogic.progressTalk(state.objectives, npcId, state.id)
+		for _, questId in done do
+			table.insert(completed, questId)
+		end
+	end
+	for _, questId in completed do
+		QuestService.completeQuest(playerId, questId)
+	end
+end
+
+-- Progress objective 'collect' (punya item).
+function QuestService.progressCollect(playerId: number, itemId: string)
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return
+	end
+	local count = InventoryService.countItem(playerId, itemId)
+	local completed: { string } = {}
+	for _, state in profile.quests.active do
+		local done = QuestLogic.progressCollect(state.objectives, itemId, count, state.id)
+		for _, questId in done do
+			table.insert(completed, questId)
+		end
+	end
+	for _, questId in completed do
+		QuestService.completeQuest(playerId, questId)
+	end
+end
+
+-- Mulai quest (validasi requirement). Return Result.
+function QuestService.acceptQuest(playerId: number, questId: string): Types.Result<QuestDefTypes.QuestDef>
+	local def = Items.QUESTS[questId]
+	if not def then
+		return { ok = false, error = 'Quest not found' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if QuestService.isCompleted(playerId, questId) then
+		return { ok = false, error = 'Quest already completed' }
+	end
+	if QuestService.isActive(playerId, questId) then
+		return { ok = false, error = 'Quest already active' }
+	end
+	if not QuestLogic.meetsRequirements(def, profile.progress.japaneseLevel) then
+		return { ok = false, error = 'Level too low' }
+	end
+	local state = newQuestState(def)
+	table.insert(profile.quests.active, state)
+	-- Quest intro: giver memberikan buku pelajaran sebagai awal quest.
+	-- TODO: generalisasi pemberian item starter per quest.
+	if questId == Config.initialQuestId then
+		profile.inventory.items[Config.textbookItemId] = (profile.inventory.items[Config.textbookItemId] or 0) + 1
+	end
+	QuestService.progressCollect(playerId, Config.textbookItemId)
+	return { ok = true, data = def }
+end
+
+-- Selesaikan quest & beri reward. Return Result.
+function QuestService.completeQuest(playerId: number, questId: string): Types.Result<QuestDefTypes.QuestDef>
+	local def = Items.QUESTS[questId]
+	if not def then
+		return { ok = false, error = 'Quest not found' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if QuestService.isCompleted(playerId, questId) then
+		return { ok = false, error = 'Quest already completed' }
+	end
+	-- Hapus dari active
+	local active = profile.quests.active
+	for i, state in active do
+		if state.id == questId then
+			table.remove(active, i)
+			break
+		end
+	end
+	table.insert(profile.quests.completed, questId)
+
+	-- Reward
+	local reward = QuestLogic.calculateReward(def)
+	if reward.xp > 0 then
+		profile.progress.japaneseXp += reward.xp
+		profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+	end
+	if reward.yen > 0 then
+		profile.economy.yen += reward.yen
+	end
+	for _, itemId in reward.items do
+		profile.inventory.items[itemId] = (profile.inventory.items[itemId] or 0) + 1
+	end
+	return { ok = true, data = def }
+end
+
+-- Ambil semua quest aktif (untuk UI).
+function QuestService.getActiveQuests(playerId: number): { QuestTypes.QuestState }
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return {}
+	end
+	return profile.quests.active
+end
+
+function QuestService.init()
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+end
+
+return QuestService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="35">
+          <Properties>
+            <string name="Name">RemoteRegistryService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Server-side Remote Registry.
+-- Membuat instance RemoteEvent/RemoteFunction berdasarkan shared/remotes.lua
+-- dan menyediakan fireClient / invokeClient helpers.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Remotes = require(ReplicatedStorage:WaitForChild('Shared'):WaitForChild('remotes'))
+
+local remotesFolder = Instance.new('Folder')
+remotesFolder.Name = 'Remotes'
+remotesFolder.Parent = ReplicatedStorage
+
+local events: { [string]: RemoteEvent } = {}
+local functions: { [string]: RemoteFunction } = {}
+
+for _, name in Remotes.events do
+	Remotes.assertValid(name)
+	local event = Instance.new('RemoteEvent')
+	event.Name = name
+	event.Parent = remotesFolder
+	events[name] = event
+end
+
+for _, name in Remotes.functions do
+	Remotes.assertValid(name)
+	local fn = Instance.new('RemoteFunction')
+	fn.Name = name
+	fn.Parent = remotesFolder
+	functions[name] = fn
+end
+
+local RemoteRegistry = {
+	events = events,
+	functions = functions,
+}
+
+function RemoteRegistry.getEvent(name: string): RemoteEvent
+	return events[name]
+end
+
+function RemoteRegistry.getFunction(name: string): RemoteFunction
+	return functions[name]
+end
+
+function RemoteRegistry.fireClient(player: Player, name: string, ...)
+	local event = events[name]
+	if event then
+		event:FireClient(player, ...)
+	else
+		warn(`[Remotes] Unknown event fired to client: {name}`)
+	end
+end
+
+function RemoteRegistry.invokeClient(player: Player, name: string, ...)
+	local fn = functions[name]
+	if fn then
+		return fn:InvokeClient(player, ...)
+	end
+	warn(`[Remotes] Unknown function invoked on client: {name}`)
+	return nil
+end
+
+-- Rate limit wrapper: hanya allow N calls/detik per player per remote.
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+
+local limiter = Math.makeRateLimiter(Config.remoteRateLimit)
+
+function RemoteRegistry.registerEvent(name: string, handler: (player: Player, ...any) -> ())
+	Remotes.assertValid(name)
+	local event = events[name]
+	if not event then
+		error(`[Remotes] registerEvent: unknown name "{name}"`, 2)
+	end
+	event.OnServerEvent:Connect(function(player: Player, ...)
+		local now = os.clock()
+		if limiter(player.UserId .. ':' .. name, now) then
+			local ok, err = pcall(handler, player, ...)
+			if not ok then
+				warn(`[Remotes] handler error for {name}: {err}`)
+			end
+		else
+			warn(`[Remotes] Rate limited: {player.Name} on {name}`)
+		end
+	end)
+end
+
+function RemoteRegistry.registerFunction(name: string, handler: (player: Player, ...any) -> any)
+	Remotes.assertValid(name)
+	local fn = functions[name]
+	if not fn then
+		error(`[Remotes] registerFunction: unknown name "{name}"`, 2)
+	end
+	fn.OnServerInvoke = function(player: Player, ...)
+		return handler(player, ...)
+	end
+end
+
+return RemoteRegistry
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="36">
+          <Properties>
+            <string name="Name">SchoolService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- SchoolService (server): check-in kelas, lesson, quiz, reward XP & attendance.
+-- Remote: SchoolCheckIn (event), LessonGet (function), QuizSubmit (event).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local Items = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Items'))
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local LessonLogic = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('LessonLogic'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local LessonTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('LessonTypes'))
+
+-- XP dasar per lesson (MVP).
+local BASE_LESSON_XP = 50
+
+local SchoolService = {}
+
+-- Check-in kelas: tambah attendance, beri XP kecil.
+function SchoolService.checkIn(playerId: number): Types.Result<number>
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.school.attendance += 1
+	profile.progress.japaneseXp += 10
+	profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+	return { ok = true, data = profile.school.attendance }
+end
+
+-- Cek apakah player sudah menyelesaikan lesson.
+function SchoolService.isLessonCompleted(playerId: number, lessonId: string): boolean
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return false
+	end
+	for _, id in profile.school.completedLessons do
+		if id == lessonId then
+			return true
+		end
+	end
+	return false
+end
+
+-- Ambil daftar lesson yang tersedia (untuk client).
+function SchoolService.getAvailableLessons(playerId: number): { any }
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return {}
+	end
+	local lessons: { any } = {}
+	for id, def in Items.LESSONS do
+		table.insert(lessons, {
+			id = def.id,
+			titleKey = def.titleKey,
+			level = def.level,
+			completed = SchoolService.isLessonCompleted(playerId, id),
+		})
+	end
+	return lessons
+end
+
+-- Submit quiz; nilai server-side, beri reward bila lulus.
+-- answers: { questionIndex = answerIndex }.
+function SchoolService.submitQuiz(
+	playerId: number,
+	lessonId: string,
+	answers: { [number]: number }
+): Types.Result<LessonTypes.QuizResult>
+	local lesson = Items.LESSONS[lessonId]
+	if not lesson then
+		return { ok = false, error = 'Lesson not found' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if SchoolService.isLessonCompleted(playerId, lessonId) then
+		return { ok = false, error = 'Lesson already completed' }
+	end
+
+	local correct = LessonLogic.countCorrect(lesson.quiz, answers)
+	local total = #lesson.quiz
+	local passed = LessonLogic.isPassed(correct, total)
+	local xp = LessonLogic.calculateXp(correct, total, BASE_LESSON_XP)
+
+	-- Beri reward & tandai selesai (hanya bila lulus)
+	if passed then
+		profile.progress.japaneseXp += xp
+		profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+		table.insert(profile.school.completedLessons, lessonId)
+		profile.school.examResults[lessonId] = correct
+	end
+
+	return {
+		ok = true,
+		data = {
+			lessonId = lessonId,
+			correct = correct,
+			total = total,
+			passed = passed,
+			earnedXp = passed and xp or 0,
+		},
+	}
+end
+
+function SchoolService.init()
+	RemoteRegistry.registerEvent('SchoolCheckIn', function(player: Player)
+		SchoolService.checkIn(player.UserId)
+	end)
+
+	RemoteRegistry.registerFunction('LessonGet', function(player: Player)
+		return SchoolService.getAvailableLessons(player.UserId)
+	end)
+
+	RemoteRegistry.registerEvent('QuizSubmit', function(player: Player, payload: unknown)
+		if type(payload) ~= 'table' then
+			return
+		end
+		local lessonId = payload.lessonId
+		local answers = payload.answers
+		if type(lessonId) ~= 'string' or type(answers) ~= 'table' then
+			return
+		end
+		SchoolService.submitQuiz(player.UserId, lessonId, answers)
+	end)
+end
+
+return SchoolService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="37">
+          <Properties>
+            <string name="Name">SpawnService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- SpawnService (server): menempatkan NPC ke Workspace + ProximityPrompt.
+-- Interaksi prompt di-handle oleh client (PromptTriggered -> fire NPCInteract).
+
+local Workspace = game:GetService('Workspace')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local NPCs = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('NPCs'))
+
+-- Lokasi spawn NPC di dalam asrama (dekat pintu masuk).
+-- Part NPC tingginya 4 stud, jadi tengah ditaruh di atas permukaan lantai (y=1.5).
+local NPC_SPAWNS: { [string]: Vector3 } = {
+	teacher_sakura = Vector3.new(4, 3.5, 6),
+}
+
+local SpawnService = {}
+
+function SpawnService.spawnNPC(npcId: string)
+	local npc = NPCs[npcId]
+	if not npc then
+		warn(`[Spawn] Unknown NPC: {npcId}`)
+		return nil
+	end
+	local position = NPC_SPAWNS[npcId] or Vector3.new(0, 3, 0)
+
+	local model = Instance.new('Model')
+	model.Name = npcId
+
+	local part = Instance.new('Part')
+	part.Size = Vector3.new(2, 4, 1)
+	part.Anchored = true
+	part.Position = position
+	part.Name = 'Body'
+	part.Parent = model
+
+	local humanoid = Instance.new('Humanoid')
+	humanoid.DisplayName = npcId
+	humanoid.Parent = model
+
+	local prompt = Instance.new('ProximityPrompt')
+	prompt.Name = 'InteractPrompt'
+	prompt.ActionText = 'Talk'
+	prompt.ObjectText = npcId
+	prompt.MaxActivationDistance = 8
+	prompt.RequiresLineOfSight = true
+	prompt.Parent = part
+
+	model.Parent = Workspace
+	return model
+end
+
+function SpawnService.init()
+	task.spawn(function()
+		SpawnService.spawnNPC(Config.spawnNpcId)
+	end)
+end
+
+return SpawnService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="38">
+          <Properties>
+            <string name="Name">TimeService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- TimeService: clock game (server-authoritative), day/season/weather.
+-- Skeleton: satu tick per detik, siarkan ke client via RemoteEvent.
+
+local timeInfo = {
+	dayNumber = 1,
+	hour = 6, -- mulai jam 6 pagi
+	minute = 0,
+	season = 'summer',
+	weather = 'clear',
+}
+
+local TimeService = {}
+
+function TimeService.init()
+	-- Tick tiap detik; 1 detik = 1 menit game (durasi 1 hari = 20 menit real)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			timeInfo.minute += 1
+			if timeInfo.minute >= 60 then
+				timeInfo.minute = 0
+				timeInfo.hour += 1
+				if timeInfo.hour >= 24 then
+					timeInfo.hour = 0
+					timeInfo.dayNumber += 1
+				end
+			end
+		end
+	end)
+end
+
+function TimeService.getTimeInfo(): typeof(timeInfo)
+	return timeInfo
+end
+
+return TimeService
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="39">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="40">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="41">
+        <Properties>
+          <string name="Name">Client</string>
+        </Properties>
+        <Item class="Folder" referent="42">
+          <Properties>
+            <string name="Name">controllers</string>
+          </Properties>
+          <Item class="ModuleScript" referent="43">
+            <Properties>
+              <string name="Name">DialogController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- DialogController (client): mendeteksi ProximityPrompt NPC, membuka dialog,
+-- menampilkan teks, dan mengirim pilihan ke server.
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild('PlayerGui')
+
+-- Cache localization locale dari profile (di-set oleh ProfileController)
+local currentLocale = 'en'
+
+-- Dialog UI state
+local dialogGui: ScreenGui?
+
+local DialogController = {}
+
+local function createDialogGui(): ScreenGui
+	if dialogGui then
+		dialogGui.Enabled = true
+		return dialogGui
+	end
+
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'DialogGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	local frame = Instance.new('Frame')
+	frame.Name = 'DialogFrame'
+	frame.AnchorPoint = Vector2.new(0.5, 1)
+	frame.Position = UDim2.new(0.5, 0, 1, -40)
+	frame.Size = UDim2.new(0.8, 0, 0, 180)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.BackgroundTransparency = 0.2
+	frame.BorderSizePixel = 0
+	frame.Parent = gui
+
+	local speaker = Instance.new('TextLabel')
+	speaker.Name = 'Speaker'
+	speaker.Size = UDim2.new(1, 0, 0, 30)
+	speaker.BackgroundTransparency = 1
+	speaker.Font = Enum.Font.GothamBold
+	speaker.TextColor3 = Color3.fromRGB(255, 220, 120)
+	speaker.TextScaled = true
+	speaker.TextXAlignment = Enum.TextXAlignment.Left
+	speaker.Parent = frame
+
+	local text = Instance.new('TextLabel')
+	text.Name = 'Text'
+	text.Position = UDim2.new(0, 0, 0, 35)
+	text.Size = UDim2.new(1, 0, 0, 70)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.Gotham
+	text.TextColor3 = Color3.fromRGB(255, 255, 255)
+	text.TextWrapped = true
+	text.TextXAlignment = Enum.TextXAlignment.Left
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.Parent = frame
+
+	local choices = Instance.new('Frame')
+	choices.Name = 'Choices'
+	choices.Position = UDim2.new(0, 0, 0, 110)
+	choices.Size = UDim2.new(1, 0, 0, 65)
+	choices.BackgroundTransparency = 1
+	choices.Parent = frame
+
+	dialogGui = gui
+	return gui
+end
+
+local function closeDialog()
+	if dialogGui then
+		dialogGui.Enabled = false
+	end
+end
+
+local function clearChoices()
+	if not dialogGui then
+		return
+	end
+	local choices = dialogGui.DialogFrame.Choices
+	for _, child in choices:GetChildren() do
+		child:Destroy()
+	end
+end
+
+local function showLines(npcName: string, lines: { { key: string } }, onDone: () -> ())
+	if not dialogGui then
+		return
+	end
+	local frame = dialogGui.DialogFrame
+	frame.Speaker.Text = LocalizationService.get(currentLocale, npcName)
+
+	local index = 0
+	local continueButton: TextButton = Instance.new('TextButton')
+	continueButton.Name = 'Continue'
+	continueButton.Size = UDim2.new(0.15, 0, 0, 30)
+	continueButton.Position = UDim2.new(1, -60, 0.5, -15)
+	continueButton.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+	continueButton.Font = Enum.Font.Gotham
+	continueButton.Text = LocalizationService.get(currentLocale, 'ui.dialog.continue')
+	continueButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	continueButton.Parent = frame
+
+	local function showNext()
+		index += 1
+		if index > #lines then
+			continueButton:Destroy()
+			onDone()
+			return
+		end
+		frame.Text.Text = LocalizationService.get(currentLocale, lines[index].key)
+	end
+	continueButton.Activated:Connect(showNext)
+	showNext()
+end
+
+local function showChoices(choices: { { textKey: string, next: string?, action: string? } }, onPick: (choice) -> ())
+	if not dialogGui then
+		return
+	end
+	clearChoices()
+	local choicesFrame = dialogGui.DialogFrame.Choices
+	for i, choice in choices do
+		local button = Instance.new('TextButton')
+		button.Name = 'Choice' .. i
+		button.Size = UDim2.new(1, 0, 0, 28)
+		button.Position = UDim2.new(0, 0, 0, (i - 1) * 32)
+		button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		button.Text = LocalizationService.get(currentLocale, choice.textKey)
+		button.Font = Enum.Font.Gotham
+		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.Parent = choicesFrame
+		button.Activated:Connect(function()
+			onPick(choice)
+		end)
+	end
+end
+
+-- Navigasi node: tampilkan baris, lalu pilihan / lanjut / tutup.
+local function showNode(npc: { id: string, displayNameKey: string }, node: { lines: any, choices: any, next: string? })
+	local function handleAction(action: string?)
+		if action then
+			local questId = action:match('^quest_accept:(.+)$')
+			if questId then
+				RemoteController.fire('QuestAccept', questId)
+				return
+			end
+			questId = action:match('^quest_claim:(.+)$')
+			if questId then
+				RemoteController.fire('QuestClaim', questId)
+			end
+		end
+	end
+
+	showLines(npc.displayNameKey, node.lines, function()
+		if node.choices and #node.choices > 0 then
+			showChoices(node.choices, function(choice)
+				handleAction(choice.action)
+				if choice.next then
+					local result = RemoteController.invoke('NPCGetDialog', npc.id, choice.next)
+					if result and result.node then
+						showNode(npc, result.node)
+					else
+						closeDialog()
+					end
+				else
+					closeDialog()
+				end
+			end)
+		elseif node.next then
+			local result = RemoteController.invoke('NPCGetDialog', npc.id, node.next)
+			if result and result.node then
+				showNode(npc, result.node)
+			else
+				closeDialog()
+			end
+		else
+			closeDialog()
+		end
+	end)
+end
+
+-- Buka dialog untuk NPC: fetch root node dari server, tampilkan.
+local function openDialog(npcId: string)
+	local gui = createDialogGui()
+	gui.Enabled = true
+
+	local result = RemoteController.invoke('NPCGetDialog', npcId, nil)
+	if not result or not result.node then
+		closeDialog()
+		return
+	end
+
+	local npc = { id = npcId, displayNameKey = 'npc.' .. npcId .. '.name' }
+	showNode(npc, result.node)
+end
+
+function DialogController.setLocale(locale: string)
+	currentLocale = locale
+end
+
+function DialogController.init()
+	-- Deteksi prompt NPC
+	RemoteController.onEvent('NPCOpenDialog', function(payload)
+		if type(payload) ~= 'table' then
+			return
+		end
+		openDialog(payload.npcId)
+	end)
+
+	-- Cari ProximityPrompt di Workspace (NPC model)
+	local function connectPrompt(prompt: ProximityPrompt)
+		local npcId = prompt.ObjectText
+		prompt.Triggered:Connect(function()
+			RemoteController.fire('NPCInteract', npcId)
+		end)
+	end
+
+	-- Scan NPC yang sudah ada + yang baru muncul
+	for _, model in workspace:GetChildren() do
+		local prompt = model:FindFirstChild('InteractPrompt', true)
+		if prompt and prompt:IsA('ProximityPrompt') then
+			connectPrompt(prompt)
+		end
+	end
+	workspace.DescendantAdded:Connect(function(desc)
+		if desc:IsA('ProximityPrompt') then
+			connectPrompt(desc)
+		end
+	end)
+end
+
+return DialogController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="44">
+            <Properties>
+              <string name="Name">HUDController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- HUDController (client): menampilkan status (Yen, XP, Level) dan quest aktif.
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild('PlayerGui')
+
+local currentLocale = 'en'
+local hudGui: ScreenGui?
+
+local HUDController = {}
+
+local function createGui(): ScreenGui
+	if hudGui then
+		return hudGui
+	end
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'HUDGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	-- Panel status kiri atas
+	local panel = Instance.new('Frame')
+	panel.Name = 'StatusPanel'
+	panel.Position = UDim2.new(0, 10, 0, 10)
+	panel.Size = UDim2.new(0, 200, 0, 70)
+	panel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	panel.BackgroundTransparency = 0.3
+	panel.BorderSizePixel = 0
+	panel.Parent = gui
+
+	local yenLabel = Instance.new('TextLabel')
+	yenLabel.Name = 'Yen'
+	yenLabel.Size = UDim2.new(1, 0, 0, 22)
+	yenLabel.BackgroundTransparency = 1
+	yenLabel.Font = Enum.Font.GothamBold
+	yenLabel.TextColor3 = Color3.fromRGB(140, 220, 140)
+	yenLabel.TextXAlignment = Enum.TextXAlignment.Left
+	yenLabel.Parent = panel
+
+	local xpLabel = Instance.new('TextLabel')
+	xpLabel.Name = 'Xp'
+	xpLabel.Position = UDim2.new(0, 0, 0, 24)
+	xpLabel.Size = UDim2.new(1, 0, 0, 22)
+	xpLabel.BackgroundTransparency = 1
+	xpLabel.Font = Enum.Font.Gotham
+	xpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	xpLabel.TextXAlignment = Enum.TextXAlignment.Left
+	xpLabel.Parent = panel
+
+	local levelLabel = Instance.new('TextLabel')
+	levelLabel.Name = 'Level'
+	levelLabel.Position = UDim2.new(0, 0, 0, 48)
+	levelLabel.Size = UDim2.new(1, 0, 0, 22)
+	levelLabel.BackgroundTransparency = 1
+	levelLabel.Font = Enum.Font.Gotham
+	levelLabel.TextColor3 = Color3.fromRGB(220, 200, 140)
+	levelLabel.TextXAlignment = Enum.TextXAlignment.Left
+	levelLabel.Parent = panel
+
+	-- Quest log kanan atas
+	local questPanel = Instance.new('Frame')
+	questPanel.Name = 'QuestPanel'
+	questPanel.AnchorPoint = Vector2.new(1, 0)
+	questPanel.Position = UDim2.new(1, -10, 0, 10)
+	questPanel.Size = UDim2.new(0, 240, 0, 120)
+	questPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	questPanel.BackgroundTransparency = 0.3
+	questPanel.BorderSizePixel = 0
+	questPanel.Parent = gui
+
+	local questTitle = Instance.new('TextLabel')
+	questTitle.Name = 'Title'
+	questTitle.Size = UDim2.new(1, 0, 0, 24)
+	questTitle.BackgroundTransparency = 1
+	questTitle.Font = Enum.Font.GothamBold
+	questTitle.TextColor3 = Color3.fromRGB(255, 220, 120)
+	questTitle.TextXAlignment = Enum.TextXAlignment.Left
+	questTitle.Parent = questPanel
+
+	local questList = Instance.new('Frame')
+	questList.Name = 'List'
+	questList.Position = UDim2.new(0, 0, 0, 26)
+	questList.Size = UDim2.new(1, 0, 1, -26)
+	questList.BackgroundTransparency = 1
+	questList.Parent = questPanel
+
+	-- Tombol buka panel sekolah
+	local schoolBtn = Instance.new('TextButton')
+	schoolBtn.Name = 'SchoolButton'
+	schoolBtn.Position = UDim2.new(0, 10, 0, 90)
+	schoolBtn.Size = UDim2.new(0, 110, 0, 30)
+	schoolBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+	schoolBtn.Font = Enum.Font.Gotham
+	schoolBtn.Text = LocalizationService.get(currentLocale, 'ui.school.open')
+	schoolBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	schoolBtn.Parent = gui
+	schoolBtn.Activated:Connect(function()
+		local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
+		SchoolController.open()
+	end)
+
+	hudGui = gui
+	return gui
+end
+
+local function clearQuestList()
+	if not hudGui then
+		return
+	end
+	local list = hudGui.QuestPanel.List
+	for _, child in list:GetChildren() do
+		child:Destroy()
+	end
+end
+
+local function setStatus(profile: ProfileTypes.Profile)
+	if not hudGui then
+		return
+	end
+	hudGui.StatusPanel.Yen.Text = '¥ ' .. tostring(profile.economy.yen)
+	hudGui.StatusPanel.Xp.Text = 'JP XP: ' .. tostring(profile.progress.japaneseXp)
+	hudGui.StatusPanel.Level.Text = 'Level: ' .. tostring(profile.progress.japaneseLevel)
+end
+
+local function setQuests(quests: { { id: string } })
+	if not hudGui then
+		return
+	end
+	clearQuestList()
+	local list = hudGui.QuestPanel.List
+	if #quests == 0 then
+		local empty = Instance.new('TextLabel')
+		empty.Text = LocalizationService.get(currentLocale, 'ui.questlog.empty')
+		empty.Size = UDim2.new(1, 0, 0, 20)
+		empty.BackgroundTransparency = 1
+		empty.Font = Enum.Font.Gotham
+		empty.TextColor3 = Color3.fromRGB(180, 180, 180)
+		empty.TextXAlignment = Enum.TextXAlignment.Left
+		empty.Parent = list
+		return
+	end
+	for i, quest in quests do
+		local label = Instance.new('TextLabel')
+		label.Name = 'Quest' .. i
+		label.Size = UDim2.new(1, 0, 0, 20)
+		label.Position = UDim2.new(0, 0, 0, (i - 1) * 22)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.Gotham
+		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = LocalizationService.get(currentLocale, 'quest.' .. quest.id .. '.title')
+		label.Parent = list
+	end
+end
+
+function HUDController.setLocale(locale: string)
+	currentLocale = locale
+end
+
+function HUDController.refresh(profile: ProfileTypes.Profile, quests: { { id: string } })
+	setStatus(profile)
+	setQuests(quests)
+end
+
+function HUDController.init()
+	createGui()
+	setQuests({})
+
+	-- Ambil profile & quest aktif dari server
+	task.spawn(function()
+		local profile = RemoteController.invoke('GetProfile')
+		if type(profile) == 'table' then
+			setStatus(profile)
+			local quests = RemoteController.invoke('GetQuestLog')
+			if type(quests) == 'table' then
+				setQuests(quests)
+			end
+		end
+	end)
+end
+
+return HUDController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="45">
+            <Properties>
+              <string name="Name">ProfileController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- ProfileController (client): mengambil profile dari server & menyimpan
+-- locale lokal untuk LocalizationService.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local profile: ProfileTypes.Profile?
+
+local ProfileController = {}
+
+function ProfileController.getProfile(): ProfileTypes.Profile?
+	return profile
+end
+
+function ProfileController.init()
+	-- Ambil profile dari server (RemoteFunction GetProfile)
+	task.spawn(function()
+		local result = RemoteController.invoke('GetProfile')
+		if type(result) == 'table' then
+			profile = result
+			local locale = LocalizationService.getLocaleForProfile(result)
+			-- Set locale untuk dialog & school controller
+			local DialogController = require(script.Parent:WaitForChild('DialogController'))
+			DialogController.setLocale(locale)
+			local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
+			SchoolController.setLocale(locale)
+		end
+	end)
+end
+
+return ProfileController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="46">
+            <Properties>
+              <string name="Name">RemoteController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- RemoteController: client-side wrapper untuk memanggil remote yang
+-- diregistrasi di shared/remotes.lua.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local remotesFolder = ReplicatedStorage:WaitForChild('Remotes')
+local events: { [string]: RemoteEvent } = {}
+local functions: { [string]: RemoteFunction } = {}
+
+for _, child in remotesFolder:GetChildren() do
+	if child:IsA('RemoteEvent') then
+		events[child.Name] = child
+	elseif child:IsA('RemoteFunction') then
+		functions[child.Name] = child
+	end
+end
+
+local RemoteController = {}
+
+function RemoteController.fire(name: string, ...)
+	local event = events[name]
+	if event then
+		event:FireServer(...)
+	else
+		warn(`[Client] Unknown event: {name}`)
+	end
+end
+
+function RemoteController.invoke(name: string, ...)
+	local fn = functions[name]
+	if fn then
+		return fn:InvokeServer(...)
+	end
+	warn(`[Client] Unknown function: {name}`)
+	return nil
+end
+
+function RemoteController.onEvent(name: string, handler: (...any) -> ())
+	local event = events[name]
+	if event then
+		event.OnClientEvent:Connect(handler)
+	else
+		warn(`[Client] Cannot listen to unknown event: {name}`)
+	end
+end
+
+function RemoteController.init()
+	-- Skeleton
+end
+
+return RemoteController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="47">
+            <Properties>
+              <string name="Name">SchoolController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- SchoolController (client): menampilkan panel kelas (lesson list & quiz).
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild('PlayerGui')
+
+local currentLocale = 'en'
+local schoolGui: ScreenGui?
+
+local SchoolController = {}
+
+local function createGui(): ScreenGui
+	if schoolGui then
+		return schoolGui
+	end
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'SchoolGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	local frame = Instance.new('Frame')
+	frame.Name = 'SchoolFrame'
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	frame.Size = UDim2.new(0.6, 0, 0.6, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	frame.BorderSizePixel = 0
+	frame.Visible = false
+	frame.Parent = gui
+
+	local title = Instance.new('TextLabel')
+	title.Name = 'Title'
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextColor3 = Color3.fromRGB(255, 220, 120)
+	title.Text = 'Lessons'
+	title.Parent = frame
+
+	local content = Instance.new('ScrollingFrame')
+	content.Name = 'Content'
+	content.Position = UDim2.new(0, 10, 0, 50)
+	content.Size = UDim2.new(1, -20, 1, -90)
+	content.BackgroundTransparency = 1
+	content.ScrollBarThickness = 6
+	content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	content.Parent = frame
+
+	local closeBtn = Instance.new('TextButton')
+	closeBtn.Name = 'Close'
+	closeBtn.AnchorPoint = Vector2.new(1, 0)
+	closeBtn.Position = UDim2.new(1, -10, 0, 8)
+	closeBtn.Size = UDim2.new(0, 60, 0, 28)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
+	closeBtn.Text = 'X'
+	closeBtn.Font = Enum.Font.Gotham
+	closeBtn.Parent = frame
+	closeBtn.Activated:Connect(function()
+		frame.Visible = false
+	end)
+
+	schoolGui = gui
+	return gui
+end
+
+local function clearContent()
+	if not schoolGui then
+		return
+	end
+	local content = schoolGui.SchoolFrame.Content
+	for _, child in content:GetChildren() do
+		child:Destroy()
+	end
+end
+
+-- Tampilkan quiz lesson; tampilkan soal, kumpulkan jawaban, submit.
+local function showQuiz(lessonId: string)
+	if not schoolGui then
+		return
+	end
+	clearContent()
+	local content = schoolGui.SchoolFrame.Content
+
+	local Items = require(ReplicatedStorage.Shared.data.Items)
+	local lesson = Items.LESSONS[lessonId]
+	if not lesson then
+		return
+	end
+
+	local answers: { [number]: number } = {}
+
+	local promptLabel = Instance.new('TextLabel')
+	promptLabel.Name = 'Prompt'
+	promptLabel.Size = UDim2.new(1, 0, 0, 80)
+	promptLabel.BackgroundTransparency = 1
+	promptLabel.Font = Enum.Font.Gotham
+	promptLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	promptLabel.TextWrapped = true
+	promptLabel.TextXAlignment = Enum.TextXAlignment.Left
+	promptLabel.TextYAlignment = Enum.TextYAlignment.Top
+	promptLabel.Parent = content
+
+	local choiceFrame = Instance.new('Frame')
+	choiceFrame.Name = 'Choices'
+	choiceFrame.Position = UDim2.new(0, 0, 0, 90)
+	choiceFrame.Size = UDim2.new(1, 0, 0, 140)
+	choiceFrame.BackgroundTransparency = 1
+	choiceFrame.Parent = content
+
+	local function showQuestion(index: number)
+		local question = lesson.quiz[index]
+		if not question then
+			-- Submit
+			RemoteController.fire('QuizSubmit', { lessonId = lessonId, answers = answers })
+			schoolGui.SchoolFrame.Visible = false
+			return
+		end
+		promptLabel.Text = LocalizationService.get(currentLocale, question.promptKey)
+		-- Bersihkan pilihan lama
+		for _, child in choiceFrame:GetChildren() do
+			child:Destroy()
+		end
+		for ci, choiceKey in ipairs(question.choices) do
+			local btn = Instance.new('TextButton')
+			btn.Name = 'Choice' .. ci
+			btn.Size = UDim2.new(1, 0, 0, 32)
+			btn.Position = UDim2.new(0, 0, 0, (ci - 1) * 38)
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+			btn.Font = Enum.Font.Gotham
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Text = LocalizationService.get(currentLocale, choiceKey)
+			btn.Parent = choiceFrame
+			btn.Activated:Connect(function()
+				answers[index] = ci - 1
+				showQuestion(index + 1)
+			end)
+		end
+	end
+	showQuestion(1)
+end
+
+-- Tampilkan daftar lesson; klik untuk mulai quiz.
+local function showLessonList()
+	if not schoolGui then
+		return
+	end
+	clearContent()
+	local content = schoolGui.SchoolFrame.Content
+	local lessons = RemoteController.invoke('LessonGet')
+	if type(lessons) ~= 'table' then
+		return
+	end
+
+	local y = 0
+	for _, lesson in ipairs(lessons) do
+		local row = Instance.new('TextButton')
+		row.Name = 'Lesson_' .. lesson.id
+		row.Size = UDim2.new(1, 0, 0, 36)
+		row.Position = UDim2.new(0, 0, 0, y)
+		row.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+		row.Font = Enum.Font.Gotham
+		row.TextColor3 = Color3.fromRGB(255, 255, 255)
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.Text = LocalizationService.get(currentLocale, lesson.titleKey)
+		if lesson.completed then
+			row.Text = '[OK] ' .. row.Text
+		end
+		row.Parent = content
+
+		if not lesson.completed then
+			row.Activated:Connect(function()
+				showQuiz(lesson.id)
+			end)
+		end
+		y += 40
+	end
+end
+
+function SchoolController.open()
+	if not schoolGui then
+		createGui()
+	end
+	schoolGui.SchoolFrame.Visible = true
+	showLessonList()
+end
+
+function SchoolController.setLocale(locale: string)
+	currentLocale = locale
+end
+
+function SchoolController.init()
+	-- Skeleton: tombol buka panel dipasang nanti / oleh input.
+	createGui()
+end
+
+return SchoolController
+]]></string>
+            </Properties>
+          </Item>
+        </Item>
+        <Item class="LocalScript" referent="48">
+          <Properties>
+            <string name="Name">runner</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Entry point client. Memuat controller.
+
+for _, module in script.Parent:GetChildren() do
+	if module:IsA('ModuleScript') and module.Name:match('Controller$') then
+		local ok, controller = pcall(require, module)
+		if ok and typeof(controller) == 'table' and controller.init then
+			controller.init()
+			print(`[Client] Loaded {module.Name}`)
+		else
+			warn(`[Client] Failed to load {module.Name}: {controller}`)
+		end
+	end
+end
+
+print('[Client] Suwa Life client runner ready.')
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="49">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="NeedsPivotMigration">false</bool>
+    </Properties>
+    <Item class="Model" referent="50">
+      <Properties>
+        <string name="Name">SuwaCentral</string>
+        <bool name="NeedsPivotMigration">false</bool>
+      </Properties>
+      <Item class="Part" referent="51">
+        <Properties>
+          <string name="Name">Ground</string>
+          <bool name="Anchored">true</bool>
+          <Color3uint8 name="Color3uint8">7566195</Color3uint8>
+          <token name="Material">1280</token>
+          <Vector3 name="Position">
+            <X>0</X>
+            <Y>-0.5</Y>
+            <Z>0</Z>
+          </Vector3>
+          <Vector3 name="size">
+            <X>120</X>
+            <Y>1</Y>
+            <Z>120</Z>
+          </Vector3>
+        </Properties>
+      </Item>
+      <Item class="Model" referent="52">
+        <Properties>
+          <string name="Name">Dorm</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="Part" referent="53">
+          <Properties>
+            <string name="Name">Floor</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">12556651</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="Position">
+              <X>0</X>
+              <Y>1</Y>
+              <Z>0</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>24</X>
+              <Y>1</Y>
+              <Z>18</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="54">
+          <Properties>
+            <string name="Name">WallBack</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">14270361</Color3uint8>
+            <token name="Material">2310</token>
+            <Vector3 name="Position">
+              <X>0</X>
+              <Y>5</Y>
+              <Z>-9.5</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>24</X>
+              <Y>8</Y>
+              <Z>1</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="55">
+          <Properties>
+            <string name="Name">WallLeft</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">14270361</Color3uint8>
+            <token name="Material">2310</token>
+            <Vector3 name="Position">
+              <X>-12.5</X>
+              <Y>5</Y>
+              <Z>0</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>1</X>
+              <Y>8</Y>
+              <Z>18</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="56">
+          <Properties>
+            <string name="Name">WallRight</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">14270361</Color3uint8>
+            <token name="Material">2310</token>
+            <Vector3 name="Position">
+              <X>12.5</X>
+              <Y>5</Y>
+              <Z>0</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>1</X>
+              <Y>8</Y>
+              <Z>18</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="57">
+          <Properties>
+            <string name="Name">WallFront</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">14270361</Color3uint8>
+            <token name="Material">2310</token>
+            <Vector3 name="Position">
+              <X>0</X>
+              <Y>5</Y>
+              <Z>9.5</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>24</X>
+              <Y>8</Y>
+              <Z>1</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="58">
+          <Properties>
+            <string name="Name">Roof</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">10053197</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="Position">
+              <X>0</X>
+              <Y>9</Y>
+              <Z>0</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>26</X>
+              <Y>1</Y>
+              <Z>20</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="59">
+          <Properties>
+            <string name="Name">DoorwayTop</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">14270361</Color3uint8>
+            <token name="Material">2310</token>
+            <Vector3 name="Position">
+              <X>0</X>
+              <Y>6.5</Y>
+              <Z>9.5</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>24</X>
+              <Y>3</Y>
+              <Z>1</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="60">
+          <Properties>
+            <string name="Name">BedFrame</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">9201229</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="Position">
+              <X>-8</X>
+              <Y>1.5</Y>
+              <Z>-5</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>4</X>
+              <Y>1</Y>
+              <Z>7</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="61">
+          <Properties>
+            <string name="Name">Mattress</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">15132390</Color3uint8>
+            <token name="Material">1312</token>
+            <Vector3 name="Position">
+              <X>-8</X>
+              <Y>2.2</Y>
+              <Z>-5</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>3.6</X>
+              <Y>0.5</Y>
+              <Z>6</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="62">
+          <Properties>
+            <string name="Name">Pillow</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">15921906</Color3uint8>
+            <token name="Material">1312</token>
+            <Vector3 name="Position">
+              <X>-8</X>
+              <Y>2.6</Y>
+              <Z>-8.2</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>3.6</X>
+              <Y>0.4</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="63">
+          <Properties>
+            <string name="Name">Desk</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">10056525</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="Position">
+              <X>6</X>
+              <Y>2.4</Y>
+              <Z>-6</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>5</X>
+              <Y>0.3</Y>
+              <Z>2.5</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="64">
+          <Properties>
+            <string name="Name">DeskLeg</string>
+            <bool name="Anchored">true</bool>
+            <Color3uint8 name="Color3uint8">8413506</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="Position">
+              <X>6</X>
+              <Y>1.7</Y>
+              <Z>-6</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>5</X>
+              <Y>1.2</Y>
+              <Z>0.3</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="SpawnLocation" referent="65">
+          <Properties>
+            <string name="Name">PlayerSpawn</string>
+            <bool name="Anchored">true</bool>
+            <int name="Duration">5</int>
+            <Vector3 name="Position">
+              <X>0</X>
+              <Y>2.5</Y>
+              <Z>3</Z>
+            </Vector3>
+            <Vector3 name="size">
+              <X>4</X>
+              <Y>1</Y>
+              <Z>4</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

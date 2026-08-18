@@ -1,0 +1,5217 @@
+<roblox version="4">
+  <Item class="ReplicatedFirst" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedFirst</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">TestEZ</string>
+        <string name="Source">local Expectation = require(script.Expectation)
+local TestBootstrap = require(script.TestBootstrap)
+local TestEnum = require(script.TestEnum)
+local TestPlan = require(script.TestPlan)
+local TestPlanner = require(script.TestPlanner)
+local TestResults = require(script.TestResults)
+local TestRunner = require(script.TestRunner)
+local TestSession = require(script.TestSession)
+local TextReporter = require(script.Reporters.TextReporter)
+local TextReporterQuiet = require(script.Reporters.TextReporterQuiet)
+local TeamCityReporter = require(script.Reporters.TeamCityReporter)
+
+local function run(testRoot, callback)
+	local modules = TestBootstrap:getModules(testRoot)
+	local plan = TestPlanner.createPlan(modules)
+	local results = TestRunner.runPlan(plan)
+
+	callback(results)
+end
+
+local TestEZ = {
+	run = run,
+
+	Expectation = Expectation,
+	TestBootstrap = TestBootstrap,
+	TestEnum = TestEnum,
+	TestPlan = TestPlan,
+	TestPlanner = TestPlanner,
+	TestResults = TestResults,
+	TestRunner = TestRunner,
+	TestSession = TestSession,
+
+	Reporters = {
+		TextReporter = TextReporter,
+		TextReporterQuiet = TextReporterQuiet,
+		TeamCityReporter = TeamCityReporter,
+	},
+}
+
+return TestEZ</string>
+      </Properties>
+      <Item class="ModuleScript" referent="2">
+        <Properties>
+          <string name="Name">Context</string>
+          <string name="Source"><![CDATA[--[[
+	The Context object implements a write-once key-value store. It also allows
+	for a new Context object to inherit the entries from an existing one.
+]]
+local Context = {}
+
+function Context.new(parent)
+	local meta = {}
+	local index = {}
+	meta.__index = index
+
+	if parent then
+		for key, value in pairs(getmetatable(parent).__index) do
+			index[key] = value
+		end
+	end
+
+	function meta.__newindex(_obj, key, value)
+		assert(index[key] == nil, string.format("Cannot reassign %s in context", tostring(key)))
+		index[key] = value
+	end
+
+	return setmetatable({}, meta)
+end
+
+return Context
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">Expectation</string>
+          <string name="Source"><![CDATA[--[[
+	Allows creation of expectation statements designed for behavior-driven
+	testing (BDD). See Chai (JS) or RSpec (Ruby) for examples of other BDD
+	frameworks.
+
+	The Expectation class is exposed to tests as a function called `expect`:
+
+		expect(5).to.equal(5)
+		expect(foo()).to.be.ok()
+
+	Expectations can be negated using .never:
+
+		expect(true).never.to.equal(false)
+
+	Expectations throw errors when their conditions are not met.
+]]
+
+local Expectation = {}
+
+--[[
+	These keys don't do anything except make expectations read more cleanly
+]]
+local SELF_KEYS = {
+	to = true,
+	be = true,
+	been = true,
+	have = true,
+	was = true,
+	at = true,
+}
+
+--[[
+	These keys invert the condition expressed by the Expectation.
+]]
+local NEGATION_KEYS = {
+	never = true,
+}
+
+--[[
+	Extension of Lua's 'assert' that lets you specify an error level.
+]]
+local function assertLevel(condition, message, level)
+	message = message or "Assertion failed!"
+	level = level or 1
+
+	if not condition then
+		error(message, level + 1)
+	end
+end
+
+--[[
+	Returns a version of the given method that can be called with either . or :
+]]
+local function bindSelf(self, method)
+	return function(firstArg, ...)
+		if firstArg == self then
+			return method(self, ...)
+		else
+			return method(self, firstArg, ...)
+		end
+	end
+end
+
+local function formatMessage(result, trueMessage, falseMessage)
+	if result then
+		return trueMessage
+	else
+		return falseMessage
+	end
+end
+
+--[[
+	Create a new expectation
+]]
+function Expectation.new(value)
+	local self = {
+		value = value,
+		successCondition = true,
+		condition = false,
+		matchers = {},
+		_boundMatchers = {},
+	}
+
+	setmetatable(self, Expectation)
+
+	self.a = bindSelf(self, self.a)
+	self.an = self.a
+	self.ok = bindSelf(self, self.ok)
+	self.equal = bindSelf(self, self.equal)
+	self.throw = bindSelf(self, self.throw)
+	self.near = bindSelf(self, self.near)
+
+	return self
+end
+
+function Expectation.checkMatcherNameCollisions(name)
+	if SELF_KEYS[name] or NEGATION_KEYS[name] or Expectation[name] then
+		return false
+	end
+
+	return true
+end
+
+function Expectation:extend(matchers)
+	self.matchers = matchers or {}
+
+	for name, implementation in pairs(self.matchers) do
+		self._boundMatchers[name] = bindSelf(self, function(_self, ...)
+			local result = implementation(self.value, ...)
+			local pass = result.pass == self.successCondition
+
+			assertLevel(pass, result.message, 3)
+			self:_resetModifiers()
+			return self
+		end)
+	end
+
+	return self
+end
+
+function Expectation.__index(self, key)
+	-- Keys that don't do anything except improve readability
+	if SELF_KEYS[key] then
+		return self
+	end
+
+	-- Invert your assertion
+	if NEGATION_KEYS[key] then
+		local newExpectation = Expectation.new(self.value):extend(self.matchers)
+		newExpectation.successCondition = not self.successCondition
+
+		return newExpectation
+	end
+
+	if self._boundMatchers[key] then
+		return self._boundMatchers[key]
+	end
+
+	-- Fall back to methods provided by Expectation
+	return Expectation[key]
+end
+
+--[[
+	Called by expectation terminators to reset modifiers in a statement.
+
+	This makes chains like:
+
+		expect(5)
+			.never.to.equal(6)
+			.to.equal(5)
+
+	Work as expected.
+]]
+function Expectation:_resetModifiers()
+	self.successCondition = true
+end
+
+--[[
+	Assert that the expectation value is the given type.
+
+	expect(5).to.be.a("number")
+]]
+function Expectation:a(typeName)
+	local result = (type(self.value) == typeName) == self.successCondition
+
+	local message = formatMessage(self.successCondition,
+		("Expected value of type %q, got value %q of type %s"):format(
+			typeName,
+			tostring(self.value),
+			type(self.value)
+		),
+		("Expected value not of type %q, got value %q of type %s"):format(
+			typeName,
+			tostring(self.value),
+			type(self.value)
+		)
+	)
+
+	assertLevel(result, message, 3)
+	self:_resetModifiers()
+
+	return self
+end
+
+-- Make alias public on class
+Expectation.an = Expectation.a
+
+--[[
+	Assert that our expectation value is truthy
+]]
+function Expectation:ok()
+	local result = (self.value ~= nil) == self.successCondition
+
+	local message = formatMessage(self.successCondition,
+		("Expected value %q to be non-nil"):format(
+			tostring(self.value)
+		),
+		("Expected value %q to be nil"):format(
+			tostring(self.value)
+		)
+	)
+
+	assertLevel(result, message, 3)
+	self:_resetModifiers()
+
+	return self
+end
+
+--[[
+	Assert that our expectation value is equal to another value
+]]
+function Expectation:equal(otherValue)
+	local result = (self.value == otherValue) == self.successCondition
+
+	local message = formatMessage(self.successCondition,
+		("Expected value %q (%s), got %q (%s) instead"):format(
+			tostring(otherValue),
+			type(otherValue),
+			tostring(self.value),
+			type(self.value)
+		),
+		("Expected anything but value %q (%s)"):format(
+			tostring(otherValue),
+			type(otherValue)
+		)
+	)
+
+	assertLevel(result, message, 3)
+	self:_resetModifiers()
+
+	return self
+end
+
+--[[
+	Assert that our expectation value is equal to another value within some
+	inclusive limit.
+]]
+function Expectation:near(otherValue, limit)
+	assert(type(self.value) == "number", "Expectation value must be a number to use 'near'")
+	assert(type(otherValue) == "number", "otherValue must be a number")
+	assert(type(limit) == "number" or limit == nil, "limit must be a number or nil")
+
+	limit = limit or 1e-7
+
+	local result = (math.abs(self.value - otherValue) <= limit) == self.successCondition
+
+	local message = formatMessage(self.successCondition,
+		("Expected value to be near %f (within %f) but got %f instead"):format(
+			otherValue,
+			limit,
+			self.value
+		),
+		("Expected value to not be near %f (within %f) but got %f instead"):format(
+			otherValue,
+			limit,
+			self.value
+		)
+	)
+
+	assertLevel(result, message, 3)
+	self:_resetModifiers()
+
+	return self
+end
+
+--[[
+	Assert that our functoid expectation value throws an error when called.
+	An optional error message can be passed to assert that the error message
+	contains the given value.
+]]
+function Expectation:throw(messageSubstring)
+	local ok, err = pcall(self.value)
+	local result = ok ~= self.successCondition
+
+	if messageSubstring and not ok then
+		if self.successCondition then
+			result = err:find(messageSubstring, 1, true) ~= nil
+		else
+			result = err:find(messageSubstring, 1, true) == nil
+		end
+	end
+
+	local message
+
+	if messageSubstring then
+		message = formatMessage(self.successCondition,
+			("Expected function to throw an error containing %q, but it %s"):format(
+				messageSubstring,
+				err and ("threw: %s"):format(err) or "did not throw."
+			),
+			("Expected function to never throw an error containing %q, but it threw: %s"):format(
+				messageSubstring,
+				tostring(err)
+			)
+		)
+	else
+		message = formatMessage(self.successCondition,
+			"Expected function to throw an error, but it did not throw.",
+			("Expected function to succeed, but it threw an error: %s"):format(
+				tostring(err)
+			)
+		)
+	end
+
+	assertLevel(result, message, 3)
+	self:_resetModifiers()
+
+	return self
+end
+
+return Expectation
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="4">
+        <Properties>
+          <string name="Name">ExpectationContext</string>
+          <string name="Source"><![CDATA[local Expectation = require(script.Parent.Expectation)
+local checkMatcherNameCollisions = Expectation.checkMatcherNameCollisions
+
+local function copy(t)
+	local result = {}
+
+	for key, value in pairs(t) do
+		result[key] = value
+	end
+
+	return result
+end
+
+local ExpectationContext = {}
+ExpectationContext.__index = ExpectationContext
+
+function ExpectationContext.new(parent)
+	local self = {
+		_extensions = parent and copy(parent._extensions) or {},
+	}
+
+	return setmetatable(self, ExpectationContext)
+end
+
+function ExpectationContext:startExpectationChain(...)
+	return Expectation.new(...):extend(self._extensions)
+end
+
+function ExpectationContext:extend(config)
+	for key, value in pairs(config) do
+		assert(self._extensions[key] == nil, string.format("Cannot reassign %q in expect.extend", key))
+		assert(checkMatcherNameCollisions(key), string.format("Cannot overwrite matcher %q; it already exists", key))
+
+		self._extensions[key] = value
+	end
+end
+
+return ExpectationContext
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="5">
+        <Properties>
+          <string name="Name">LifecycleHooks</string>
+          <string name="Source"><![CDATA[local TestEnum = require(script.Parent.TestEnum)
+
+local LifecycleHooks = {}
+LifecycleHooks.__index = LifecycleHooks
+
+function LifecycleHooks.new()
+	local self = {
+		_stack = {},
+	}
+	return setmetatable(self, LifecycleHooks)
+end
+
+--[[
+	Returns an array of `beforeEach` hooks in FIFO order
+]]
+function LifecycleHooks:getBeforeEachHooks()
+	local key = TestEnum.NodeType.BeforeEach
+	local hooks = {}
+
+	for _, level in ipairs(self._stack) do
+		for _, hook in ipairs(level[key]) do
+			table.insert(hooks, hook)
+		end
+	end
+
+	return hooks
+end
+
+--[[
+	Returns an array of `afterEach` hooks in FILO order
+]]
+function LifecycleHooks:getAfterEachHooks()
+	local key = TestEnum.NodeType.AfterEach
+	local hooks = {}
+
+	for _, level in ipairs(self._stack) do
+		for _, hook in ipairs(level[key]) do
+			table.insert(hooks, 1, hook)
+		end
+	end
+
+	return hooks
+end
+
+--[[
+	Pushes uncalled beforeAll and afterAll hooks back up the stack
+]]
+function LifecycleHooks:popHooks()
+	table.remove(self._stack, #self._stack)
+end
+
+function LifecycleHooks:pushHooksFrom(planNode)
+	assert(planNode ~= nil)
+
+	table.insert(self._stack, {
+		[TestEnum.NodeType.BeforeAll] = self:_getHooksOfType(planNode.children, TestEnum.NodeType.BeforeAll),
+		[TestEnum.NodeType.AfterAll] = self:_getHooksOfType(planNode.children, TestEnum.NodeType.AfterAll),
+		[TestEnum.NodeType.BeforeEach] = self:_getHooksOfType(planNode.children, TestEnum.NodeType.BeforeEach),
+		[TestEnum.NodeType.AfterEach] = self:_getHooksOfType(planNode.children, TestEnum.NodeType.AfterEach),
+	})
+end
+
+--[[
+	Get the beforeAll hooks from the current level.
+]]
+function LifecycleHooks:getBeforeAllHooks()
+	return self._stack[#self._stack][TestEnum.NodeType.BeforeAll]
+end
+
+--[[
+	Get the afterAll hooks from the current level.
+]]
+function LifecycleHooks:getAfterAllHooks()
+	return self._stack[#self._stack][TestEnum.NodeType.AfterAll]
+end
+
+function LifecycleHooks:_getHooksOfType(nodes, key)
+	local hooks = {}
+
+	for _, node in ipairs(nodes) do
+		if node.type == key then
+			table.insert(hooks, node.callback)
+		end
+	end
+
+	return hooks
+end
+
+return LifecycleHooks
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Folder" referent="6">
+        <Properties>
+          <string name="Name">Reporters</string>
+        </Properties>
+        <Item class="ModuleScript" referent="7">
+          <Properties>
+            <string name="Name">TeamCityReporter</string>
+            <string name="Source">local TestService = game:GetService("TestService")
+
+local TestEnum = require(script.Parent.Parent.TestEnum)
+
+local TeamCityReporter = {}
+
+local function teamCityEscape(str)
+	str = string.gsub(str, "([]|'[])","|%1")
+	str = string.gsub(str, "\r", "|r")
+	str = string.gsub(str, "\n", "|n")
+	return str
+end
+
+local function teamCityEnterSuite(suiteName)
+	return string.format("##teamcity[testSuiteStarted name='%s']", teamCityEscape(suiteName))
+end
+
+local function teamCityLeaveSuite(suiteName)
+	return string.format("##teamcity[testSuiteFinished name='%s']", teamCityEscape(suiteName))
+end
+
+local function teamCityEnterCase(caseName)
+	return string.format("##teamcity[testStarted name='%s']", teamCityEscape(caseName))
+end
+
+local function teamCityLeaveCase(caseName)
+	return string.format("##teamcity[testFinished name='%s']", teamCityEscape(caseName))
+end
+
+local function teamCityFailCase(caseName, errorMessage)
+	return string.format("##teamcity[testFailed name='%s' message='%s']",
+		teamCityEscape(caseName), teamCityEscape(errorMessage))
+end
+
+local function reportNode(node, buffer, level)
+	buffer = buffer or {}
+	level = level or 0
+	if node.status == TestEnum.TestStatus.Skipped then
+		return buffer
+	end
+	if node.planNode.type == TestEnum.NodeType.Describe then
+		table.insert(buffer, teamCityEnterSuite(node.planNode.phrase))
+		for _, child in ipairs(node.children) do
+			reportNode(child, buffer, level + 1)
+		end
+		table.insert(buffer, teamCityLeaveSuite(node.planNode.phrase))
+	else
+		table.insert(buffer, teamCityEnterCase(node.planNode.phrase))
+		if node.status == TestEnum.TestStatus.Failure then
+			table.insert(buffer, teamCityFailCase(node.planNode.phrase, table.concat(node.errors,"\n")))
+		end
+		table.insert(buffer, teamCityLeaveCase(node.planNode.phrase))
+	end
+end
+
+local function reportRoot(node)
+	local buffer = {}
+
+	for _, child in ipairs(node.children) do
+		reportNode(child, buffer, 0)
+	end
+
+	return buffer
+end
+
+local function report(root)
+	local buffer = reportRoot(root)
+
+	return table.concat(buffer, "\n")
+end
+
+function TeamCityReporter.report(results)
+	local resultBuffer = {
+		"Test results:",
+		report(results),
+		("%d passed, %d failed, %d skipped"):format(
+			results.successCount,
+			results.failureCount,
+			results.skippedCount
+		)
+	}
+
+	print(table.concat(resultBuffer, "\n"))
+
+	if results.failureCount > 0 then
+		print(("%d test nodes reported failures."):format(results.failureCount))
+	end
+
+	if #results.errors > 0 then
+		print("Errors reported by tests:")
+		print("")
+
+		for _, message in ipairs(results.errors) do
+			TestService:Error(message)
+
+			-- Insert a blank line after each error
+			print("")
+		end
+	end
+end
+
+return TeamCityReporter</string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="8">
+          <Properties>
+            <string name="Name">TextReporter</string>
+            <string name="Source">--[[
+	The TextReporter uses the results from a completed test to output text to
+	standard output and TestService.
+]]
+
+local TestService = game:GetService("TestService")
+
+local TestEnum = require(script.Parent.Parent.TestEnum)
+
+local INDENT = (" "):rep(3)
+local STATUS_SYMBOLS = {
+	[TestEnum.TestStatus.Success] = "+",
+	[TestEnum.TestStatus.Failure] = "-",
+	[TestEnum.TestStatus.Skipped] = "~"
+}
+local UNKNOWN_STATUS_SYMBOL = "?"
+
+local TextReporter = {}
+
+local function compareNodes(a, b)
+	return a.planNode.phrase:lower() &lt; b.planNode.phrase:lower()
+end
+
+local function reportNode(node, buffer, level)
+	buffer = buffer or {}
+	level = level or 0
+
+	if node.status == TestEnum.TestStatus.Skipped then
+		return buffer
+	end
+
+	local line
+
+	if node.status then
+		local symbol = STATUS_SYMBOLS[node.status] or UNKNOWN_STATUS_SYMBOL
+
+		line = ("%s[%s] %s"):format(
+			INDENT:rep(level),
+			symbol,
+			node.planNode.phrase
+		)
+	else
+		line = ("%s%s"):format(
+			INDENT:rep(level),
+			node.planNode.phrase
+		)
+	end
+
+	table.insert(buffer, line)
+	table.sort(node.children, compareNodes)
+
+	for _, child in ipairs(node.children) do
+		reportNode(child, buffer, level + 1)
+	end
+
+	return buffer
+end
+
+local function reportRoot(node)
+	local buffer = {}
+	table.sort(node.children, compareNodes)
+
+	for _, child in ipairs(node.children) do
+		reportNode(child, buffer, 0)
+	end
+
+	return buffer
+end
+
+local function report(root)
+	local buffer = reportRoot(root)
+
+	return table.concat(buffer, "\n")
+end
+
+function TextReporter.report(results)
+	local resultBuffer = {
+		"Test results:",
+		report(results),
+		("%d passed, %d failed, %d skipped"):format(
+			results.successCount,
+			results.failureCount,
+			results.skippedCount
+		)
+	}
+
+	print(table.concat(resultBuffer, "\n"))
+
+	if results.failureCount > 0 then
+		print(("%d test nodes reported failures."):format(results.failureCount))
+	end
+
+	if #results.errors > 0 then
+		print("Errors reported by tests:")
+		print("")
+
+		for _, message in ipairs(results.errors) do
+			TestService:Error(message)
+
+			-- Insert a blank line after each error
+			print("")
+		end
+	end
+end
+
+return TextReporter</string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="9">
+          <Properties>
+            <string name="Name">TextReporterQuiet</string>
+            <string name="Source">--[[
+	Copy of TextReporter that doesn't output successful tests.
+
+	This should be temporary, it's just a workaround to make CI environments
+	happy in the short-term.
+]]
+
+local TestService = game:GetService("TestService")
+
+local TestEnum = require(script.Parent.Parent.TestEnum)
+
+local INDENT = (" "):rep(3)
+local STATUS_SYMBOLS = {
+	[TestEnum.TestStatus.Success] = "+",
+	[TestEnum.TestStatus.Failure] = "-",
+	[TestEnum.TestStatus.Skipped] = "~"
+}
+local UNKNOWN_STATUS_SYMBOL = "?"
+
+local TextReporterQuiet = {}
+
+local function reportNode(node, buffer, level)
+	buffer = buffer or {}
+	level = level or 0
+
+	if node.status == TestEnum.TestStatus.Skipped then
+		return buffer
+	end
+
+	local line
+
+	if node.status ~= TestEnum.TestStatus.Success then
+		local symbol = STATUS_SYMBOLS[node.status] or UNKNOWN_STATUS_SYMBOL
+
+		line = ("%s[%s] %s"):format(
+			INDENT:rep(level),
+			symbol,
+			node.planNode.phrase
+		)
+	end
+
+	table.insert(buffer, line)
+
+	for _, child in ipairs(node.children) do
+		reportNode(child, buffer, level + 1)
+	end
+
+	return buffer
+end
+
+local function reportRoot(node)
+	local buffer = {}
+
+	for _, child in ipairs(node.children) do
+		reportNode(child, buffer, 0)
+	end
+
+	return buffer
+end
+
+local function report(root)
+	local buffer = reportRoot(root)
+
+	return table.concat(buffer, "\n")
+end
+
+function TextReporterQuiet.report(results)
+	local resultBuffer = {
+		"Test results:",
+		report(results),
+		("%d passed, %d failed, %d skipped"):format(
+			results.successCount,
+			results.failureCount,
+			results.skippedCount
+		)
+	}
+
+	print(table.concat(resultBuffer, "\n"))
+
+	if results.failureCount > 0 then
+		print(("%d test nodes reported failures."):format(results.failureCount))
+	end
+
+	if #results.errors > 0 then
+		print("Errors reported by tests:")
+		print("")
+
+		for _, message in ipairs(results.errors) do
+			TestService:Error(message)
+
+			-- Insert a blank line after each error
+			print("")
+		end
+	end
+end
+
+return TextReporterQuiet</string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
+          <string name="Name">TestBootstrap</string>
+          <string name="Source">--[[
+	Provides an interface to quickly run and report tests from a given object.
+]]
+
+local TestPlanner = require(script.Parent.TestPlanner)
+local TestRunner = require(script.Parent.TestRunner)
+local TextReporter = require(script.Parent.Reporters.TextReporter)
+
+local TestBootstrap = {}
+
+local function stripSpecSuffix(name)
+	return (name:gsub("%.spec$", ""))
+end
+local function isSpecScript(aScript)
+	return aScript:IsA("ModuleScript") and aScript.Name:match("%.spec$")
+end
+
+local function getPath(module, root)
+	root = root or game
+
+	local path = {}
+	local last = module
+
+	if last.Name == "init.spec" then
+		-- Use the directory's node for init.spec files.
+		last = last.Parent
+	end
+
+	while last ~= nil and last ~= root do
+		table.insert(path, stripSpecSuffix(last.Name))
+		last = last.Parent
+	end
+	table.insert(path, stripSpecSuffix(root.Name))
+
+	return path
+end
+
+local function toStringPath(tablePath)
+	local stringPath = ""
+	local first = true
+	for _, element in ipairs(tablePath) do
+		if first then
+			stringPath = element
+			first = false
+		else
+			stringPath = element .. " " .. stringPath
+		end
+	end
+	return stringPath
+end
+
+function TestBootstrap:getModulesImpl(root, modules, current)
+	modules = modules or {}
+	current = current or root
+
+	if isSpecScript(current) then
+		local method = require(current)
+		local path = getPath(current, root)
+		local pathString = toStringPath(path)
+
+		table.insert(modules, {
+			method = method,
+			path = path,
+			pathStringForSorting = pathString:lower()
+		})
+	end
+end
+
+--[[
+	Find all the ModuleScripts in this tree that are tests.
+]]
+function TestBootstrap:getModules(root)
+	local modules = {}
+
+	self:getModulesImpl(root, modules)
+
+	for _, child in ipairs(root:GetDescendants()) do
+		self:getModulesImpl(root, modules, child)
+	end
+
+	return modules
+end
+
+--[[
+	Runs all test and reports the results using the given test reporter.
+
+	If no reporter is specified, a reasonable default is provided.
+
+	This function demonstrates the expected workflow with this testing system:
+	1. Locate test modules
+	2. Generate test plan
+	3. Run test plan
+	4. Report test results
+
+	This means we could hypothetically present a GUI to the developer that shows
+	the test plan before we execute it, allowing them to toggle specific tests
+	before they're run, but after they've been identified!
+]]
+function TestBootstrap:run(roots, reporter, otherOptions)
+	reporter = reporter or TextReporter
+
+	otherOptions = otherOptions or {}
+	local showTimingInfo = otherOptions["showTimingInfo"] or false
+	local testNamePattern = otherOptions["testNamePattern"]
+	local extraEnvironment = otherOptions["extraEnvironment"] or {}
+
+	if type(roots) ~= "table" then
+		error(("Bad argument #1 to TestBootstrap:run. Expected table, got %s"):format(typeof(roots)), 2)
+	end
+
+	local startTime = tick()
+
+	local modules = {}
+	for _, subRoot in ipairs(roots) do
+		local newModules = self:getModules(subRoot)
+
+		for _, newModule in ipairs(newModules) do
+			table.insert(modules, newModule)
+		end
+	end
+
+	local afterModules = tick()
+
+	local plan = TestPlanner.createPlan(modules, testNamePattern, extraEnvironment)
+	local afterPlan = tick()
+
+	local results = TestRunner.runPlan(plan)
+	local afterRun = tick()
+
+	reporter.report(results)
+	local afterReport = tick()
+
+	if showTimingInfo then
+		local timing = {
+			("Took %f seconds to locate test modules"):format(afterModules - startTime),
+			("Took %f seconds to create test plan"):format(afterPlan - afterModules),
+			("Took %f seconds to run tests"):format(afterRun - afterPlan),
+			("Took %f seconds to report tests"):format(afterReport - afterRun),
+		}
+
+		print(table.concat(timing, "\n"))
+	end
+
+	return results
+end
+
+return TestBootstrap</string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">TestEnum</string>
+          <string name="Source">--[[
+	Constants used throughout the testing framework.
+]]
+
+local TestEnum = {}
+
+TestEnum.TestStatus = {
+	Success = "Success",
+	Failure = "Failure",
+	Skipped = "Skipped"
+}
+
+TestEnum.NodeType = {
+	Describe = "Describe",
+	It = "It",
+	BeforeAll = "BeforeAll",
+	AfterAll = "AfterAll",
+	BeforeEach = "BeforeEach",
+	AfterEach = "AfterEach"
+}
+
+TestEnum.NodeModifier = {
+	None = "None",
+	Skip = "Skip",
+	Focus = "Focus"
+}
+
+return TestEnum</string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="12">
+        <Properties>
+          <string name="Name">TestPlan</string>
+          <string name="Source"><![CDATA[--[[
+	Represents a tree of tests that have been loaded but not necessarily
+	executed yet.
+
+	TestPlan objects are produced by TestPlanner.
+]]
+
+local TestEnum = require(script.Parent.TestEnum)
+local Expectation = require(script.Parent.Expectation)
+
+local function newEnvironment(currentNode, extraEnvironment)
+	local env = {}
+
+	if extraEnvironment then
+		if type(extraEnvironment) ~= "table" then
+			error(("Bad argument #2 to newEnvironment. Expected table, got %s"):format(
+				typeof(extraEnvironment)), 2)
+		end
+
+		for key, value in pairs(extraEnvironment) do
+			env[key] = value
+		end
+	end
+
+	local function addChild(phrase, callback, nodeType, nodeModifier)
+		local node = currentNode:addChild(phrase, nodeType, nodeModifier)
+		node.callback = callback
+		if nodeType == TestEnum.NodeType.Describe then
+			node:expand()
+		end
+		return node
+	end
+
+	function env.describeFOCUS(phrase, callback)
+		addChild(phrase, callback, TestEnum.NodeType.Describe, TestEnum.NodeModifier.Focus)
+	end
+
+	function env.describeSKIP(phrase, callback)
+		addChild(phrase, callback, TestEnum.NodeType.Describe, TestEnum.NodeModifier.Skip)
+	end
+
+	function env.describe(phrase, callback, nodeModifier)
+		addChild(phrase, callback, TestEnum.NodeType.Describe, TestEnum.NodeModifier.None)
+	end
+
+	function env.itFOCUS(phrase, callback)
+		addChild(phrase, callback, TestEnum.NodeType.It, TestEnum.NodeModifier.Focus)
+	end
+
+	function env.itSKIP(phrase, callback)
+		addChild(phrase, callback, TestEnum.NodeType.It, TestEnum.NodeModifier.Skip)
+	end
+
+	function env.itFIXME(phrase, callback)
+		local node = addChild(phrase, callback, TestEnum.NodeType.It, TestEnum.NodeModifier.Skip)
+		warn("FIXME: broken test", node:getFullName())
+	end
+
+	function env.it(phrase, callback, nodeModifier)
+		addChild(phrase, callback, TestEnum.NodeType.It, TestEnum.NodeModifier.None)
+	end
+
+	-- Incrementing counter used to ensure that beforeAll, afterAll, beforeEach, afterEach have unique phrases
+	local lifecyclePhaseId = 0
+
+	local lifecycleHooks = {
+		[TestEnum.NodeType.BeforeAll] = "beforeAll",
+		[TestEnum.NodeType.AfterAll] = "afterAll",
+		[TestEnum.NodeType.BeforeEach] = "beforeEach",
+		[TestEnum.NodeType.AfterEach] = "afterEach"
+	}
+
+	for nodeType, name in pairs(lifecycleHooks) do
+		env[name] = function(callback)
+			addChild(name .. "_" .. tostring(lifecyclePhaseId), callback, nodeType, TestEnum.NodeModifier.None)
+			lifecyclePhaseId = lifecyclePhaseId + 1
+		end
+	end
+
+	function env.FIXME(optionalMessage)
+		warn("FIXME: broken test", currentNode:getFullName(), optionalMessage or "")
+
+		currentNode.modifier = TestEnum.NodeModifier.Skip
+	end
+
+	function env.FOCUS()
+		currentNode.modifier = TestEnum.NodeModifier.Focus
+	end
+
+	function env.SKIP()
+		currentNode.modifier = TestEnum.NodeModifier.Skip
+	end
+
+	--[[
+		This function is deprecated. Calling it is a no-op beyond generating a
+		warning.
+	]]
+	function env.HACK_NO_XPCALL()
+		warn("HACK_NO_XPCALL is deprecated. It is now safe to yield in an " ..
+			"xpcall, so this is no longer necessary. It can be safely deleted.")
+	end
+
+	env.fit = env.itFOCUS
+	env.xit = env.itSKIP
+	env.fdescribe = env.describeFOCUS
+	env.xdescribe = env.describeSKIP
+
+	env.expect = setmetatable({
+		extend = function(...)
+			error("Cannot call \"expect.extend\" from within a \"describe\" node.")
+		end,
+	}, {
+		__call = function(_self, ...)
+			return Expectation.new(...)
+		end,
+	})
+
+	return env
+end
+
+local TestNode = {}
+TestNode.__index = TestNode
+
+--[[
+	Create a new test node. A pointer to the test plan, a phrase to describe it
+	and the type of node it is are required. The modifier is optional and will
+	be None if left blank.
+]]
+function TestNode.new(plan, phrase, nodeType, nodeModifier)
+	nodeModifier = nodeModifier or TestEnum.NodeModifier.None
+
+	local node = {
+		plan = plan,
+		phrase = phrase,
+		type = nodeType,
+		modifier = nodeModifier,
+		children = {},
+		callback = nil,
+		parent = nil,
+	}
+
+	node.environment = newEnvironment(node, plan.extraEnvironment)
+	return setmetatable(node, TestNode)
+end
+
+local function getModifier(name, pattern, modifier)
+	if pattern and (modifier == nil or modifier == TestEnum.NodeModifier.None) then
+		if name:match(pattern) then
+			return TestEnum.NodeModifier.Focus
+		else
+			return TestEnum.NodeModifier.Skip
+		end
+	end
+	return modifier
+end
+
+function TestNode:addChild(phrase, nodeType, nodeModifier)
+	if nodeType == TestEnum.NodeType.It then
+		for _, child in pairs(self.children) do
+			if child.phrase == phrase then
+				error("Duplicate it block found: " .. child:getFullName())
+			end
+		end
+	end
+
+	local childName = self:getFullName() .. " " .. phrase
+	nodeModifier = getModifier(childName, self.plan.testNamePattern, nodeModifier)
+	local child = TestNode.new(self.plan, phrase, nodeType, nodeModifier)
+	child.parent = self
+	table.insert(self.children, child)
+	return child
+end
+
+--[[
+	Join the names of all the nodes back to the parent.
+]]
+function TestNode:getFullName()
+	if self.parent then
+		local parentPhrase = self.parent:getFullName()
+		if parentPhrase then
+			return parentPhrase .. " " .. self.phrase
+		end
+	end
+	return self.phrase
+end
+
+--[[
+	Expand a node by setting its callback environment and then calling it. Any
+	further it and describe calls within the callback will be added to the tree.
+]]
+function TestNode:expand()
+	local originalEnv = getfenv(self.callback)
+	local callbackEnv = setmetatable({}, { __index = originalEnv })
+	for key, value in pairs(self.environment) do
+		callbackEnv[key] = value
+	end
+	-- Copy 'script' directly to new env to make Studio debugger happy.
+	-- Studio debugger does not look into __index, because of security reasons
+	callbackEnv.script = originalEnv.script
+	setfenv(self.callback, callbackEnv)
+
+	local success, result = xpcall(self.callback, function(message)
+		return debug.traceback(tostring(message), 2)
+	end)
+
+	if not success then
+		self.loadError = result
+	end
+end
+
+local TestPlan = {}
+TestPlan.__index = TestPlan
+
+--[[
+	Create a new, empty TestPlan.
+]]
+function TestPlan.new(testNamePattern, extraEnvironment)
+	local plan = {
+		children = {},
+		testNamePattern = testNamePattern,
+		extraEnvironment = extraEnvironment,
+	}
+
+	return setmetatable(plan, TestPlan)
+end
+
+--[[
+	Add a new child under the test plan's root node.
+]]
+function TestPlan:addChild(phrase, nodeType, nodeModifier)
+	nodeModifier = getModifier(phrase, self.testNamePattern, nodeModifier)
+	local child = TestNode.new(self, phrase, nodeType, nodeModifier)
+	table.insert(self.children, child)
+	return child
+end
+
+--[[
+	Add a new describe node with the given method as a callback. Generates or
+	reuses all the describe nodes along the path.
+]]
+function TestPlan:addRoot(path, method)
+	local curNode = self
+	for i = #path, 1, -1 do
+		local nextNode = nil
+
+		for _, child in ipairs(curNode.children) do
+			if child.phrase == path[i] then
+				nextNode = child
+				break
+			end
+		end
+
+		if nextNode == nil then
+			nextNode = curNode:addChild(path[i], TestEnum.NodeType.Describe)
+		end
+
+		curNode = nextNode
+	end
+
+	curNode.callback = method
+	curNode:expand()
+end
+
+--[[
+	Calls the given callback on all nodes in the tree, traversed depth-first.
+]]
+function TestPlan:visitAllNodes(callback, root, level)
+	root = root or self
+	level = level or 0
+
+	for _, child in ipairs(root.children) do
+		callback(child, level)
+
+		self:visitAllNodes(callback, child, level + 1)
+	end
+end
+
+--[[
+	Visualizes the test plan in a simple format, suitable for debugging the test
+	plan's structure.
+]]
+function TestPlan:visualize()
+	local buffer = {}
+	self:visitAllNodes(function(node, level)
+		table.insert(buffer, (" "):rep(3 * level) .. node.phrase)
+	end)
+	return table.concat(buffer, "\n")
+end
+
+--[[
+	Gets a list of all nodes in the tree for which the given callback returns
+	true.
+]]
+function TestPlan:findNodes(callback)
+	local results = {}
+	self:visitAllNodes(function(node)
+		if callback(node) then
+			table.insert(results, node)
+		end
+	end)
+	return results
+end
+
+return TestPlan
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">TestPlanner</string>
+          <string name="Source">--[[
+	Turns a series of specification functions into a test plan.
+
+	Uses a TestPlanBuilder to keep track of the state of the tree being built.
+]]
+local TestPlan = require(script.Parent.TestPlan)
+
+local TestPlanner = {}
+
+--[[
+	Create a new TestPlan from a list of specification functions.
+
+	These functions should call a combination of `describe` and `it` (and their
+	variants), which will be turned into a test plan to be executed.
+
+	Parameters:
+		- modulesList - list of tables describing test modules {
+			method, -- specification function described above
+			path, -- array of parent entires, first element is the leaf that owns `method`
+			pathStringForSorting -- a string representation of `path`, used for sorting of the test plan
+		}
+		- testNamePattern - Only tests matching this Lua pattern string will run. Pass empty or nil to run all tests
+		- extraEnvironment - Lua table holding additional functions and variables to be injected into the specification
+							function during execution
+]]
+function TestPlanner.createPlan(modulesList, testNamePattern, extraEnvironment)
+	local plan = TestPlan.new(testNamePattern, extraEnvironment)
+
+	table.sort(modulesList, function(a, b)
+		return a.pathStringForSorting &lt; b.pathStringForSorting
+	end)
+
+	for _, module in ipairs(modulesList) do
+		plan:addRoot(module.path, module.method)
+	end
+
+	return plan
+end
+
+return TestPlanner</string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">TestResults</string>
+          <string name="Source">--[[
+	Represents a tree of test results.
+
+	Each node in the tree corresponds directly to a node in a corresponding
+	TestPlan, accessible via the 'planNode' field.
+
+	TestResults objects are produced by TestRunner using TestSession as state.
+]]
+
+local TestEnum = require(script.Parent.TestEnum)
+
+local STATUS_SYMBOLS = {
+	[TestEnum.TestStatus.Success] = "+",
+	[TestEnum.TestStatus.Failure] = "-",
+	[TestEnum.TestStatus.Skipped] = "~"
+}
+
+local TestResults = {}
+
+TestResults.__index = TestResults
+
+--[[
+	Create a new TestResults tree that's linked to the given TestPlan.
+]]
+function TestResults.new(plan)
+	local self = {
+		successCount = 0,
+		failureCount = 0,
+		skippedCount = 0,
+		planNode = plan,
+		children = {},
+		errors = {}
+	}
+
+	setmetatable(self, TestResults)
+
+	return self
+end
+
+--[[
+	Create a new result node that can be inserted into a TestResult tree.
+]]
+function TestResults.createNode(planNode)
+	local node = {
+		planNode = planNode,
+		children = {},
+		errors = {},
+		status = nil
+	}
+
+	return node
+end
+
+--[[
+	Visit all test result nodes, depth-first.
+]]
+function TestResults:visitAllNodes(callback, root)
+	root = root or self
+
+	for _, child in ipairs(root.children) do
+		callback(child)
+
+		self:visitAllNodes(callback, child)
+	end
+end
+
+--[[
+	Creates a debug visualization of the test results.
+]]
+function TestResults:visualize(root, level)
+	root = root or self
+	level = level or 0
+
+	local buffer = {}
+
+	for _, child in ipairs(root.children) do
+		if child.planNode.type == TestEnum.NodeType.It then
+			local symbol = STATUS_SYMBOLS[child.status] or "?"
+			local str = ("%s[%s] %s"):format(
+				(" "):rep(3 * level),
+				symbol,
+				child.planNode.phrase
+			)
+
+			if child.messages and #child.messages > 0 then
+				str = str .. "\n " .. (" "):rep(3 * level) .. table.concat(child.messages, "\n " .. (" "):rep(3 * level))
+			end
+
+			table.insert(buffer, str)
+		else
+			local str = ("%s%s"):format(
+				(" "):rep(3 * level),
+				child.planNode.phrase or ""
+			)
+
+			if child.status then
+				str = str .. (" (%s)"):format(child.status)
+			end
+
+			table.insert(buffer, str)
+
+			if #child.children > 0 then
+				local text = self:visualize(child, level + 1)
+				table.insert(buffer, text)
+			end
+		end
+	end
+
+	return table.concat(buffer, "\n")
+end
+
+return TestResults</string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">TestRunner</string>
+          <string name="Source"><![CDATA[--[[
+	Contains the logic to run a test plan and gather test results from it.
+
+	TestRunner accepts a TestPlan object, executes the planned tests, and
+	produces a TestResults object. While the tests are running, the system's
+	state is contained inside a TestSession object.
+]]
+
+local TestEnum = require(script.Parent.TestEnum)
+local TestSession = require(script.Parent.TestSession)
+local LifecycleHooks = require(script.Parent.LifecycleHooks)
+
+local RUNNING_GLOBAL = "__TESTEZ_RUNNING_TEST__"
+
+local TestRunner = {
+	environment = {}
+}
+
+local function wrapExpectContextWithPublicApi(expectationContext)
+	return setmetatable({
+		extend = function(...)
+			expectationContext:extend(...)
+		end,
+	}, {
+		__call = function(_self, ...)
+			return expectationContext:startExpectationChain(...)
+		end,
+	})
+end
+
+--[[
+	Runs the given TestPlan and returns a TestResults object representing the
+	results of the run.
+]]
+function TestRunner.runPlan(plan)
+	local session = TestSession.new(plan)
+	local lifecycleHooks = LifecycleHooks.new()
+
+	local exclusiveNodes = plan:findNodes(function(node)
+		return node.modifier == TestEnum.NodeModifier.Focus
+	end)
+
+	session.hasFocusNodes = #exclusiveNodes > 0
+
+	TestRunner.runPlanNode(session, plan, lifecycleHooks)
+
+	return session:finalize()
+end
+
+--[[
+	Run the given test plan node and its descendants, using the given test
+	session to store all of the results.
+]]
+function TestRunner.runPlanNode(session, planNode, lifecycleHooks)
+	local function runCallback(callback, messagePrefix)
+		local success = true
+		local errorMessage
+		-- Any code can check RUNNING_GLOBAL to fork behavior based on
+		-- whether a test is running. We use this to avoid accessing
+		-- protected APIs; it's a workaround that will go away someday.
+		_G[RUNNING_GLOBAL] = true
+
+		messagePrefix = messagePrefix or ""
+
+		local testEnvironment = getfenv(callback)
+
+		for key, value in pairs(TestRunner.environment) do
+			testEnvironment[key] = value
+		end
+
+		testEnvironment.fail = function(message)
+			if message == nil then
+				message = "fail() was called."
+			end
+
+			success = false
+			errorMessage = messagePrefix .. debug.traceback(tostring(message), 2)
+		end
+
+		testEnvironment.expect = wrapExpectContextWithPublicApi(session:getExpectationContext())
+
+		local context = session:getContext()
+
+		local nodeSuccess, nodeResult = xpcall(
+			function()
+				callback(context)
+			end,
+			function(message)
+				return messagePrefix .. debug.traceback(tostring(message), 2)
+			end
+		)
+
+		-- If a node threw an error, we prefer to use that message over
+		-- one created by fail() if it was set.
+		if not nodeSuccess then
+			success = false
+			errorMessage = nodeResult
+		end
+
+		_G[RUNNING_GLOBAL] = nil
+
+		return success, errorMessage
+	end
+
+	local function runNode(childPlanNode)
+		-- Errors can be set either via `error` propagating upwards or
+		-- by a test calling fail([message]).
+
+		for _, hook in ipairs(lifecycleHooks:getBeforeEachHooks()) do
+			local success, errorMessage = runCallback(hook, "beforeEach hook: ")
+			if not success then
+				return false, errorMessage
+			end
+		end
+
+		local testSuccess, testErrorMessage = runCallback(childPlanNode.callback)
+
+		for _, hook in ipairs(lifecycleHooks:getAfterEachHooks()) do
+			local success, errorMessage = runCallback(hook, "afterEach hook: ")
+			if not success then
+				if not testSuccess then
+					return false, testErrorMessage .. "\nWhile cleaning up the failed test another error was found:\n" .. errorMessage
+				end
+				return false, errorMessage
+			end
+		end
+
+		if not testSuccess then
+			return false, testErrorMessage
+		end
+
+		return true, nil
+	end
+
+	lifecycleHooks:pushHooksFrom(planNode)
+
+	local halt = false
+	for _, hook in ipairs(lifecycleHooks:getBeforeAllHooks()) do
+		local success, errorMessage = runCallback(hook, "beforeAll hook: ")
+		if not success then
+			session:addDummyError("beforeAll", errorMessage)
+			halt = true
+		end
+	end
+
+	if not halt then
+		for _, childPlanNode in ipairs(planNode.children) do
+			if childPlanNode.type == TestEnum.NodeType.It then
+				session:pushNode(childPlanNode)
+				if session:shouldSkip() then
+					session:setSkipped()
+				else
+					local success, errorMessage = runNode(childPlanNode)
+
+					if success then
+						session:setSuccess()
+					else
+						session:setError(errorMessage)
+					end
+				end
+				session:popNode()
+			elseif childPlanNode.type == TestEnum.NodeType.Describe then
+				session:pushNode(childPlanNode)
+				TestRunner.runPlanNode(session, childPlanNode, lifecycleHooks)
+
+				-- Did we have an error trying build a test plan?
+				if childPlanNode.loadError then
+					local message = "Error during planning: " .. childPlanNode.loadError
+					session:setError(message)
+				else
+					session:setStatusFromChildren()
+				end
+				session:popNode()
+			end
+		end
+	end
+
+	for _, hook in ipairs(lifecycleHooks:getAfterAllHooks()) do
+		local success, errorMessage = runCallback(hook, "afterAll hook: ")
+		if not success then
+			session:addDummyError("afterAll", errorMessage)
+		end
+	end
+
+	lifecycleHooks:popHooks()
+end
+
+return TestRunner
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="16">
+        <Properties>
+          <string name="Name">TestSession</string>
+          <string name="Source"><![CDATA[--[[
+	Represents the state relevant while executing a test plan.
+
+	Used by TestRunner to produce a TestResults object.
+
+	Uses the same tree building structure as TestPlanBuilder; TestSession keeps
+	track of a stack of nodes that represent the current path through the tree.
+]]
+
+local TestEnum = require(script.Parent.TestEnum)
+local TestResults = require(script.Parent.TestResults)
+local Context = require(script.Parent.Context)
+local ExpectationContext = require(script.Parent.ExpectationContext)
+
+local TestSession = {}
+
+TestSession.__index = TestSession
+
+--[[
+	Create a TestSession related to the given TestPlan.
+
+	The resulting TestResults object will be linked to this TestPlan.
+]]
+function TestSession.new(plan)
+	local self = {
+		results = TestResults.new(plan),
+		nodeStack = {},
+		contextStack = {},
+		expectationContextStack = {},
+		hasFocusNodes = false
+	}
+
+	setmetatable(self, TestSession)
+
+	return self
+end
+
+--[[
+	Calculate success, failure, and skipped test counts in the tree at the
+	current point in the execution.
+]]
+function TestSession:calculateTotals()
+	local results = self.results
+
+	results.successCount = 0
+	results.failureCount = 0
+	results.skippedCount = 0
+
+	results:visitAllNodes(function(node)
+		local status = node.status
+		local nodeType = node.planNode.type
+
+		if nodeType == TestEnum.NodeType.It then
+			if status == TestEnum.TestStatus.Success then
+				results.successCount = results.successCount + 1
+			elseif status == TestEnum.TestStatus.Failure then
+				results.failureCount = results.failureCount + 1
+			elseif status == TestEnum.TestStatus.Skipped then
+				results.skippedCount = results.skippedCount + 1
+			end
+		end
+	end)
+end
+
+--[[
+	Gathers all of the errors reported by tests and puts them at the top level
+	of the TestResults object.
+]]
+function TestSession:gatherErrors()
+	local results = self.results
+
+	results.errors = {}
+
+	results:visitAllNodes(function(node)
+		if #node.errors > 0 then
+			for _, message in ipairs(node.errors) do
+				table.insert(results.errors, message)
+			end
+		end
+	end)
+end
+
+--[[
+	Calculates test totals, verifies the tree is valid, and returns results.
+]]
+function TestSession:finalize()
+	if #self.nodeStack ~= 0 then
+		error("Cannot finalize TestResults with nodes still on the stack!", 2)
+	end
+
+	self:calculateTotals()
+	self:gatherErrors()
+
+	return self.results
+end
+
+--[[
+	Create a new test result node and push it onto the navigation stack.
+]]
+function TestSession:pushNode(planNode)
+	local node = TestResults.createNode(planNode)
+	local lastNode = self.nodeStack[#self.nodeStack] or self.results
+	table.insert(lastNode.children, node)
+	table.insert(self.nodeStack, node)
+
+	local lastContext = self.contextStack[#self.contextStack]
+	local context = Context.new(lastContext)
+	table.insert(self.contextStack, context)
+
+	local lastExpectationContext = self.expectationContextStack[#self.expectationContextStack]
+	local expectationContext = ExpectationContext.new(lastExpectationContext)
+	table.insert(self.expectationContextStack, expectationContext)
+end
+
+--[[
+	Pops a node off of the navigation stack.
+]]
+function TestSession:popNode()
+	assert(#self.nodeStack > 0, "Tried to pop from an empty node stack!")
+	table.remove(self.nodeStack, #self.nodeStack)
+	table.remove(self.contextStack, #self.contextStack)
+	table.remove(self.expectationContextStack, #self.expectationContextStack)
+end
+
+--[[
+	Gets the Context object for the current node.
+]]
+function TestSession:getContext()
+	assert(#self.contextStack > 0, "Tried to get context from an empty stack!")
+	return self.contextStack[#self.contextStack]
+end
+
+
+function TestSession:getExpectationContext()
+	assert(#self.expectationContextStack > 0, "Tried to get expectationContext from an empty stack!")
+	return self.expectationContextStack[#self.expectationContextStack]
+end
+
+--[[
+	Tells whether the current test we're in should be skipped.
+]]
+function TestSession:shouldSkip()
+	-- If our test tree had any exclusive tests, then normal tests are skipped!
+	if self.hasFocusNodes then
+		for i = #self.nodeStack, 1, -1 do
+			local node = self.nodeStack[i]
+
+			-- Skipped tests are still skipped
+			if node.planNode.modifier == TestEnum.NodeModifier.Skip then
+				return true
+			end
+
+			-- Focused tests are the only ones that aren't skipped
+			if node.planNode.modifier == TestEnum.NodeModifier.Focus then
+				return false
+			end
+		end
+
+		return true
+	else
+		for i = #self.nodeStack, 1, -1 do
+			local node = self.nodeStack[i]
+
+			if node.planNode.modifier == TestEnum.NodeModifier.Skip then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+--[[
+	Set the current node's status to Success.
+]]
+function TestSession:setSuccess()
+	assert(#self.nodeStack > 0, "Attempting to set success status on empty stack")
+	self.nodeStack[#self.nodeStack].status = TestEnum.TestStatus.Success
+end
+
+--[[
+	Set the current node's status to Skipped.
+]]
+function TestSession:setSkipped()
+	assert(#self.nodeStack > 0, "Attempting to set skipped status on empty stack")
+	self.nodeStack[#self.nodeStack].status = TestEnum.TestStatus.Skipped
+end
+
+--[[
+	Set the current node's status to Failure and adds a message to its list of
+	errors.
+]]
+function TestSession:setError(message)
+	assert(#self.nodeStack > 0, "Attempting to set error status on empty stack")
+	local last = self.nodeStack[#self.nodeStack]
+	last.status = TestEnum.TestStatus.Failure
+	table.insert(last.errors, message)
+end
+
+--[[
+	Add a dummy child node to the current node to hold the given error. This
+	allows an otherwise empty describe node to report an error in a more natural
+	way.
+]]
+function TestSession:addDummyError(phrase, message)
+	self:pushNode({type = TestEnum.NodeType.It, phrase = phrase})
+	self:setError(message)
+	self:popNode()
+	self.nodeStack[#self.nodeStack].status = TestEnum.TestStatus.Failure
+end
+
+--[[
+	Set the current node's status based on that of its children. If all children
+	are skipped, mark it as skipped. If any are fails, mark it as failed.
+	Otherwise, mark it as success.
+]]
+function TestSession:setStatusFromChildren()
+	assert(#self.nodeStack > 0, "Attempting to set status from children on empty stack")
+
+	local last = self.nodeStack[#self.nodeStack]
+	local status = TestEnum.TestStatus.Success
+	local skipped = true
+
+	-- If all children were skipped, then we were skipped
+	-- If any child failed, then we failed!
+	for _, child in ipairs(last.children) do
+		if child.status ~= TestEnum.TestStatus.Skipped then
+			skipped = false
+
+			if child.status == TestEnum.TestStatus.Failure then
+				status = TestEnum.TestStatus.Failure
+			end
+		end
+	end
+
+	if skipped then
+		status = TestEnum.TestStatus.Skipped
+	end
+
+	last.status = status
+end
+
+return TestSession
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Folder" referent="17">
+      <Properties>
+        <string name="Name">TestModules</string>
+      </Properties>
+      <Item class="ModuleScript" referent="18">
+        <Properties>
+          <string name="Name">LessonLogic.spec</string>
+          <string name="Source"><![CDATA[--!strict
+
+return function()
+	describe('LessonLogic', function()
+		it('gradeAnswer benar saat jawaban cocok', function()
+			local LessonLogic = require(ReplicatedStorage.Shared.util.LessonLogic)
+			local q = { promptKey = 'p', choices = { 'a', 'b', 'c' }, answer = 1 }
+			expect(LessonLogic.gradeAnswer(q, 1)).to.equal(true)
+			expect(LessonLogic.gradeAnswer(q, 0)).to.equal(false)
+			expect(LessonLogic.gradeAnswer(q, -1)).to.equal(false)
+		end)
+
+		it('countCorrect menghitung jawaban benar', function()
+			local LessonLogic = require(ReplicatedStorage.Shared.util.LessonLogic)
+			local questions = {
+				{ promptKey = 'p1', choices = { 'a', 'b' }, answer = 0 },
+				{ promptKey = 'p2', choices = { 'a', 'b' }, answer = 1 },
+				{ promptKey = 'p3', choices = { 'a', 'b' }, answer = 0 },
+			}
+			local answers = { [0] = 0, [1] = 1, [2] = 0 }
+			expect(LessonLogic.countCorrect(questions, answers)).to.equal(3)
+			answers[2] = 1
+			expect(LessonLogic.countCorrect(questions, answers)).to.equal(2)
+		end)
+
+		it('isPassed memakai ambang 60%', function()
+			local LessonLogic = require(ReplicatedStorage.Shared.util.LessonLogic)
+			expect(LessonLogic.isPassed(1, 1)).to.equal(true)
+			expect(LessonLogic.isPassed(2, 3)).to.equal(true)
+			expect(LessonLogic.isPassed(1, 3)).to.equal(false)
+			expect(LessonLogic.isPassed(0, 0)).to.equal(false)
+		end)
+
+		it('calculateXp memberi XP proporsional saat lulus', function()
+			local LessonLogic = require(ReplicatedStorage.Shared.util.LessonLogic)
+			-- 2/2 benar, base 50 -> 50
+			expect(LessonLogic.calculateXp(2, 2, 50)).to.equal(50)
+			-- 1/2 benar -> lulus (50%)? 0.5 < 0.6 -> gagal, xp kecil
+			expect(LessonLogic.calculateXp(1, 2, 50)).to.equal(10)
+			-- 2/3 benar -> lulus, floor(50 * 2/3) = 33
+			expect(LessonLogic.calculateXp(2, 3, 50)).to.equal(33)
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="19">
+        <Properties>
+          <string name="Name">Math.spec</string>
+          <string name="Source"><![CDATA[--!strict
+
+return function()
+	describe('Math util', function()
+		it('clamp membatasi nilai ke range', function()
+			local Math = require(ReplicatedStorage.Shared.util.Math)
+			expect(Math.clamp(150, 0, 100)).to.equal(100)
+			expect(Math.clamp(-5, 0, 100)).to.equal(0)
+			expect(Math.clamp(50, 0, 100)).to.equal(50)
+		end)
+
+		it('levelFromXp menghitung level dengan benar', function()
+			local Math = require(ReplicatedStorage.Shared.util.Math)
+			expect(Math.levelFromXp(0)).to.equal(1)
+			expect(Math.levelFromXp(999)).to.equal(1)
+			expect(Math.levelFromXp(1000)).to.equal(2)
+			expect(Math.levelFromXp(2500)).to.equal(3)
+			expect(Math.levelFromXp(10000)).to.equal(5)
+		end)
+
+		it('makeRateLimiter membatasi jumlah call per detik', function()
+			local Math = require(ReplicatedStorage.Shared.util.Math)
+			local limiter = Math.makeRateLimiter(2)
+			-- 3 call pada detik yang sama
+			expect(limiter('p1', 100)).to.equal(true)
+			expect(limiter('p1', 100)).to.equal(true)
+			expect(limiter('p1', 100)).to.equal(false)
+			-- detik baru: reset
+			expect(limiter('p1', 101)).to.equal(true)
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="20">
+        <Properties>
+          <string name="Name">QuestLogic.spec</string>
+          <string name="Source"><![CDATA[--!strict
+
+return function()
+	describe('QuestLogic', function()
+		it('createObjectives membuat state objective dari def', function()
+			local QuestLogic = require(ReplicatedStorage.Shared.util.QuestLogic)
+			local objectives = QuestLogic.createObjectives({
+				{ id = 'a', type = 'talk', target = 'teacher_sakura', requiredCount = 1 },
+				{ id = 'b', type = 'collect', target = 'textbook', requiredCount = 1 },
+			})
+			expect(#objectives).to.equal(2)
+			expect(objectives[1].currentCount).to.equal(0)
+			expect(objectives[1].complete).to.equal(false)
+			expect(objectives[1].target).to.equal('teacher_sakura')
+		end)
+
+		it('progressTalk menambah count dan menandai selesai', function()
+			local QuestLogic = require(ReplicatedStorage.Shared.util.QuestLogic)
+			local objectives = QuestLogic.createObjectives({
+				{ id = 'a', type = 'talk', target = 'teacher_sakura', requiredCount = 1 },
+			})
+			local completed = QuestLogic.progressTalk(objectives, 'teacher_sakura', 'quest_intro')
+			expect(objectives[1].currentCount).to.equal(1)
+			expect(objectives[1].complete).to.equal(true)
+			expect(completed).to.equal({ 'quest_intro' })
+		end)
+
+		it('progressTalk tidak menandai jika target berbeda', function()
+			local QuestLogic = require(ReplicatedStorage.Shared.util.QuestLogic)
+			local objectives = QuestLogic.createObjectives({
+				{ id = 'a', type = 'talk', target = 'teacher_sakura', requiredCount = 1 },
+			})
+			local completed = QuestLogic.progressTalk(objectives, 'other_npc', 'quest_intro')
+			expect(objectives[1].complete).to.equal(false)
+			expect(completed).to.equal({})
+		end)
+
+		it('progressCollect menyinkronkan count dengan inventori', function()
+			local QuestLogic = require(ReplicatedStorage.Shared.util.QuestLogic)
+			local objectives = QuestLogic.createObjectives({
+				{ id = 'b', type = 'collect', target = 'textbook', requiredCount = 1 },
+			})
+			local completed = QuestLogic.progressCollect(objectives, 'textbook', 2, 'quest_intro')
+			expect(objectives[1].currentCount).to.equal(2)
+			expect(objectives[1].complete).to.equal(true)
+			expect(completed).to.equal({ 'quest_intro' })
+		end)
+
+		it('meetsRequirements mengecek level bahasa', function()
+			local QuestLogic = require(ReplicatedStorage.Shared.util.QuestLogic)
+			local def = {
+				id = 'q',
+				titleKey = '',
+				descKey = '',
+				giverNpcId = '',
+				requirements = { japaneseLevel = 2 },
+				objectives = {},
+				rewards = { xp = 0, yen = 0, items = {} },
+			}
+			expect(QuestLogic.meetsRequirements(def, 1)).to.equal(false)
+			expect(QuestLogic.meetsRequirements(def, 2)).to.equal(true)
+			expect(QuestLogic.meetsRequirements(def, 5)).to.equal(true)
+		end)
+
+		it('calculateReward mengembalikan reward quest', function()
+			local QuestLogic = require(ReplicatedStorage.Shared.util.QuestLogic)
+			local def = {
+				id = 'q',
+				titleKey = '',
+				descKey = '',
+				giverNpcId = '',
+				requirements = {},
+				objectives = {},
+				rewards = { xp = 100, yen = 500, items = { 'onigiri' } },
+			}
+			local reward = QuestLogic.calculateReward(def)
+			expect(reward.xp).to.equal(100)
+			expect(reward.yen).to.equal(500)
+			expect(reward.items).to.equal({ 'onigiri' })
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Script" referent="21">
+      <Properties>
+        <string name="Name">TestRunner</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+
+-- TestRunner: menjalankan TestEZ di server saat sesi test (rojo test).
+-- Memuat semua file test (*.spec.lua) di Shared.
+
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+
+local TestEZ = require(ReplicatedFirst:WaitForChild("TestEZ"))
+
+local srcRoot = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local testModules = ReplicatedFirst:WaitForChild("TestModules")
+
+local results = TestEZ.TestBootstrap:run({ srcRoot, testModules }, TestEZ.Reporters.TextReporter)
+TestEZ.Reporters.TextReporter:finish()
+
+if results.failureCount > 0 then
+	error(`[TestEZ] {results.failureCount} test(s) failed`, 0)
+end
+]]></string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ReplicatedStorage" referent="22">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="23">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="Folder" referent="24">
+        <Properties>
+          <string name="Name">constants</string>
+        </Properties>
+        <Item class="ModuleScript" referent="25">
+          <Properties>
+            <string name="Name">Config</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Global konfigurasi game (single source of truth).
+-- PRD: pemain/server, ekonomi, time system.
+
+export type GameConfig = {
+	-- Server & gameplay
+	maxPlayersPerServer: number,
+	dailyLoopDurationMinutes: number, -- durasi 1 hari game (real menit)
+	dayPhases: { string },
+
+	-- Ekonomi
+	startingYen: number,
+	startingEnergy: number,
+	startingHunger: number,
+	maxEnergy: number,
+	maxHunger: number,
+
+	-- Remote rate limit (calls per second per player)
+	remoteRateLimit: number,
+
+	-- DataStore
+	dataStoreName: string,
+	profileKeyPrefix: string,
+	profileVersion: number,
+	dataStoreRetries: number,
+
+	-- Quest
+	initialQuestId: string,
+	textbookItemId: string,
+
+	-- NPC
+	spawnNpcId: string,
+
+	-- Bahasa
+	availableLocales: { string },
+	defaultLocale: string,
+}
+
+local Config: GameConfig = {
+	maxPlayersPerServer = 30,
+	dailyLoopDurationMinutes = 20,
+	dayPhases = { 'morning', 'daytime', 'evening', 'night', 'late_night' },
+
+	startingYen = 5000,
+	startingEnergy = 100,
+	startingHunger = 0,
+	maxEnergy = 100,
+	maxHunger = 100,
+
+	remoteRateLimit = 10,
+
+	dataStoreName = 'SuwaLife_Profiles',
+	profileKeyPrefix = 'player_',
+	profileVersion = 1,
+	dataStoreRetries = 3,
+
+	initialQuestId = 'quest_intro',
+	textbookItemId = 'textbook',
+
+	spawnNpcId = 'teacher_sakura',
+
+	availableLocales = { 'ja', 'en', 'id' },
+	defaultLocale = 'en',
+}
+
+return Config
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="26">
+        <Properties>
+          <string name="Name">data</string>
+        </Properties>
+        <Item class="ModuleScript" referent="27">
+          <Properties>
+            <string name="Name">Items</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Data definitions statis (single source of truth untuk item/quest/lesson).
+-- Referensi tipe: shared/types/Definitions.lua (ItemDef),
+-- shared/types/QuestDefTypes.lua (QuestDef).
+
+local ITEMS = {
+	onigiri = {
+		id = 'onigiri',
+		nameKey = 'item.onigiri.name',
+		category = 'food',
+		price = 150,
+		stackable = true,
+		consumable = true,
+		effects = { hunger = -30, energy = 5 },
+		icon = '',
+		tags = { 'food', 'japanese' },
+	},
+	textbook = {
+		id = 'textbook',
+		nameKey = 'item.textbook.name',
+		category = 'school',
+		price = 800,
+		stackable = false,
+		consumable = false,
+		effects = {},
+		icon = '',
+		tags = { 'school' },
+	},
+	fishing_rod = {
+		id = 'fishing_rod',
+		nameKey = 'item.fishing_rod.name',
+		category = 'fishing',
+		price = 2000,
+		stackable = false,
+		consumable = false,
+		effects = {},
+		icon = '',
+		tags = { 'fishing' },
+	},
+}
+
+local QUESTS = {
+	-- Quest pembuka: kenalan dengan guru & dapatkan buku pelajaran.
+	quest_intro = {
+		id = 'quest_intro',
+		titleKey = 'quest.intro.title',
+		descKey = 'quest.intro.desc',
+		giverNpcId = 'teacher_sakura',
+		requirements = { japaneseLevel = 1 },
+		objectives = {
+			{ id = 'talk_sakura', type = 'talk', target = 'teacher_sakura', requiredCount = 1 },
+			{ id = 'get_textbook', type = 'collect', target = 'textbook', requiredCount = 1 },
+		},
+		rewards = {
+			xp = 100,
+			yen = 500,
+			items = {},
+		},
+	},
+}
+
+local LESSONS = {
+	lesson_01 = {
+		id = 'lesson_01',
+		titleKey = 'lesson.01.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.01.q1',
+				choices = { 'lesson.01.q1.a', 'lesson.01.q1.b', 'lesson.01.q1.c' },
+				answer = 1,
+			},
+			{
+				promptKey = 'lesson.01.q2',
+				choices = { 'lesson.01.q2.a', 'lesson.01.q2.b', 'lesson.01.q2.c' },
+				answer = 0,
+			},
+		},
+	},
+	lesson_02 = {
+		id = 'lesson_02',
+		titleKey = 'lesson.02.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.02.q1',
+				choices = { 'lesson.02.q1.a', 'lesson.02.q1.b', 'lesson.02.q1.c' },
+				answer = 2,
+			},
+		},
+	},
+	lesson_03 = {
+		id = 'lesson_03',
+		titleKey = 'lesson.03.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.03.q1',
+				choices = { 'lesson.03.q1.a', 'lesson.03.q1.b', 'lesson.03.q1.c' },
+				answer = 1,
+			},
+		},
+	},
+	lesson_04 = {
+		id = 'lesson_04',
+		titleKey = 'lesson.04.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.04.q1',
+				choices = { 'lesson.04.q1.a', 'lesson.04.q1.b', 'lesson.04.q1.c' },
+				answer = 0,
+			},
+		},
+	},
+	lesson_05 = {
+		id = 'lesson_05',
+		titleKey = 'lesson.05.title',
+		level = 'beginner1',
+		quiz = {
+			{
+				promptKey = 'lesson.05.q1',
+				choices = { 'lesson.05.q1.a', 'lesson.05.q1.b', 'lesson.05.q1.c' },
+				answer = 2,
+			},
+		},
+	},
+}
+
+return {
+	ITEMS = ITEMS,
+	QUESTS = QUESTS,
+	LESSONS = LESSONS,
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="28">
+          <Properties>
+            <string name="Name">NPCs</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi NPC statis.
+-- Referensi tipe: shared/types/NpcTypes.lua (NPCDef).
+
+local NPCS: {
+	[string]: NPCDef,
+} = {
+	teacher_sakura = {
+		id = 'teacher_sakura',
+		displayNameKey = 'npc.teacher_sakura.name',
+		titleKey = 'npc.teacher_sakura.title',
+		defaultIntent = 'greeting',
+		dialogFlows = {
+			greeting = {
+				id = 'greeting',
+				rootNodeId = 'start',
+				nodes = {
+					start = {
+						id = 'start',
+						lines = {
+							{ key = 'dialog.sakura.greet1' },
+							{ key = 'dialog.sakura.greet2' },
+						},
+						choices = {
+							{ textKey = 'dialog.sakura.choice.intro', next = 'intro' },
+							{ textKey = 'dialog.sakura.choice.bye', next = nil },
+						},
+					},
+					intro = {
+						id = 'intro',
+						lines = {
+							{ key = 'dialog.sakura.intro1' },
+							{ key = 'dialog.sakura.intro2' },
+						},
+						next = 'quest_offer',
+					},
+					quest_offer = {
+						id = 'quest_offer',
+						lines = {
+							{ key = 'dialog.sakura.quest_offer' },
+						},
+						choices = {
+							{
+								textKey = 'dialog.sakura.choice.accept',
+								next = nil,
+								action = 'quest_accept:quest_intro',
+							},
+							{ textKey = 'dialog.sakura.choice.decline', next = nil },
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+return NPCS
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="Folder" referent="29">
+          <Properties>
+            <string name="Name">localization</string>
+          </Properties>
+          <Item class="ModuleScript" referent="30">
+            <Properties>
+              <string name="Name">en</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- Localization: Bahasa Inggris (en) — fallback utama.
+
+local STRINGS: { [string]: string } = {
+	-- UI umum
+	['ui.app.title'] = 'Suwa Life: Nihongo Days',
+	['ui.questlog.title'] = 'Quests',
+	['ui.questlog.empty'] = 'No active quests.',
+	['ui.dialog.continue'] = 'Continue',
+	['ui.dialog.close'] = 'Close',
+
+	-- NPC
+	['npc.teacher_sakura.name'] = 'Teacher Sakura',
+	['npc.teacher_sakura.title'] = 'Japanese Language Teacher',
+
+	-- Dialog
+	['dialog.sakura.greet1'] = 'Good morning! You must be the new student.',
+	['dialog.sakura.greet2'] = 'Welcome to the Japanese language school.',
+	['dialog.sakura.choice.intro'] = 'Could you introduce yourself?',
+	['dialog.sakura.choice.bye'] = 'See you later.',
+	['dialog.sakura.intro1'] = 'Nice to meet you!',
+	['dialog.sakura.intro2'] = "I'm Sakura, your Japanese teacher.",
+	['dialog.sakura.quest_offer'] = 'How about you start learning with this textbook?',
+	['dialog.sakura.choice.accept'] = 'Accept quest!',
+	['dialog.sakura.choice.decline'] = 'Not yet.',
+	['dialog.sakura.quest_accepted'] = "Great! Don't forget to pick up your textbook.",
+	['dialog.sakura.quest_completed'] = 'Well done! You earned Japanese XP.',
+
+	-- Item
+	['item.onigiri.name'] = 'Onigiri',
+	['item.textbook.name'] = 'Textbook',
+	['item.fishing_rod.name'] = 'Fishing Rod',
+
+	-- Quest
+	['quest.intro.title'] = 'Meet Your Teacher',
+	['quest.intro.desc'] = 'Talk to Teacher Sakura and pick up your textbook.',
+
+	-- School
+	['ui.school.title'] = 'Lessons',
+	['ui.school.open'] = 'School',
+	['lesson.01.title'] = 'Greetings',
+	['lesson.01.q1'] = 'What does "おはよう" mean?',
+	['lesson.01.q1.a'] = 'Good evening',
+	['lesson.01.q1.b'] = 'Good morning',
+	['lesson.01.q1.c'] = 'Good night',
+	['lesson.01.q2'] = 'What does "ありがとう" mean?',
+	['lesson.01.q2.a'] = 'Thank you',
+	['lesson.01.q2.b'] = 'Sorry',
+	['lesson.01.q2.c'] = 'Goodbye',
+	['lesson.02.title'] = 'Numbers',
+	['lesson.02.q1'] = 'What is いち (ichi)?',
+	['lesson.02.q1.a'] = 'Two',
+	['lesson.02.q1.b'] = 'Three',
+	['lesson.02.q1.c'] = 'One',
+	['lesson.03.title'] = 'Food',
+	['lesson.03.q1'] = 'What does たべる (taberu) mean?',
+	['lesson.03.q1.a'] = 'To drink',
+	['lesson.03.q1.b'] = 'To eat',
+	['lesson.03.q1.c'] = 'To cook',
+	['lesson.04.title'] = 'Places',
+	['lesson.04.q1'] = 'What does がっこう (gakkou) mean?',
+	['lesson.04.q1.a'] = 'School',
+	['lesson.04.q1.b'] = 'Station',
+	['lesson.04.q1.c'] = 'Hospital',
+	['lesson.05.title'] = 'Daily Verbs',
+	['lesson.05.q1'] = 'What does いく (iku) mean?',
+	['lesson.05.q1.a'] = 'To come',
+	['lesson.05.q1.b'] = 'To sleep',
+	['lesson.05.q1.c'] = 'To go',
+}
+
+return STRINGS
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="31">
+            <Properties>
+              <string name="Name">id</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- Localization: Bahasa Indonesia (id).
+-- Key yang belum diterjemahkan tampil apa adanya (fallback).
+
+local STRINGS: { [string]: string } = {
+	-- UI umum
+	['ui.app.title'] = 'Suwa Life: Nihongo Days',
+	['ui.questlog.title'] = 'Quest',
+	['ui.questlog.empty'] = 'Belum ada quest aktif.',
+	['ui.dialog.continue'] = 'Lanjutkan',
+	['ui.dialog.close'] = 'Tutup',
+
+	-- NPC
+	['npc.teacher_sakura.name'] = 'Guru Sakura',
+	['npc.teacher_sakura.title'] = 'Guru Bahasa Jepang',
+
+	-- Dialog (key tunggal; jangan pakai format)
+	['dialog.sakura.greet1'] = 'Selamat pagi! Kamu siswa baru ya?',
+	['dialog.sakura.greet2'] = 'Selamat datang di sekolah bahasa Jepang.',
+	['dialog.sakura.choice.intro'] = 'Boleh perkenalan?',
+	['dialog.sakura.choice.bye'] = 'Sampai nanti.',
+	['dialog.sakura.intro1'] = 'Senang bertemu denganmu!',
+	['dialog.sakura.intro2'] = 'Namaku Sakura, guru bahasa Jepang.',
+	['dialog.sakura.quest_offer'] = 'Bagaimana kalau kamu mulai belajar dengan buku ini?',
+	['dialog.sakura.choice.accept'] = 'Terima quest!',
+	['dialog.sakura.choice.decline'] = 'Belum dulu.',
+	['dialog.sakura.quest_accepted'] = 'Bagus! Ambil buku pelajaranmu, ya.',
+	['dialog.sakura.quest_completed'] = 'Hebat! Kamu dapat XP bahasa Jepang.',
+
+	-- Item
+	['item.onigiri.name'] = 'Onigiri',
+	['item.textbook.name'] = 'Buku Pelajaran',
+	['item.fishing_rod.name'] = 'Pancing',
+
+	-- Quest
+	['quest.intro.title'] = 'Kenalan dengan Guru',
+	['quest.intro.desc'] = 'Bicaralah dengan Guru Sakura dan ambil buku pelajaranmu.',
+
+	-- School
+	['ui.school.title'] = 'Pelajaran',
+	['ui.school.open'] = 'Sekolah',
+	['lesson.01.title'] = 'Sapaan',
+	['lesson.01.q1'] = 'Apa arti "おはよう"?',
+	['lesson.01.q1.a'] = 'Selamat malam',
+	['lesson.01.q1.b'] = 'Selamat pagi',
+	['lesson.01.q1.c'] = 'Selamat tidur',
+	['lesson.01.q2'] = 'Apa arti "ありがとう"?',
+	['lesson.01.q2.a'] = 'Terima kasih',
+	['lesson.01.q2.b'] = 'Maaf',
+	['lesson.01.q2.c'] = 'Selamat tinggal',
+	['lesson.02.title'] = 'Angka',
+	['lesson.02.q1'] = 'Berapa いち (ichi)?',
+	['lesson.02.q1.a'] = 'Dua',
+	['lesson.02.q1.b'] = 'Tiga',
+	['lesson.02.q1.c'] = 'Satu',
+	['lesson.03.title'] = 'Makanan',
+	['lesson.03.q1'] = 'Apa arti たべる (taberu)?',
+	['lesson.03.q1.a'] = 'Minum',
+	['lesson.03.q1.b'] = 'Makan',
+	['lesson.03.q1.c'] = 'Memasak',
+	['lesson.04.title'] = 'Tempat',
+	['lesson.04.q1'] = 'Apa arti がっこう (gakkou)?',
+	['lesson.04.q1.a'] = 'Sekolah',
+	['lesson.04.q1.b'] = 'Stasiun',
+	['lesson.04.q1.c'] = 'Rumah sakit',
+	['lesson.05.title'] = 'Kata Kerja Sehari-hari',
+	['lesson.05.q1'] = 'Apa arti いく (iku)?',
+	['lesson.05.q1.a'] = 'Datang',
+	['lesson.05.q1.b'] = 'Tidur',
+	['lesson.05.q1.c'] = 'Pergi',
+}
+
+return STRINGS
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="32">
+            <Properties>
+              <string name="Name">ja</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- Localization: Bahasa Jepang (ja).
+
+local STRINGS: { [string]: string } = {
+	-- UI umum
+	['ui.app.title'] = 'Suwa Life: Nihongo Days',
+	['ui.questlog.title'] = 'クエスト',
+	['ui.questlog.empty'] = '進行中のクエストはありません。',
+	['ui.dialog.continue'] = 'つづける',
+	['ui.dialog.close'] = 'とじる',
+
+	-- NPC
+	['npc.teacher_sakura.name'] = 'さくら先生',
+	['npc.teacher_sakura.title'] = '日本語の先生',
+
+	-- Dialog
+	['dialog.sakura.greet1'] = 'おはようございます！新入生ですか？',
+	['dialog.sakura.greet2'] = '日本語学校へようこそ。',
+	['dialog.sakura.choice.intro'] = 'じこしょうかいしてもいいですか？',
+	['dialog.sakura.choice.bye'] = 'またあとで。',
+	['dialog.sakura.intro1'] = 'はじめまして！',
+	['dialog.sakura.intro2'] = 'さくらです。日本語の先生です。',
+	['dialog.sakura.quest_offer'] = 'このきょうかしょでべんきょうをはじめませんか？',
+	['dialog.sakura.choice.accept'] = 'クエストをうける！',
+	['dialog.sakura.choice.decline'] = 'まだいいです。',
+	['dialog.sakura.quest_accepted'] = 'いいですね！きょうかしょをとってください。',
+	['dialog.sakura.quest_completed'] = 'よくできました！日本語XPをゲット。',
+
+	-- Item
+	['item.onigiri.name'] = 'おにぎり',
+	['item.textbook.name'] = 'きょうかしょ',
+	['item.fishing_rod.name'] = 'つりざお',
+
+	-- Quest
+	['quest.intro.title'] = '先生にあいさつしよう',
+	['quest.intro.desc'] = 'さくら先生とはなして、きょうかしょをゲットしよう。',
+
+	-- School
+	['ui.school.title'] = 'レッスン',
+	['ui.school.open'] = 'がっこう',
+	['lesson.01.title'] = 'あいさつ',
+	['lesson.01.q1'] = '「おはよう」はどういういみ？',
+	['lesson.01.q1.a'] = 'こんばんは',
+	['lesson.01.q1.b'] = 'おはよう（あさのあいさつ）',
+	['lesson.01.q1.c'] = 'おやすみ',
+	['lesson.01.q2'] = '「ありがとう」はどういういみ？',
+	['lesson.01.q2.a'] = 'ありがとう（かんしゃ）',
+	['lesson.01.q2.b'] = 'ごめんなさい',
+	['lesson.01.q2.c'] = 'さようなら',
+	['lesson.02.title'] = 'すうじ',
+	['lesson.02.q1'] = '「いち」はいくつ？',
+	['lesson.02.q1.a'] = 'に',
+	['lesson.02.q1.b'] = 'さん',
+	['lesson.02.q1.c'] = 'いち（1）',
+	['lesson.03.title'] = 'たべもの',
+	['lesson.03.q1'] = '「たべる」はどういういみ？',
+	['lesson.03.q1.a'] = 'のむ',
+	['lesson.03.q1.b'] = 'たべる',
+	['lesson.03.q1.c'] = 'りょうりする',
+	['lesson.04.title'] = 'ばしょ',
+	['lesson.04.q1'] = '「がっこう」はどういういみ？',
+	['lesson.04.q1.a'] = 'がっこう（スクール）',
+	['lesson.04.q1.b'] = 'えき',
+	['lesson.04.q1.c'] = 'びょういん',
+	['lesson.05.title'] = 'まいにちのどうし',
+	['lesson.05.q1'] = '「いく」はどういういみ？',
+	['lesson.05.q1.a'] = 'くる',
+	['lesson.05.q1.b'] = 'ねる',
+	['lesson.05.q1.c'] = 'いく（いく）',
+}
+
+return STRINGS
+]]></string>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="ModuleScript" referent="33">
+        <Properties>
+          <string name="Name">remotes</string>
+          <string name="Source"><![CDATA[--!strict
+
+-- Registry remote API. Satu sumber kebenaran nama RemoteEvent/RemoteFunction.
+-- Server & client memakai nama yang sama.
+
+export type RemoteNames = {
+	workRequest: string,
+	fishCast: string,
+	fishReel: string,
+	shopBuy: string,
+	questAccept: string,
+	questClaim: string,
+	npcInteract: string,
+	schoolCheckIn: string,
+	quizAnswer: string,
+	bikeRequest: string,
+	getProfile: string,
+	getShopCatalog: string,
+	getQuestLog: string,
+	getTimeInfo: string,
+}
+
+export type RemoteDefinitions = {
+	events: { string },
+	functions: { string },
+}
+
+local Remotes: RemoteDefinitions = {
+	events = {
+		'WorkRequest',
+		'FishCast',
+		'FishReel',
+		'ShopBuy',
+		'QuestAccept',
+		'QuestClaim',
+		'NPCInteract',
+		'SchoolCheckIn',
+		'QuizAnswer',
+		'BikeRequest',
+		'NPCOpenDialog',
+		'QuizSubmit',
+	},
+	functions = {
+		'GetProfile',
+		'GetShopCatalog',
+		'GetQuestLog',
+		'GetTimeInfo',
+		'NPCGetDialog',
+		'LessonGet',
+	},
+}
+
+-- Helper: cek apakah nama remote valid (cegah typo).
+local function assertValid(name: string)
+	for _, existing in Remotes.events do
+		if existing == name then
+			return
+		end
+	end
+	for _, existing in Remotes.functions do
+		if existing == name then
+			return
+		end
+	end
+	error(`Remote "{name}" is not defined in Remotes registry`, 2)
+end
+
+return {
+	events = Remotes.events,
+	functions = Remotes.functions,
+	assertValid = assertValid,
+}
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Folder" referent="34">
+        <Properties>
+          <string name="Name">services</string>
+        </Properties>
+        <Item class="ModuleScript" referent="35">
+          <Properties>
+            <string name="Name">LocalizationService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- LocalizationService (shared): resolve localization key ke string.
+-- Bahasa default dari profile; fallback ke en (English).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local localizationFolder = ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('localization')
+
+local tables: { [string]: { [string]: string } } = {}
+
+-- Load semua bahasa dari folder.
+for _, module in localizationFolder:GetChildren() do
+	if module:IsA('ModuleScript') then
+		tables[module.Name] = require(module)
+	end
+end
+
+local LocalizationService = {}
+
+-- Resolve key untuk bahasa tertentu (fallback en, lalu key asli).
+function LocalizationService.get(locale: string, key: string): string
+	local table_ = tables[locale]
+	if table_ and table_[key] then
+		return table_[key]
+	end
+	local enTable = tables['en']
+	if enTable and enTable[key] then
+		return enTable[key]
+	end
+	return key
+end
+
+-- Ambil locale dari profile (sinkron dengan settings).
+function LocalizationService.getLocaleForProfile(profile: ProfileTypes.Profile): string
+	local locale = profile.settings.translationLanguage or Config.defaultLocale
+	if tables[locale] then
+		return locale
+	end
+	return Config.defaultLocale
+end
+
+function LocalizationService.getAvailableLocales(): { string }
+	local locales = {}
+	for locale, _ in tables do
+		table.insert(locales, locale)
+	end
+	return locales
+end
+
+return LocalizationService
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="36">
+        <Properties>
+          <string name="Name">types</string>
+        </Properties>
+        <Item class="ModuleScript" referent="37">
+          <Properties>
+            <string name="Name">Definitions</string>
+            <string name="Source"><![CDATA[--!strict
+
+export type ItemDef = {
+	id: string,
+	nameKey: string,
+	category: string,
+	price: number,
+	stackable: boolean,
+	consumable: boolean,
+	effects: { hunger: number?, energy: number?, happiness: number? },
+	icon: string,
+	tags: { string },
+}
+
+export type Items = { [string]: ItemDef }
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="38">
+          <Properties>
+            <string name="Name">LessonTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi tipe untuk sistem sekolah (lesson & quiz).
+
+export type QuizQuestion = {
+	promptKey: string,
+	choices: { string }, -- localization keys
+	answer: number, -- index jawaban benar
+}
+
+export type LessonDef = {
+	id: string,
+	titleKey: string,
+	level: string,
+	quiz: { QuizQuestion },
+}
+
+export type LessonDefs = { [string]: LessonDef }
+
+-- Hasil submit quiz dari client.
+export type QuizSubmission = {
+	lessonId: string,
+	answers: { [number]: number }, -- questionIndex -> answerIndex
+}
+
+-- Hasil penilaian quiz (server).
+export type QuizResult = {
+	lessonId: string,
+	correct: number,
+	total: number,
+	passed: boolean,
+	earnedXp: number,
+}
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="39">
+          <Properties>
+            <string name="Name">NpcTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi NPC & dialog.
+
+-- Struktur satu baris dialog. Semua teks pakai localization key,
+-- kecuali reading/romaji yang opsional untuk materi bahasa.
+export type DialogLine = {
+	key: string,
+	reading: string?,
+	romaji: string?,
+}
+
+export type DialogChoice = {
+	textKey: string,
+	next: string?,
+	action: string?,
+}
+
+export type DialogNode = {
+	id: string,
+	lines: { DialogLine },
+	choices: { DialogChoice }?,
+	next: string?,
+	action: string?,
+}
+
+export type DialogFlow = {
+	id: string,
+	rootNodeId: string,
+	nodes: { [string]: DialogNode },
+}
+
+export type NPCDef = {
+	id: string,
+	displayNameKey: string,
+	titleKey: string,
+	dialogFlows: { [string]: DialogFlow },
+	defaultIntent: string,
+}
+
+export type NPCs = { [string]: NPCDef }
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="40">
+          <Properties>
+            <string name="Name">ProfileTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+export type JapaneseLevel = 'beginner1' | 'beginner2' | 'elementary' | 'intermediate' | 'advanced'
+
+export type Profile = {
+	version: number,
+	playerId: number,
+	profile: {
+		displayName: string,
+		homeCountry: string,
+		preferredLanguage: string,
+	},
+	progress: {
+		japaneseXp: number,
+		japaneseLevel: number,
+		workReputation: number,
+		explorationRank: number,
+		fishingLevel: number,
+		hikingLevel: number,
+		cookingLevel: number,
+		reputation: number,
+		happiness: number,
+		energy: number,
+		hunger: number,
+	},
+	economy: {
+		yen: number,
+	},
+	inventory: {
+		items: { [string]: number },
+		clothing: { [string]: number },
+		furniture: { [string]: number },
+		fish: { [string]: number },
+	},
+	school: {
+		attendance: number,
+		completedLessons: { string },
+		examResults: { [string]: number },
+	},
+	quests: {
+		active: { string },
+		completed: { string },
+	},
+	friendship: { [string]: number },
+	bike: {
+		owned: boolean,
+		upgrades: { [string]: boolean },
+	},
+	settings: {
+		showFurigana: boolean,
+		showRomaji: boolean,
+		translationLanguage: string,
+	},
+	lastSaved: string,
+}
+
+export type Result<T> = { ok: true, data: T } | { ok: false, error: string }
+
+export type TimeInfo = {
+	dayNumber: number,
+	hour: number,
+	minute: number,
+	season: string,
+	weather: string,
+}
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="41">
+          <Properties>
+            <string name="Name">QuestDefTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Quest definition (statis, data).
+
+export type QuestObjectiveDef = {
+	id: string,
+	type: string,
+	target: string,
+	requiredCount: number,
+}
+
+export type QuestDef = {
+	id: string,
+	titleKey: string,
+	descKey: string,
+	giverNpcId: string,
+	requirements: {
+		japaneseLevel: number?,
+	},
+	objectives: { QuestObjectiveDef },
+	rewards: {
+		xp: number,
+		yen: number,
+		items: { string },
+	},
+}
+
+export type QuestDefs = { [string]: QuestDef }
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="42">
+          <Properties>
+            <string name="Name">QuestTypes</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Definisi tipe shared untuk sistem game.
+
+export type JapaneseLevel = 'beginner1' | 'beginner2' | 'elementary' | 'intermediate' | 'advanced'
+
+export type Result<T> = { ok: true, data: T } | { ok: false, error: string }
+
+export type TimeInfo = {
+	dayNumber: number,
+	hour: number,
+	minute: number,
+	season: string,
+	weather: string,
+}
+
+-- Objective quest: type menentukan cara progress.
+-- talk = bicara ke NPC target, collect = punya item target.
+export type QuestObjective = {
+	id: string,
+	type: 'talk' | 'collect',
+	target: string,
+	requiredCount: number,
+	currentCount: number,
+	complete: boolean,
+}
+
+export type QuestState = {
+	id: string,
+	objectives: { QuestObjective },
+	acceptedAt: number,
+}
+
+return nil
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Folder" referent="43">
+        <Properties>
+          <string name="Name">util</string>
+        </Properties>
+        <Item class="ModuleScript" referent="44">
+          <Properties>
+            <string name="Name">LessonLogic</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- LessonLogic (shared): logika grading quiz murni (tanpa dependensi Roblox).
+-- Testable & dipakai SchoolService server.
+
+export type QuizQuestion = {
+	promptKey: string,
+	choices: { string },
+	answer: number,
+}
+
+-- Nilai jawaban player terhadap soal. Return benar/salah.
+local function gradeAnswer(question: QuizQuestion, playerAnswer: number): boolean
+	return question.answer == playerAnswer
+end
+
+-- Hitung jumlah benar dari semua soal.
+local function countCorrect(questions: { QuizQuestion }, answers: { [number]: number }): number
+	local correct = 0
+	for index, question in questions do
+		if gradeAnswer(question, answers[index] or -1) then
+			correct += 1
+		end
+	end
+	return correct
+end
+
+-- Ambang lulus: 60% benar (configurable).
+local PASS_RATIO = 0.6
+
+-- Cek lulus berdasarkan jumlah benar / total.
+local function isPassed(correct: number, total: number): boolean
+	if total <= 0 then
+		return false
+	end
+	return correct / total >= PASS_RATIO
+end
+
+-- Hitung XP yang didapat dari hasil quiz.
+-- Lulus: xp = baseXp * (benar/total). Gagal: xp kecil (partisipasi).
+local function calculateXp(correct: number, total: number, baseXp: number): number
+	if total <= 0 then
+		return 0
+	end
+	local ratio = correct / total
+	if isPassed(correct, total) then
+		return math.floor(baseXp * ratio)
+	end
+	return math.floor(baseXp * 0.2)
+end
+
+return {
+	gradeAnswer = gradeAnswer,
+	countCorrect = countCorrect,
+	isPassed = isPassed,
+	calculateXp = calculateXp,
+	PASS_RATIO = PASS_RATIO,
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="45">
+          <Properties>
+            <string name="Name">Math</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Util shared: generic helpers (di-testable tanpa Roblox).
+
+-- Clamp number ke range.
+local function clamp(value: number, min: number, max: number): number
+	return math.max(min, math.min(max, value))
+end
+
+-- Cek apakah player memenuhi level bahasa minimum.
+local function meetsLevel(level: number, required: number): boolean
+	return level >= required
+end
+
+-- Hitung level bahasa dari XP (tabel threshold, di-testable).
+local LEVEL_THRESHOLDS = { 0, 1000, 2500, 5000, 7500 }
+
+local function levelFromXp(xp: number): number
+	local level = 1
+	for i, threshold in LEVEL_THRESHOLDS do
+		if xp >= threshold then
+			level = i
+		end
+	end
+	return level
+end
+
+-- Rate limit sederhana (window per detik).
+local function makeRateLimiter(maxCallsPerSecond: number)
+	local calls: { [string]: number } = {}
+	local lastWindow: { [string]: number } = {}
+
+	return function(key: string, now: number): boolean
+		if lastWindow[key] ~= now then
+			lastWindow[key] = now
+			calls[key] = 0
+		end
+		calls[key] += 1
+		return calls[key] <= maxCallsPerSecond
+	end
+end
+
+return {
+	clamp = clamp,
+	meetsLevel = meetsLevel,
+	levelFromXp = levelFromXp,
+	makeRateLimiter = makeRateLimiter,
+	LEVEL_THRESHOLDS = LEVEL_THRESHOLDS,
+}
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="46">
+          <Properties>
+            <string name="Name">QuestLogic</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- QuestLogic (shared): logika quest murni (tanpa dependensi Roblox service).
+-- Testable & dipakai QuestService server.
+
+export type ObjectiveDef = {
+	id: string,
+	type: 'talk' | 'collect',
+	target: string,
+	requiredCount: number,
+}
+
+export type ObjectiveState = {
+	id: string,
+	type: 'talk' | 'collect',
+	target: string,
+	requiredCount: number,
+	currentCount: number,
+	complete: boolean,
+}
+
+export type QuestDef = {
+	id: string,
+	titleKey: string,
+	descKey: string,
+	giverNpcId: string,
+	requirements: { japaneseLevel: number? },
+	objectives: { ObjectiveDef },
+	rewards: { xp: number, yen: number, items: { string } },
+}
+
+-- Buat state objective dari def.
+local function createObjectives(defs: { ObjectiveDef }): { ObjectiveState }
+	local states: { ObjectiveState } = {}
+	for _, def in defs do
+		table.insert(states, {
+			id = def.id,
+			type = def.type,
+			target = def.target,
+			requiredCount = def.requiredCount,
+			currentCount = 0,
+			complete = false,
+		})
+	end
+	return states
+end
+
+-- Cek semua objective selesai.
+local function allComplete(objectives: { ObjectiveState }): boolean
+	for _, obj in objectives do
+		if not obj.complete then
+			return false
+		end
+	end
+	return true
+end
+
+-- Progress objective talk (bicara ke NPC).
+-- Return questIds yang jadi selesai (agar caller beri reward).
+local function progressTalk(objectives: { ObjectiveState }, npcId: string, questId: string): { string }
+	local completed: { string } = {}
+	for _, obj in objectives do
+		if obj.type == 'talk' and obj.target == npcId and not obj.complete then
+			obj.currentCount += 1
+			if obj.currentCount >= obj.requiredCount then
+				obj.complete = true
+			end
+		end
+	end
+	if allComplete(objectives) then
+		table.insert(completed, questId)
+	end
+	return completed
+end
+
+-- Progress objective collect (punya item).
+local function progressCollect(
+	objectives: { ObjectiveState },
+	itemId: string,
+	count: number,
+	questId: string
+): { string }
+	local completed: { string } = {}
+	for _, obj in objectives do
+		if obj.type == 'collect' and obj.target == itemId and not obj.complete then
+			obj.currentCount = count
+			if obj.currentCount >= obj.requiredCount then
+				obj.complete = true
+			end
+		end
+	end
+	if allComplete(objectives) then
+		table.insert(completed, questId)
+	end
+	return completed
+end
+
+-- Hitung reward quest (untuk player progress). Murni kalkulasi.
+local function calculateReward(def: QuestDef): { xp: number, yen: number, items: { string } }
+	return {
+		xp = def.rewards.xp,
+		yen = def.rewards.yen,
+		items = def.rewards.items,
+	}
+end
+
+-- Cek requirement terpenuhi.
+local function meetsRequirements(def: QuestDef, japaneseLevel: number): boolean
+	if def.requirements.japaneseLevel and japaneseLevel < def.requirements.japaneseLevel then
+		return false
+	end
+	return true
+end
+
+return {
+	createObjectives = createObjectives,
+	allComplete = allComplete,
+	progressTalk = progressTalk,
+	progressCollect = progressCollect,
+	calculateReward = calculateReward,
+	meetsRequirements = meetsRequirements,
+}
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="47">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="48">
+      <Properties>
+        <string name="Name">Server</string>
+      </Properties>
+      <Item class="Script" referent="49">
+        <Properties>
+          <string name="Name">runner</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[--!strict
+
+-- Entry point server. Semua service di-init di sini.
+-- RemoteRegistryService harus init paling awal (membuat folder remotes).
+
+local Services = {}
+
+local function initService(module: ModuleScript)
+	local ok, service = pcall(require, module)
+	if ok and typeof(service) == 'table' and service.init then
+		service.init()
+		Services[module.Name] = service
+		print(`[Server] Loaded {module.Name}`)
+	else
+		warn(`[Server] Failed to load {module.Name}: {service}`)
+	end
+end
+
+-- 1. Remote registry dulu (service lain register remote padanya).
+local remoteModule = script.Parent:FindFirstChild('RemoteRegistryService')
+if remoteModule and remoteModule:IsA('ModuleScript') then
+	initService(remoteModule)
+end
+
+-- 2. Service lain.
+for _, module in script.Parent:GetChildren() do
+	if module:IsA('ModuleScript') and module ~= remoteModule then
+		initService(module)
+	end
+end
+
+print('[Server] Suwa Life server runner ready.')
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Folder" referent="50">
+        <Properties>
+          <string name="Name">services</string>
+        </Properties>
+        <Item class="ModuleScript" referent="51">
+          <Properties>
+            <string name="Name">EconomyService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- EconomyService: transaksi yen (server-authoritative).
+-- Semua perubahan yen lewat sini (anti-exploit).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+
+local EconomyService = {}
+
+-- Tambah yen ke profil. Return Result.
+function EconomyService.addYen(playerId: number, amount: number): Types.Result<number>
+	if amount <= 0 then
+		return { ok = false, error = 'Invalid amount' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.economy.yen += amount
+	return { ok = true, data = profile.economy.yen }
+end
+
+-- Kurangi yen (validasi saldo cukup).
+function EconomyService.spendYen(playerId: number, amount: number): Types.Result<number>
+	if amount <= 0 then
+		return { ok = false, error = 'Invalid amount' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if profile.economy.yen < amount then
+		return { ok = false, error = 'Insufficient funds' }
+	end
+	profile.economy.yen -= amount
+	return { ok = true, data = profile.economy.yen }
+end
+
+-- Beri Japanese XP; auto naik level sesuai threshold.
+function EconomyService.addJapaneseXp(playerId: number, xp: number): Types.Result<number>
+	if xp <= 0 then
+		return { ok = false, error = 'Invalid XP' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.progress.japaneseXp += xp
+	profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+	return { ok = true, data = profile.progress.japaneseLevel }
+end
+
+function EconomyService.init()
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+end
+
+return EconomyService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="52">
+          <Properties>
+            <string name="Name">InventoryService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- InventoryService: item, clothing, furniture, fish.
+-- Operasi di server; client tidak mengubah langsung.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+
+local InventoryService = {}
+
+-- Tambah item ke inventori (stackable di-merge).
+function InventoryService.addItem(playerId: number, itemId: string, count: number): Types.Result<number>
+	if count <= 0 then
+		return { ok = false, error = 'Invalid count' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.inventory.items[itemId] = (profile.inventory.items[itemId] or 0) + count
+	return { ok = true, data = profile.inventory.items[itemId] }
+end
+
+-- Ambil item (cek jumlah cukup).
+function InventoryService.removeItem(playerId: number, itemId: string, count: number): Types.Result<number>
+	if count <= 0 then
+		return { ok = false, error = 'Invalid count' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	local current = profile.inventory.items[itemId] or 0
+	if current < count then
+		return { ok = false, error = 'Not enough items' }
+	end
+	profile.inventory.items[itemId] = current - count
+	return { ok = true, data = profile.inventory.items[itemId] }
+end
+
+-- Cek jumlah item yang dimiliki.
+function InventoryService.countItem(playerId: number, itemId: string): number
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return 0
+	end
+	return profile.inventory.items[itemId] or 0
+end
+
+function InventoryService.init()
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+end
+
+return InventoryService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="53">
+          <Properties>
+            <string name="Name">NPCDialogService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- NPCDialogService (server): menyajikan dialog tree NPC & memproses aksi.
+-- Remote: NPCInteract (event, client -> server), NPCGetDialog (function).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+local QuestService = require(script.Parent:WaitForChild('QuestService'))
+local NPCs = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('NPCs'))
+
+local function handleInteract(player: Player, npcId: string)
+	local npc = NPCs[npcId]
+	if not npc then
+		warn(`[NPC] Unknown NPC: {npcId}`)
+		return
+	end
+
+	-- Progress quest 'talk' objective untuk NPC ini
+	QuestService.progressTalk(player.UserId, npcId)
+
+	-- Beri client dialog (client akan fetch node via RemoteFunction)
+	RemoteRegistry.fireClient(player, 'NPCOpenDialog', {
+		npcId = npcId,
+		intent = npc.defaultIntent,
+	})
+end
+
+local function getDialogForPlayer(npcId: string, nodeId: string?)
+	local npc = NPCs[npcId]
+	if not npc then
+		return nil
+	end
+	local flow = npc.dialogFlows[npc.defaultIntent]
+	if not flow then
+		return nil
+	end
+	local node = nodeId and flow.nodes[nodeId] or flow.nodes[flow.rootNodeId]
+	if not node then
+		return nil
+	end
+	return {
+		npcId = npcId,
+		node = node,
+	}
+end
+
+local NPCDialogService = {}
+
+function NPCDialogService.init()
+	RemoteRegistry.registerEvent('NPCInteract', function(player: Player, npcId: unknown)
+		if type(npcId) ~= 'string' then
+			return
+		end
+		handleInteract(player, npcId)
+	end)
+
+	RemoteRegistry.registerFunction('NPCGetDialog', function(_player: Player, npcId: unknown, nodeId: unknown)
+		if type(npcId) ~= 'string' then
+			return nil
+		end
+		local nodeIdStr = type(nodeId) == 'string' and nodeId or nil
+		return getDialogForPlayer(npcId, nodeIdStr)
+	end)
+end
+
+return NPCDialogService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="54">
+          <Properties>
+            <string name="Name">ProfileAPI</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- ProfileAPI (server): hookup remote GetProfile & QuestAccept/Claim.
+-- Tempat mendaftarkan remote yang melayani client.
+
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local QuestService = require(script.Parent:WaitForChild('QuestService'))
+
+local ProfileAPI = {}
+
+function ProfileAPI.init()
+	-- Beri client profile (sanitized, tanpa data sensitif)
+	RemoteRegistry.registerFunction('GetProfile', function(player: Player)
+		return ProfileService.getProfile(player.UserId)
+	end)
+
+	-- Client accept quest (quest service menangani pemberian item & reward)
+	RemoteRegistry.registerEvent('QuestAccept', function(player: Player, questId: unknown)
+		if type(questId) ~= 'string' then
+			return
+		end
+		QuestService.acceptQuest(player.UserId, questId)
+	end)
+
+	-- Client claim quest reward
+	RemoteRegistry.registerEvent('QuestClaim', function(player: Player, questId: unknown)
+		if type(questId) ~= 'string' then
+			return
+		end
+		QuestService.completeQuest(player.UserId, questId)
+	end)
+
+	-- Client ambil quest aktif (untuk HUD)
+	RemoteRegistry.registerFunction('GetQuestLog', function(player: Player)
+		return QuestService.getActiveQuests(player.UserId)
+	end)
+end
+
+return ProfileAPI
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="55">
+          <Properties>
+            <string name="Name">ProfileService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- ProfileService: load/save profile dari DataStoreService.
+-- - Session lock (Anti-Abuse) mencegah data tertimpa jika pemain reconnect cepat.
+-- - Migrasi versi profile (profiles[version]).
+-- - Retry terbatas pada load/save.
+
+local Players = game:GetService('Players')
+local DataStoreService = game:GetService('DataStoreService')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local store = DataStoreService:GetDataStore(Config.dataStoreName)
+
+local profiles: { [number]: ProfileTypes.Profile } = {}
+local loading: { [number]: boolean } = {}
+
+local ProfileLoadedEvent = Instance.new('BindableEvent')
+ProfileLoadedEvent.Name = 'ProfileLoaded'
+
+local function defaultProfile(playerId: number): ProfileTypes.Profile
+	return {
+		version = Config.profileVersion,
+		playerId = playerId,
+		profile = {
+			displayName = '',
+			homeCountry = '',
+			preferredLanguage = Config.defaultLocale,
+		},
+		progress = {
+			japaneseXp = 0,
+			japaneseLevel = 1,
+			workReputation = 0,
+			explorationRank = 0,
+			fishingLevel = 0,
+			hikingLevel = 0,
+			cookingLevel = 0,
+			reputation = 0,
+			happiness = 50,
+			energy = Config.startingEnergy,
+			hunger = Config.startingHunger,
+		},
+		economy = { yen = Config.startingYen },
+		inventory = {
+			items = {},
+			clothing = {},
+			furniture = {},
+			fish = {},
+		},
+		school = {
+			attendance = 0,
+			completedLessons = {},
+			examResults = {},
+		},
+		quests = { active = {}, completed = {} },
+		friendship = {},
+		bike = { owned = false, upgrades = {} },
+		settings = {
+			showFurigana = true,
+			showRomaji = false,
+			translationLanguage = Config.defaultLocale,
+		},
+		lastSaved = DateTime.now():ToIsoDate(),
+	}
+end
+
+-- Migrasi profile lama ke versi terbaru (forward chain).
+local MIGRATIONS: { [number]: (profile: any) -> any } = {}
+
+local function migrate(profile: any): ProfileTypes.Profile
+	local version = profile.version or 1
+	while version < Config.profileVersion do
+		local migrator = MIGRATIONS[version]
+		if not migrator then
+			warn(`[ProfileService] No migration path from v{version}`)
+			break
+		end
+		profile = migrator(profile)
+		version = profile.version
+	end
+	profile.version = Config.profileVersion
+	return profile
+end
+
+-- Retry helper: jalankan fn, retry sampai maxAttempts.
+local function withRetry(fn: () -> any, maxAttempts: number): (boolean, any)
+	local attempts = 0
+	while attempts < maxAttempts do
+		local ok, result = pcall(fn)
+		if ok then
+			return true, result
+		end
+		attempts += 1
+		if attempts < maxAttempts then
+			task.wait(0.2 * attempts)
+		end
+	end
+	return false, nil
+end
+
+local function keyOf(playerId: number): string
+	return Config.profileKeyPrefix .. tostring(playerId)
+end
+
+-- Ambil profile, session-lock via DataStore (Anti-Abuse).
+local function loadOrCreate(playerId: number): ProfileTypes.Profile?
+	local ok, data = withRetry(function()
+		return store:GetAsync(keyOf(playerId))
+	end, Config.dataStoreRetries)
+
+	if not ok then
+		warn(`[ProfileService] Load failed for {playerId} after retries`)
+		return nil
+	end
+
+	if typeof(data) == 'table' then
+		local migrated = migrate(data)
+		profiles[playerId] = migrated
+		return migrated
+	end
+
+	-- Player baru
+	local fresh = defaultProfile(playerId)
+	profiles[playerId] = fresh
+	return fresh
+end
+
+local function save(playerId: number)
+	local profile = profiles[playerId]
+	if not profile then
+		return
+	end
+	profile.lastSaved = DateTime.now():ToIsoDate()
+	local ok, err = withRetry(function()
+		return store:SetAsync(keyOf(playerId), profile)
+	end, Config.dataStoreRetries)
+	if not ok then
+		warn(`[ProfileService] Save failed for {playerId}: {err}`)
+	end
+end
+
+local ProfileService = {}
+
+function ProfileService.init()
+	Players.PlayerAdded:Connect(function(player)
+		loading[player.UserId] = true
+		task.spawn(function()
+			local profile = loadOrCreate(player.UserId)
+			loading[player.UserId] = nil
+			if profile then
+				ProfileLoadedEvent:Fire(player, profile)
+			else
+				-- Gagal load: kick agar tidak main tanpa data
+				player:Kick('Gagal memuat data. Silakan coba lagi.')
+			end
+		end)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		-- Tunggu load selesai sebelum save (hindari save data kosong)
+		task.spawn(function()
+			while loading[player.UserId] do
+				task.wait(0.1)
+			end
+			save(player.UserId)
+			profiles[player.UserId] = nil
+		end)
+	end)
+
+	game:BindToClose(function()
+		for userId, _ in profiles do
+			save(userId)
+		end
+	end)
+end
+
+function ProfileService.onProfileLoaded(callback: (player: Player, profile: ProfileTypes.Profile) -> ())
+	return ProfileLoadedEvent.Event:Connect(callback)
+end
+
+function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
+	return profiles[playerId]
+end
+
+function ProfileService.setProfile(playerId: number, profile: ProfileTypes.Profile)
+	profiles[playerId] = profile
+end
+
+-- Export untuk unit test / tools
+ProfileService.defaultProfile = defaultProfile
+ProfileService.migrate = migrate
+
+return ProfileService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="56">
+          <Properties>
+            <string name="Name">QuestService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- QuestService: state quest aktif/selesai, objective progress, reward.
+-- Logika murni di shared/util/QuestLogic.lua (testable); service ini
+-- menghubungkan ke profile & inventory.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local InventoryService = require(script.Parent:WaitForChild('InventoryService'))
+local Items = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Items'))
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local QuestTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('QuestTypes'))
+local QuestDefTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('QuestDefTypes'))
+local QuestLogic = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('QuestLogic'))
+
+local QuestService = {}
+
+-- Cek apakah quest sudah selesai.
+function QuestService.isCompleted(playerId: number, questId: string): boolean
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return false
+	end
+	for _, id in profile.quests.completed do
+		if id == questId then
+			return true
+		end
+	end
+	return false
+end
+
+-- Ambil QuestState aktif untuk questId (nil jika tidak aktif).
+function QuestService.getActiveQuest(playerId: number, questId: string): QuestTypes.QuestState?
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return nil
+	end
+	for _, state in profile.quests.active do
+		if state.id == questId then
+			return state
+		end
+	end
+	return nil
+end
+
+-- Cek apakah quest aktif.
+function QuestService.isActive(playerId: number, questId: string): boolean
+	return QuestService.getActiveQuest(playerId, questId) ~= nil
+end
+
+-- Buat QuestState baru dari QuestDef (pakai QuestLogic).
+local function newQuestState(def: QuestDefTypes.QuestDef): QuestTypes.QuestState
+	return {
+		id = def.id,
+		objectives = QuestLogic.createObjectives(def.objectives),
+		acceptedAt = os.clock(),
+	}
+end
+
+-- Progress objective 'talk' (bicara ke NPC).
+function QuestService.progressTalk(playerId: number, npcId: string)
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return
+	end
+	local completed: { string } = {}
+	for _, state in profile.quests.active do
+		local done = QuestLogic.progressTalk(state.objectives, npcId, state.id)
+		for _, questId in done do
+			table.insert(completed, questId)
+		end
+	end
+	for _, questId in completed do
+		QuestService.completeQuest(playerId, questId)
+	end
+end
+
+-- Progress objective 'collect' (punya item).
+function QuestService.progressCollect(playerId: number, itemId: string)
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return
+	end
+	local count = InventoryService.countItem(playerId, itemId)
+	local completed: { string } = {}
+	for _, state in profile.quests.active do
+		local done = QuestLogic.progressCollect(state.objectives, itemId, count, state.id)
+		for _, questId in done do
+			table.insert(completed, questId)
+		end
+	end
+	for _, questId in completed do
+		QuestService.completeQuest(playerId, questId)
+	end
+end
+
+-- Mulai quest (validasi requirement). Return Result.
+function QuestService.acceptQuest(playerId: number, questId: string): Types.Result<QuestDefTypes.QuestDef>
+	local def = Items.QUESTS[questId]
+	if not def then
+		return { ok = false, error = 'Quest not found' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if QuestService.isCompleted(playerId, questId) then
+		return { ok = false, error = 'Quest already completed' }
+	end
+	if QuestService.isActive(playerId, questId) then
+		return { ok = false, error = 'Quest already active' }
+	end
+	if not QuestLogic.meetsRequirements(def, profile.progress.japaneseLevel) then
+		return { ok = false, error = 'Level too low' }
+	end
+	local state = newQuestState(def)
+	table.insert(profile.quests.active, state)
+	-- Quest intro: giver memberikan buku pelajaran sebagai awal quest.
+	-- TODO: generalisasi pemberian item starter per quest.
+	if questId == Config.initialQuestId then
+		profile.inventory.items[Config.textbookItemId] = (profile.inventory.items[Config.textbookItemId] or 0) + 1
+	end
+	QuestService.progressCollect(playerId, Config.textbookItemId)
+	return { ok = true, data = def }
+end
+
+-- Selesaikan quest & beri reward. Return Result.
+function QuestService.completeQuest(playerId: number, questId: string): Types.Result<QuestDefTypes.QuestDef>
+	local def = Items.QUESTS[questId]
+	if not def then
+		return { ok = false, error = 'Quest not found' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if QuestService.isCompleted(playerId, questId) then
+		return { ok = false, error = 'Quest already completed' }
+	end
+	-- Hapus dari active
+	local active = profile.quests.active
+	for i, state in active do
+		if state.id == questId then
+			table.remove(active, i)
+			break
+		end
+	end
+	table.insert(profile.quests.completed, questId)
+
+	-- Reward
+	local reward = QuestLogic.calculateReward(def)
+	if reward.xp > 0 then
+		profile.progress.japaneseXp += reward.xp
+		profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+	end
+	if reward.yen > 0 then
+		profile.economy.yen += reward.yen
+	end
+	for _, itemId in reward.items do
+		profile.inventory.items[itemId] = (profile.inventory.items[itemId] or 0) + 1
+	end
+	return { ok = true, data = def }
+end
+
+-- Ambil semua quest aktif (untuk UI).
+function QuestService.getActiveQuests(playerId: number): { QuestTypes.QuestState }
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return {}
+	end
+	return profile.quests.active
+end
+
+function QuestService.init()
+	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+end
+
+return QuestService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="57">
+          <Properties>
+            <string name="Name">RemoteRegistryService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Server-side Remote Registry.
+-- Membuat instance RemoteEvent/RemoteFunction berdasarkan shared/remotes.lua
+-- dan menyediakan fireClient / invokeClient helpers.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Remotes = require(ReplicatedStorage:WaitForChild('Shared'):WaitForChild('remotes'))
+
+local remotesFolder = Instance.new('Folder')
+remotesFolder.Name = 'Remotes'
+remotesFolder.Parent = ReplicatedStorage
+
+local events: { [string]: RemoteEvent } = {}
+local functions: { [string]: RemoteFunction } = {}
+
+for _, name in Remotes.events do
+	Remotes.assertValid(name)
+	local event = Instance.new('RemoteEvent')
+	event.Name = name
+	event.Parent = remotesFolder
+	events[name] = event
+end
+
+for _, name in Remotes.functions do
+	Remotes.assertValid(name)
+	local fn = Instance.new('RemoteFunction')
+	fn.Name = name
+	fn.Parent = remotesFolder
+	functions[name] = fn
+end
+
+local RemoteRegistry = {
+	events = events,
+	functions = functions,
+}
+
+function RemoteRegistry.getEvent(name: string): RemoteEvent
+	return events[name]
+end
+
+function RemoteRegistry.getFunction(name: string): RemoteFunction
+	return functions[name]
+end
+
+function RemoteRegistry.fireClient(player: Player, name: string, ...)
+	local event = events[name]
+	if event then
+		event:FireClient(player, ...)
+	else
+		warn(`[Remotes] Unknown event fired to client: {name}`)
+	end
+end
+
+function RemoteRegistry.invokeClient(player: Player, name: string, ...)
+	local fn = functions[name]
+	if fn then
+		return fn:InvokeClient(player, ...)
+	end
+	warn(`[Remotes] Unknown function invoked on client: {name}`)
+	return nil
+end
+
+-- Rate limit wrapper: hanya allow N calls/detik per player per remote.
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+
+local limiter = Math.makeRateLimiter(Config.remoteRateLimit)
+
+function RemoteRegistry.registerEvent(name: string, handler: (player: Player, ...any) -> ())
+	Remotes.assertValid(name)
+	local event = events[name]
+	if not event then
+		error(`[Remotes] registerEvent: unknown name "{name}"`, 2)
+	end
+	event.OnServerEvent:Connect(function(player: Player, ...)
+		local now = os.clock()
+		if limiter(player.UserId .. ':' .. name, now) then
+			local ok, err = pcall(handler, player, ...)
+			if not ok then
+				warn(`[Remotes] handler error for {name}: {err}`)
+			end
+		else
+			warn(`[Remotes] Rate limited: {player.Name} on {name}`)
+		end
+	end)
+end
+
+function RemoteRegistry.registerFunction(name: string, handler: (player: Player, ...any) -> any)
+	Remotes.assertValid(name)
+	local fn = functions[name]
+	if not fn then
+		error(`[Remotes] registerFunction: unknown name "{name}"`, 2)
+	end
+	fn.OnServerInvoke = function(player: Player, ...)
+		return handler(player, ...)
+	end
+end
+
+return RemoteRegistry
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="58">
+          <Properties>
+            <string name="Name">SchoolService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- SchoolService (server): check-in kelas, lesson, quiz, reward XP & attendance.
+-- Remote: SchoolCheckIn (event), LessonGet (function), QuizSubmit (event).
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local Items = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Items'))
+local Math = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Math'))
+local LessonLogic = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('LessonLogic'))
+local Types = require(ReplicatedStorage.Shared:WaitForChild('types'))
+local LessonTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('LessonTypes'))
+
+-- XP dasar per lesson (MVP).
+local BASE_LESSON_XP = 50
+
+local SchoolService = {}
+
+-- Check-in kelas: tambah attendance, beri XP kecil.
+function SchoolService.checkIn(playerId: number): Types.Result<number>
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	profile.school.attendance += 1
+	profile.progress.japaneseXp += 10
+	profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+	return { ok = true, data = profile.school.attendance }
+end
+
+-- Cek apakah player sudah menyelesaikan lesson.
+function SchoolService.isLessonCompleted(playerId: number, lessonId: string): boolean
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return false
+	end
+	for _, id in profile.school.completedLessons do
+		if id == lessonId then
+			return true
+		end
+	end
+	return false
+end
+
+-- Ambil daftar lesson yang tersedia (untuk client).
+function SchoolService.getAvailableLessons(playerId: number): { any }
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return {}
+	end
+	local lessons: { any } = {}
+	for id, def in Items.LESSONS do
+		table.insert(lessons, {
+			id = def.id,
+			titleKey = def.titleKey,
+			level = def.level,
+			completed = SchoolService.isLessonCompleted(playerId, id),
+		})
+	end
+	return lessons
+end
+
+-- Submit quiz; nilai server-side, beri reward bila lulus.
+-- answers: { questionIndex = answerIndex }.
+function SchoolService.submitQuiz(
+	playerId: number,
+	lessonId: string,
+	answers: { [number]: number }
+): Types.Result<LessonTypes.QuizResult>
+	local lesson = Items.LESSONS[lessonId]
+	if not lesson then
+		return { ok = false, error = 'Lesson not found' }
+	end
+	local profile = ProfileService.getProfile(playerId)
+	if not profile then
+		return { ok = false, error = 'Profile not loaded' }
+	end
+	if SchoolService.isLessonCompleted(playerId, lessonId) then
+		return { ok = false, error = 'Lesson already completed' }
+	end
+
+	local correct = LessonLogic.countCorrect(lesson.quiz, answers)
+	local total = #lesson.quiz
+	local passed = LessonLogic.isPassed(correct, total)
+	local xp = LessonLogic.calculateXp(correct, total, BASE_LESSON_XP)
+
+	-- Beri reward & tandai selesai (hanya bila lulus)
+	if passed then
+		profile.progress.japaneseXp += xp
+		profile.progress.japaneseLevel = Math.levelFromXp(profile.progress.japaneseXp)
+		table.insert(profile.school.completedLessons, lessonId)
+		profile.school.examResults[lessonId] = correct
+	end
+
+	return {
+		ok = true,
+		data = {
+			lessonId = lessonId,
+			correct = correct,
+			total = total,
+			passed = passed,
+			earnedXp = passed and xp or 0,
+		},
+	}
+end
+
+function SchoolService.init()
+	RemoteRegistry.registerEvent('SchoolCheckIn', function(player: Player)
+		SchoolService.checkIn(player.UserId)
+	end)
+
+	RemoteRegistry.registerFunction('LessonGet', function(player: Player)
+		return SchoolService.getAvailableLessons(player.UserId)
+	end)
+
+	RemoteRegistry.registerEvent('QuizSubmit', function(player: Player, payload: unknown)
+		if type(payload) ~= 'table' then
+			return
+		end
+		local lessonId = payload.lessonId
+		local answers = payload.answers
+		if type(lessonId) ~= 'string' or type(answers) ~= 'table' then
+			return
+		end
+		SchoolService.submitQuiz(player.UserId, lessonId, answers)
+	end)
+end
+
+return SchoolService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="59">
+          <Properties>
+            <string name="Name">SpawnService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- SpawnService (server): menempatkan NPC ke Workspace + ProximityPrompt.
+-- Interaksi prompt di-handle oleh client (PromptTriggered -> fire NPCInteract).
+
+local Workspace = game:GetService('Workspace')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
+local NPCs = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('NPCs'))
+
+-- Lokasi spawn NPC di dalam asrama (dekat pintu masuk).
+-- Part NPC tingginya 4 stud, jadi tengah ditaruh di atas permukaan lantai (y=1.5).
+local NPC_SPAWNS: { [string]: Vector3 } = {
+	teacher_sakura = Vector3.new(4, 3.5, 6),
+}
+
+local SpawnService = {}
+
+function SpawnService.spawnNPC(npcId: string)
+	local npc = NPCs[npcId]
+	if not npc then
+		warn(`[Spawn] Unknown NPC: {npcId}`)
+		return nil
+	end
+	local position = NPC_SPAWNS[npcId] or Vector3.new(0, 3, 0)
+
+	local model = Instance.new('Model')
+	model.Name = npcId
+
+	local part = Instance.new('Part')
+	part.Size = Vector3.new(2, 4, 1)
+	part.Anchored = true
+	part.Position = position
+	part.Name = 'Body'
+	part.Parent = model
+
+	local humanoid = Instance.new('Humanoid')
+	humanoid.DisplayName = npcId
+	humanoid.Parent = model
+
+	local prompt = Instance.new('ProximityPrompt')
+	prompt.Name = 'InteractPrompt'
+	prompt.ActionText = 'Talk'
+	prompt.ObjectText = npcId
+	prompt.MaxActivationDistance = 8
+	prompt.RequiresLineOfSight = true
+	prompt.Parent = part
+
+	model.Parent = Workspace
+	return model
+end
+
+function SpawnService.init()
+	task.spawn(function()
+		SpawnService.spawnNPC(Config.spawnNpcId)
+	end)
+end
+
+return SpawnService
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="60">
+          <Properties>
+            <string name="Name">TimeService</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- TimeService: clock game (server-authoritative), day/season/weather.
+-- Skeleton: satu tick per detik, siarkan ke client via RemoteEvent.
+
+local timeInfo = {
+	dayNumber = 1,
+	hour = 6, -- mulai jam 6 pagi
+	minute = 0,
+	season = 'summer',
+	weather = 'clear',
+}
+
+local TimeService = {}
+
+function TimeService.init()
+	-- Tick tiap detik; 1 detik = 1 menit game (durasi 1 hari = 20 menit real)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			timeInfo.minute += 1
+			if timeInfo.minute >= 60 then
+				timeInfo.minute = 0
+				timeInfo.hour += 1
+				if timeInfo.hour >= 24 then
+					timeInfo.hour = 0
+					timeInfo.dayNumber += 1
+				end
+			end
+		end
+	end)
+end
+
+function TimeService.getTimeInfo(): typeof(timeInfo)
+	return timeInfo
+end
+
+return TimeService
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="61">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="62">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="63">
+        <Properties>
+          <string name="Name">Client</string>
+        </Properties>
+        <Item class="Folder" referent="64">
+          <Properties>
+            <string name="Name">controllers</string>
+          </Properties>
+          <Item class="ModuleScript" referent="65">
+            <Properties>
+              <string name="Name">DialogController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- DialogController (client): mendeteksi ProximityPrompt NPC, membuka dialog,
+-- menampilkan teks, dan mengirim pilihan ke server.
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild('PlayerGui')
+
+-- Cache localization locale dari profile (di-set oleh ProfileController)
+local currentLocale = 'en'
+
+-- Dialog UI state
+local dialogGui: ScreenGui?
+
+local DialogController = {}
+
+local function createDialogGui(): ScreenGui
+	if dialogGui then
+		dialogGui.Enabled = true
+		return dialogGui
+	end
+
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'DialogGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	local frame = Instance.new('Frame')
+	frame.Name = 'DialogFrame'
+	frame.AnchorPoint = Vector2.new(0.5, 1)
+	frame.Position = UDim2.new(0.5, 0, 1, -40)
+	frame.Size = UDim2.new(0.8, 0, 0, 180)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.BackgroundTransparency = 0.2
+	frame.BorderSizePixel = 0
+	frame.Parent = gui
+
+	local speaker = Instance.new('TextLabel')
+	speaker.Name = 'Speaker'
+	speaker.Size = UDim2.new(1, 0, 0, 30)
+	speaker.BackgroundTransparency = 1
+	speaker.Font = Enum.Font.GothamBold
+	speaker.TextColor3 = Color3.fromRGB(255, 220, 120)
+	speaker.TextScaled = true
+	speaker.TextXAlignment = Enum.TextXAlignment.Left
+	speaker.Parent = frame
+
+	local text = Instance.new('TextLabel')
+	text.Name = 'Text'
+	text.Position = UDim2.new(0, 0, 0, 35)
+	text.Size = UDim2.new(1, 0, 0, 70)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.Gotham
+	text.TextColor3 = Color3.fromRGB(255, 255, 255)
+	text.TextWrapped = true
+	text.TextXAlignment = Enum.TextXAlignment.Left
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.Parent = frame
+
+	local choices = Instance.new('Frame')
+	choices.Name = 'Choices'
+	choices.Position = UDim2.new(0, 0, 0, 110)
+	choices.Size = UDim2.new(1, 0, 0, 65)
+	choices.BackgroundTransparency = 1
+	choices.Parent = frame
+
+	dialogGui = gui
+	return gui
+end
+
+local function closeDialog()
+	if dialogGui then
+		dialogGui.Enabled = false
+	end
+end
+
+local function clearChoices()
+	if not dialogGui then
+		return
+	end
+	local choices = dialogGui.DialogFrame.Choices
+	for _, child in choices:GetChildren() do
+		child:Destroy()
+	end
+end
+
+local function showLines(npcName: string, lines: { { key: string } }, onDone: () -> ())
+	if not dialogGui then
+		return
+	end
+	local frame = dialogGui.DialogFrame
+	frame.Speaker.Text = LocalizationService.get(currentLocale, npcName)
+
+	local index = 0
+	local continueButton: TextButton = Instance.new('TextButton')
+	continueButton.Name = 'Continue'
+	continueButton.Size = UDim2.new(0.15, 0, 0, 30)
+	continueButton.Position = UDim2.new(1, -60, 0.5, -15)
+	continueButton.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+	continueButton.Font = Enum.Font.Gotham
+	continueButton.Text = LocalizationService.get(currentLocale, 'ui.dialog.continue')
+	continueButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	continueButton.Parent = frame
+
+	local function showNext()
+		index += 1
+		if index > #lines then
+			continueButton:Destroy()
+			onDone()
+			return
+		end
+		frame.Text.Text = LocalizationService.get(currentLocale, lines[index].key)
+	end
+	continueButton.Activated:Connect(showNext)
+	showNext()
+end
+
+local function showChoices(choices: { { textKey: string, next: string?, action: string? } }, onPick: (choice) -> ())
+	if not dialogGui then
+		return
+	end
+	clearChoices()
+	local choicesFrame = dialogGui.DialogFrame.Choices
+	for i, choice in choices do
+		local button = Instance.new('TextButton')
+		button.Name = 'Choice' .. i
+		button.Size = UDim2.new(1, 0, 0, 28)
+		button.Position = UDim2.new(0, 0, 0, (i - 1) * 32)
+		button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		button.Text = LocalizationService.get(currentLocale, choice.textKey)
+		button.Font = Enum.Font.Gotham
+		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.Parent = choicesFrame
+		button.Activated:Connect(function()
+			onPick(choice)
+		end)
+	end
+end
+
+-- Navigasi node: tampilkan baris, lalu pilihan / lanjut / tutup.
+local function showNode(npc: { id: string, displayNameKey: string }, node: { lines: any, choices: any, next: string? })
+	local function handleAction(action: string?)
+		if action then
+			local questId = action:match('^quest_accept:(.+)$')
+			if questId then
+				RemoteController.fire('QuestAccept', questId)
+				return
+			end
+			questId = action:match('^quest_claim:(.+)$')
+			if questId then
+				RemoteController.fire('QuestClaim', questId)
+			end
+		end
+	end
+
+	showLines(npc.displayNameKey, node.lines, function()
+		if node.choices and #node.choices > 0 then
+			showChoices(node.choices, function(choice)
+				handleAction(choice.action)
+				if choice.next then
+					local result = RemoteController.invoke('NPCGetDialog', npc.id, choice.next)
+					if result and result.node then
+						showNode(npc, result.node)
+					else
+						closeDialog()
+					end
+				else
+					closeDialog()
+				end
+			end)
+		elseif node.next then
+			local result = RemoteController.invoke('NPCGetDialog', npc.id, node.next)
+			if result and result.node then
+				showNode(npc, result.node)
+			else
+				closeDialog()
+			end
+		else
+			closeDialog()
+		end
+	end)
+end
+
+-- Buka dialog untuk NPC: fetch root node dari server, tampilkan.
+local function openDialog(npcId: string)
+	local gui = createDialogGui()
+	gui.Enabled = true
+
+	local result = RemoteController.invoke('NPCGetDialog', npcId, nil)
+	if not result or not result.node then
+		closeDialog()
+		return
+	end
+
+	local npc = { id = npcId, displayNameKey = 'npc.' .. npcId .. '.name' }
+	showNode(npc, result.node)
+end
+
+function DialogController.setLocale(locale: string)
+	currentLocale = locale
+end
+
+function DialogController.init()
+	-- Deteksi prompt NPC
+	RemoteController.onEvent('NPCOpenDialog', function(payload)
+		if type(payload) ~= 'table' then
+			return
+		end
+		openDialog(payload.npcId)
+	end)
+
+	-- Cari ProximityPrompt di Workspace (NPC model)
+	local function connectPrompt(prompt: ProximityPrompt)
+		local npcId = prompt.ObjectText
+		prompt.Triggered:Connect(function()
+			RemoteController.fire('NPCInteract', npcId)
+		end)
+	end
+
+	-- Scan NPC yang sudah ada + yang baru muncul
+	for _, model in workspace:GetChildren() do
+		local prompt = model:FindFirstChild('InteractPrompt', true)
+		if prompt and prompt:IsA('ProximityPrompt') then
+			connectPrompt(prompt)
+		end
+	end
+	workspace.DescendantAdded:Connect(function(desc)
+		if desc:IsA('ProximityPrompt') then
+			connectPrompt(desc)
+		end
+	end)
+end
+
+return DialogController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="66">
+            <Properties>
+              <string name="Name">HUDController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- HUDController (client): menampilkan status (Yen, XP, Level) dan quest aktif.
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild('PlayerGui')
+
+local currentLocale = 'en'
+local hudGui: ScreenGui?
+
+local HUDController = {}
+
+local function createGui(): ScreenGui
+	if hudGui then
+		return hudGui
+	end
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'HUDGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	-- Panel status kiri atas
+	local panel = Instance.new('Frame')
+	panel.Name = 'StatusPanel'
+	panel.Position = UDim2.new(0, 10, 0, 10)
+	panel.Size = UDim2.new(0, 200, 0, 70)
+	panel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	panel.BackgroundTransparency = 0.3
+	panel.BorderSizePixel = 0
+	panel.Parent = gui
+
+	local yenLabel = Instance.new('TextLabel')
+	yenLabel.Name = 'Yen'
+	yenLabel.Size = UDim2.new(1, 0, 0, 22)
+	yenLabel.BackgroundTransparency = 1
+	yenLabel.Font = Enum.Font.GothamBold
+	yenLabel.TextColor3 = Color3.fromRGB(140, 220, 140)
+	yenLabel.TextXAlignment = Enum.TextXAlignment.Left
+	yenLabel.Parent = panel
+
+	local xpLabel = Instance.new('TextLabel')
+	xpLabel.Name = 'Xp'
+	xpLabel.Position = UDim2.new(0, 0, 0, 24)
+	xpLabel.Size = UDim2.new(1, 0, 0, 22)
+	xpLabel.BackgroundTransparency = 1
+	xpLabel.Font = Enum.Font.Gotham
+	xpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	xpLabel.TextXAlignment = Enum.TextXAlignment.Left
+	xpLabel.Parent = panel
+
+	local levelLabel = Instance.new('TextLabel')
+	levelLabel.Name = 'Level'
+	levelLabel.Position = UDim2.new(0, 0, 0, 48)
+	levelLabel.Size = UDim2.new(1, 0, 0, 22)
+	levelLabel.BackgroundTransparency = 1
+	levelLabel.Font = Enum.Font.Gotham
+	levelLabel.TextColor3 = Color3.fromRGB(220, 200, 140)
+	levelLabel.TextXAlignment = Enum.TextXAlignment.Left
+	levelLabel.Parent = panel
+
+	-- Quest log kanan atas
+	local questPanel = Instance.new('Frame')
+	questPanel.Name = 'QuestPanel'
+	questPanel.AnchorPoint = Vector2.new(1, 0)
+	questPanel.Position = UDim2.new(1, -10, 0, 10)
+	questPanel.Size = UDim2.new(0, 240, 0, 120)
+	questPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	questPanel.BackgroundTransparency = 0.3
+	questPanel.BorderSizePixel = 0
+	questPanel.Parent = gui
+
+	local questTitle = Instance.new('TextLabel')
+	questTitle.Name = 'Title'
+	questTitle.Size = UDim2.new(1, 0, 0, 24)
+	questTitle.BackgroundTransparency = 1
+	questTitle.Font = Enum.Font.GothamBold
+	questTitle.TextColor3 = Color3.fromRGB(255, 220, 120)
+	questTitle.TextXAlignment = Enum.TextXAlignment.Left
+	questTitle.Parent = questPanel
+
+	local questList = Instance.new('Frame')
+	questList.Name = 'List'
+	questList.Position = UDim2.new(0, 0, 0, 26)
+	questList.Size = UDim2.new(1, 0, 1, -26)
+	questList.BackgroundTransparency = 1
+	questList.Parent = questPanel
+
+	-- Tombol buka panel sekolah
+	local schoolBtn = Instance.new('TextButton')
+	schoolBtn.Name = 'SchoolButton'
+	schoolBtn.Position = UDim2.new(0, 10, 0, 90)
+	schoolBtn.Size = UDim2.new(0, 110, 0, 30)
+	schoolBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+	schoolBtn.Font = Enum.Font.Gotham
+	schoolBtn.Text = LocalizationService.get(currentLocale, 'ui.school.open')
+	schoolBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	schoolBtn.Parent = gui
+	schoolBtn.Activated:Connect(function()
+		local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
+		SchoolController.open()
+	end)
+
+	hudGui = gui
+	return gui
+end
+
+local function clearQuestList()
+	if not hudGui then
+		return
+	end
+	local list = hudGui.QuestPanel.List
+	for _, child in list:GetChildren() do
+		child:Destroy()
+	end
+end
+
+local function setStatus(profile: ProfileTypes.Profile)
+	if not hudGui then
+		return
+	end
+	hudGui.StatusPanel.Yen.Text = '¥ ' .. tostring(profile.economy.yen)
+	hudGui.StatusPanel.Xp.Text = 'JP XP: ' .. tostring(profile.progress.japaneseXp)
+	hudGui.StatusPanel.Level.Text = 'Level: ' .. tostring(profile.progress.japaneseLevel)
+end
+
+local function setQuests(quests: { { id: string } })
+	if not hudGui then
+		return
+	end
+	clearQuestList()
+	local list = hudGui.QuestPanel.List
+	if #quests == 0 then
+		local empty = Instance.new('TextLabel')
+		empty.Text = LocalizationService.get(currentLocale, 'ui.questlog.empty')
+		empty.Size = UDim2.new(1, 0, 0, 20)
+		empty.BackgroundTransparency = 1
+		empty.Font = Enum.Font.Gotham
+		empty.TextColor3 = Color3.fromRGB(180, 180, 180)
+		empty.TextXAlignment = Enum.TextXAlignment.Left
+		empty.Parent = list
+		return
+	end
+	for i, quest in quests do
+		local label = Instance.new('TextLabel')
+		label.Name = 'Quest' .. i
+		label.Size = UDim2.new(1, 0, 0, 20)
+		label.Position = UDim2.new(0, 0, 0, (i - 1) * 22)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.Gotham
+		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = LocalizationService.get(currentLocale, 'quest.' .. quest.id .. '.title')
+		label.Parent = list
+	end
+end
+
+function HUDController.setLocale(locale: string)
+	currentLocale = locale
+end
+
+function HUDController.refresh(profile: ProfileTypes.Profile, quests: { { id: string } })
+	setStatus(profile)
+	setQuests(quests)
+end
+
+function HUDController.init()
+	createGui()
+	setQuests({})
+
+	-- Ambil profile & quest aktif dari server
+	task.spawn(function()
+		local profile = RemoteController.invoke('GetProfile')
+		if type(profile) == 'table' then
+			setStatus(profile)
+			local quests = RemoteController.invoke('GetQuestLog')
+			if type(quests) == 'table' then
+				setQuests(quests)
+			end
+		end
+	end)
+end
+
+return HUDController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="67">
+            <Properties>
+              <string name="Name">ProfileController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- ProfileController (client): mengambil profile dari server & menyimpan
+-- locale lokal untuk LocalizationService.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+
+local profile: ProfileTypes.Profile?
+
+local ProfileController = {}
+
+function ProfileController.getProfile(): ProfileTypes.Profile?
+	return profile
+end
+
+function ProfileController.init()
+	-- Ambil profile dari server (RemoteFunction GetProfile)
+	task.spawn(function()
+		local result = RemoteController.invoke('GetProfile')
+		if type(result) == 'table' then
+			profile = result
+			local locale = LocalizationService.getLocaleForProfile(result)
+			-- Set locale untuk dialog & school controller
+			local DialogController = require(script.Parent:WaitForChild('DialogController'))
+			DialogController.setLocale(locale)
+			local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
+			SchoolController.setLocale(locale)
+		end
+	end)
+end
+
+return ProfileController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="68">
+            <Properties>
+              <string name="Name">RemoteController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- RemoteController: client-side wrapper untuk memanggil remote yang
+-- diregistrasi di shared/remotes.lua.
+
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local remotesFolder = ReplicatedStorage:WaitForChild('Remotes')
+local events: { [string]: RemoteEvent } = {}
+local functions: { [string]: RemoteFunction } = {}
+
+for _, child in remotesFolder:GetChildren() do
+	if child:IsA('RemoteEvent') then
+		events[child.Name] = child
+	elseif child:IsA('RemoteFunction') then
+		functions[child.Name] = child
+	end
+end
+
+local RemoteController = {}
+
+function RemoteController.fire(name: string, ...)
+	local event = events[name]
+	if event then
+		event:FireServer(...)
+	else
+		warn(`[Client] Unknown event: {name}`)
+	end
+end
+
+function RemoteController.invoke(name: string, ...)
+	local fn = functions[name]
+	if fn then
+		return fn:InvokeServer(...)
+	end
+	warn(`[Client] Unknown function: {name}`)
+	return nil
+end
+
+function RemoteController.onEvent(name: string, handler: (...any) -> ())
+	local event = events[name]
+	if event then
+		event.OnClientEvent:Connect(handler)
+	else
+		warn(`[Client] Cannot listen to unknown event: {name}`)
+	end
+end
+
+function RemoteController.init()
+	-- Skeleton
+end
+
+return RemoteController
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="69">
+            <Properties>
+              <string name="Name">SchoolController</string>
+              <string name="Source"><![CDATA[--!strict
+
+-- SchoolController (client): menampilkan panel kelas (lesson list & quiz).
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService =
+	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild('PlayerGui')
+
+local currentLocale = 'en'
+local schoolGui: ScreenGui?
+
+local SchoolController = {}
+
+local function createGui(): ScreenGui
+	if schoolGui then
+		return schoolGui
+	end
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'SchoolGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = PlayerGui
+
+	local frame = Instance.new('Frame')
+	frame.Name = 'SchoolFrame'
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	frame.Size = UDim2.new(0.6, 0, 0.6, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	frame.BorderSizePixel = 0
+	frame.Visible = false
+	frame.Parent = gui
+
+	local title = Instance.new('TextLabel')
+	title.Name = 'Title'
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextColor3 = Color3.fromRGB(255, 220, 120)
+	title.Text = 'Lessons'
+	title.Parent = frame
+
+	local content = Instance.new('ScrollingFrame')
+	content.Name = 'Content'
+	content.Position = UDim2.new(0, 10, 0, 50)
+	content.Size = UDim2.new(1, -20, 1, -90)
+	content.BackgroundTransparency = 1
+	content.ScrollBarThickness = 6
+	content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	content.Parent = frame
+
+	local closeBtn = Instance.new('TextButton')
+	closeBtn.Name = 'Close'
+	closeBtn.AnchorPoint = Vector2.new(1, 0)
+	closeBtn.Position = UDim2.new(1, -10, 0, 8)
+	closeBtn.Size = UDim2.new(0, 60, 0, 28)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
+	closeBtn.Text = 'X'
+	closeBtn.Font = Enum.Font.Gotham
+	closeBtn.Parent = frame
+	closeBtn.Activated:Connect(function()
+		frame.Visible = false
+	end)
+
+	schoolGui = gui
+	return gui
+end
+
+local function clearContent()
+	if not schoolGui then
+		return
+	end
+	local content = schoolGui.SchoolFrame.Content
+	for _, child in content:GetChildren() do
+		child:Destroy()
+	end
+end
+
+-- Tampilkan quiz lesson; tampilkan soal, kumpulkan jawaban, submit.
+local function showQuiz(lessonId: string)
+	if not schoolGui then
+		return
+	end
+	clearContent()
+	local content = schoolGui.SchoolFrame.Content
+
+	local Items = require(ReplicatedStorage.Shared.data.Items)
+	local lesson = Items.LESSONS[lessonId]
+	if not lesson then
+		return
+	end
+
+	local answers: { [number]: number } = {}
+
+	local promptLabel = Instance.new('TextLabel')
+	promptLabel.Name = 'Prompt'
+	promptLabel.Size = UDim2.new(1, 0, 0, 80)
+	promptLabel.BackgroundTransparency = 1
+	promptLabel.Font = Enum.Font.Gotham
+	promptLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	promptLabel.TextWrapped = true
+	promptLabel.TextXAlignment = Enum.TextXAlignment.Left
+	promptLabel.TextYAlignment = Enum.TextYAlignment.Top
+	promptLabel.Parent = content
+
+	local choiceFrame = Instance.new('Frame')
+	choiceFrame.Name = 'Choices'
+	choiceFrame.Position = UDim2.new(0, 0, 0, 90)
+	choiceFrame.Size = UDim2.new(1, 0, 0, 140)
+	choiceFrame.BackgroundTransparency = 1
+	choiceFrame.Parent = content
+
+	local function showQuestion(index: number)
+		local question = lesson.quiz[index]
+		if not question then
+			-- Submit
+			RemoteController.fire('QuizSubmit', { lessonId = lessonId, answers = answers })
+			schoolGui.SchoolFrame.Visible = false
+			return
+		end
+		promptLabel.Text = LocalizationService.get(currentLocale, question.promptKey)
+		-- Bersihkan pilihan lama
+		for _, child in choiceFrame:GetChildren() do
+			child:Destroy()
+		end
+		for ci, choiceKey in ipairs(question.choices) do
+			local btn = Instance.new('TextButton')
+			btn.Name = 'Choice' .. ci
+			btn.Size = UDim2.new(1, 0, 0, 32)
+			btn.Position = UDim2.new(0, 0, 0, (ci - 1) * 38)
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+			btn.Font = Enum.Font.Gotham
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Text = LocalizationService.get(currentLocale, choiceKey)
+			btn.Parent = choiceFrame
+			btn.Activated:Connect(function()
+				answers[index] = ci - 1
+				showQuestion(index + 1)
+			end)
+		end
+	end
+	showQuestion(1)
+end
+
+-- Tampilkan daftar lesson; klik untuk mulai quiz.
+local function showLessonList()
+	if not schoolGui then
+		return
+	end
+	clearContent()
+	local content = schoolGui.SchoolFrame.Content
+	local lessons = RemoteController.invoke('LessonGet')
+	if type(lessons) ~= 'table' then
+		return
+	end
+
+	local y = 0
+	for _, lesson in ipairs(lessons) do
+		local row = Instance.new('TextButton')
+		row.Name = 'Lesson_' .. lesson.id
+		row.Size = UDim2.new(1, 0, 0, 36)
+		row.Position = UDim2.new(0, 0, 0, y)
+		row.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+		row.Font = Enum.Font.Gotham
+		row.TextColor3 = Color3.fromRGB(255, 255, 255)
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.Text = LocalizationService.get(currentLocale, lesson.titleKey)
+		if lesson.completed then
+			row.Text = '[OK] ' .. row.Text
+		end
+		row.Parent = content
+
+		if not lesson.completed then
+			row.Activated:Connect(function()
+				showQuiz(lesson.id)
+			end)
+		end
+		y += 40
+	end
+end
+
+function SchoolController.open()
+	if not schoolGui then
+		createGui()
+	end
+	schoolGui.SchoolFrame.Visible = true
+	showLessonList()
+end
+
+function SchoolController.setLocale(locale: string)
+	currentLocale = locale
+end
+
+function SchoolController.init()
+	-- Skeleton: tombol buka panel dipasang nanti / oleh input.
+	createGui()
+end
+
+return SchoolController
+]]></string>
+            </Properties>
+          </Item>
+        </Item>
+        <Item class="LocalScript" referent="70">
+          <Properties>
+            <string name="Name">runner</string>
+            <string name="Source"><![CDATA[--!strict
+
+-- Entry point client. Memuat controller.
+
+for _, module in script.Parent:GetChildren() do
+	if module:IsA('ModuleScript') and module.Name:match('Controller$') then
+		local ok, controller = pcall(require, module)
+		if ok and typeof(controller) == 'table' and controller.init then
+			controller.init()
+			print(`[Client] Loaded {module.Name}`)
+		else
+			warn(`[Client] Failed to load {module.Name}: {controller}`)
+		end
+	end
+end
+
+print('[Client] Suwa Life client runner ready.')
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

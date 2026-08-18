@@ -7,9 +7,11 @@
 local RunService = game:GetService('RunService')
 local Players = game:GetService('Players')
 
-local BICYCLE_VERSION = 10
-local TARGET_LENGTH = 2.6
-local GROUND_CLEARANCE = 0.4
+local BICYCLE_VERSION = 11
+-- Keep the mamachari compact relative to the 5.5-stud avatar.  The previous
+-- 2.6-stud length made both the parked row and rideable bicycle feel oversized.
+local TARGET_LENGTH = 1
+local GROUND_CLEARANCE = 1.4
 local TOP_SPEED = 24
 local ACCELERATION = 22
 local BRAKING = 30

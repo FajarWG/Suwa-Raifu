@@ -8,12 +8,15 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 local LocalizationService =
 	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+local LessonTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('LessonTypes'))
 
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild('PlayerGui')
 
 local currentLocale = 'en'
 local schoolGui: ScreenGui?
+local resultLabel: TextLabel?
+local pendingLessonId: string? = nil
 
 local SchoolController = {}
 
@@ -67,6 +70,19 @@ local function createGui(): ScreenGui
 		frame.Visible = false
 	end)
 
+	local result = Instance.new('TextLabel')
+	result.Name = 'Result'
+	result.Position = UDim2.new(0, 10, 1, -36)
+	result.Size = UDim2.new(1, -20, 0, 24)
+	result.BackgroundTransparency = 1
+	result.Font = Enum.Font.GothamBold
+	result.TextSize = 14
+	result.TextXAlignment = Enum.TextXAlignment.Left
+	result.Text = ''
+	result.TextColor3 = Color3.fromRGB(180, 180, 180)
+	result.Parent = frame
+	resultLabel = result
+
 	schoolGui = gui
 	return gui
 end
@@ -119,8 +135,12 @@ local function showQuiz(lessonId: string)
 		local question = lesson.quiz[index]
 		if not question then
 			-- Submit
+			pendingLessonId = lessonId
+			if resultLabel then
+				resultLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+				resultLabel.Text = 'Submitting quiz...'
+			end
 			RemoteController.fire('QuizSubmit', { lessonId = lessonId, answers = answers })
-			schoolGui.SchoolFrame.Visible = false
 			return
 		end
 		promptLabel.Text = LocalizationService.get(currentLocale, question.promptKey)
@@ -199,6 +219,27 @@ end
 function SchoolController.init()
 	-- Skeleton: tombol buka panel dipasang nanti / oleh input.
 	createGui()
+	RemoteController.onEvent('QuizResult', function(result: LessonTypes.QuizResult)
+		if not resultLabel then
+			return
+		end
+		if pendingLessonId and result.lessonId ~= pendingLessonId then
+			return
+		end
+		if result.passed then
+			resultLabel.TextColor3 = Color3.fromRGB(126, 215, 124)
+			resultLabel.Text = `PASS ({result.correct}/{result.total}) +{result.earnedXp} XP`
+		else
+			resultLabel.TextColor3 = Color3.fromRGB(231, 111, 81)
+			resultLabel.Text = `FAIL ({result.correct}/{result.total}) - Try again`
+		end
+		pendingLessonId = nil
+		task.delay(0.8, function()
+			if schoolGui and schoolGui.SchoolFrame.Visible then
+				showLessonList()
+			end
+		end)
+	end)
 end
 
 return SchoolController

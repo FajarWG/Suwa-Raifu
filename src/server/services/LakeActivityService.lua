@@ -415,7 +415,13 @@ local function configureCraft(model: Model)
 	craftHeights[model] = model:GetPivot().Y
 
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA('BasePart') and descendant.Name ~= 'DriveSeat' and descendant.Name ~= 'PassengerSeat01' and descendant.Name ~= 'PassengerSeat02' and descendant.Name ~= 'PassengerSeat03' then
+		if
+			descendant:IsA('BasePart')
+			and descendant.Name ~= 'DriveSeat'
+			and descendant.Name ~= 'PassengerSeat01'
+			and descendant.Name ~= 'PassengerSeat02'
+			and descendant.Name ~= 'PassengerSeat03'
+		then
 			descendant.CanCollide = true
 			descendant.CanTouch = true
 			descendant.CanQuery = true
@@ -483,7 +489,12 @@ local function configureCraft(model: Model)
 				Vector3.new(0, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 1.85),
 			}
 		do
-			makePassengerSeat(model, `PassengerSeat0{index}`, base * CFrame.new(offset), `Perahu Danau (Penumpang {index})`)
+			makePassengerSeat(
+				model,
+				`PassengerSeat0{index}`,
+				base * CFrame.new(offset),
+				`Perahu Danau (Penumpang {index})`
+			)
 		end
 	end
 	makeMovementSound(model, driverSeat, isDuckBoat)

@@ -2,113 +2,54 @@
 
 ## Suwa Life: Nihongo Days
 
-**Versi:** 0.1 (prototype)
-**Status:** Draft
-**Referensi:** PRD.md v0.1
+**Versi:** 0.2 (vertical slice)  
+**Status:** Active design
+
+Dokumen ini fokus ke desain gameplay yang **sudah playable** dan urutan fitur aktif.
+Rencana jangka panjang tetap berada di `PRD.md` sebagai backlog.
 
 ---
 
-## 1. Player Loop (dari PRD)
+## 1. Core loop playable saat ini
 
-Daily loop: bangun → mandi → siapkan makanan → cek cuaca → ke sekolah → kelas → arubaito/eksplorasi → pulang → tidur.
+1. Spawn di kawasan lakeside.
+2. Interaksi NPC guru untuk quest intro.
+3. Buka panel school dan kerjakan quiz.
+4. Eksplorasi area taman menggunakan jalan kaki, sepeda, atau perahu.
+5. Memancing di spot dermaga, dapat hasil, simpan ke bag.
+6. Belanja item pada toko lakeside.
+7. Ikut event fireworks via console pulau.
 
-## 2. Sistem Progression
+## 2. Loop progression aktif
 
-### Statistik inti (server-authoritative)
+| Progression   | Sumber utama                              | Dampak                                        |
+| ------------- | ----------------------------------------- | --------------------------------------------- |
+| Japanese XP   | Quest intro + school quiz                 | Kenaikan level bahasa                         |
+| Yen           | Reward quest + aktivitas ekonomi lakeside | Belanja item                                  |
+| Fishing level | Aktivitas fishing                         | Akses hasil tangkap lebih baik (berat rarity) |
+| Attendance    | School check-in                           | Tracking progress belajar                     |
 
-| Stat | Rentang | Sumber XP | Fungsi |
-|---|---|---|---|
-| Japanese XP | 0–10.000 | quiz, speaking, homework | Buka dialog & kelas baru |
-| Yen | 0–∞ | arubaito, menjual ikan | Belanja |
-| Energy | 0–100 | tidur (full), makanan | Batasi aktivitas harian |
-| Hunger | 0–100 | makanan | Turun seiring waktu |
-| Friendship | per NPC 0–100 | interaksi, hadiah, quest | Buka quest & dialog |
-| Work Reputation | 0–100 | arubaito | Buka job & gaji lebih tinggi |
-| Exploration Rank | 0–50 | foto viewpoint, collectible | Buka jalur & lokasi rahasia |
-| Attendance | 0–hari sekolah | check-in kelas | Hasil sekolah |
+## 3. Aturan desain fase saat ini
 
-### Level bahasa
+1. UI, dialog, dan sistem runtime tetap English-only.
+2. Papan lokasi dunia menggunakan bahasa Jepang untuk konteks visual.
+3. Fitur baru dilarang masuk sebelum fase aktif lulus QA gate.
 
-| Level | Rentang XP | Setara |
-|---|---|---|
-| Beginner 1 | 0–999 | Pre-N5 |
-| Beginner 2 | 1.000–2.499 | N5 |
-| Elementary | 2.500–4.999 | N4 |
-| Intermediate | 5.000–7.499 | N3 |
-| Advanced | 7.500–10.000 | N2/N1 (konten panjang) |
+## 4. Fase implementasi desain
 
-## 3. Sistem Mini-game (rules ringkas)
+1. Fase 0: stabilitas fondasi (spawn/profile/hud/map boot).
+2. Fase 1: onboarding sekolah (quest + class).
+3. Fase 2: mobilitas lakeside (sepeda + perahu).
+4. Fase 3: fishing economy loop.
+5. Fase 4: festival event.
 
-### Kelas
-1. Check-in di meja.
-2. Duduk (seat enabled) sebelum kelas mulai.
-3. Ikuti lesson (1–5 menit).
-4. Quiz: 3–5 soal (pilihan ganda / susun kalimat / kanji-match).
-5. Reward: Japanese XP + attendance + stamp.
+Urutan detail dan gate ada di `docs/IMPLEMENTATION_FLOW.md`.
 
-### Arubaito programmer
-1. Terima task di meja.
-2. Mini-game per level:
-   - Beginner: sambungkan blok logika (drag node).
-   - Intermediate: temukan 1 baris salah.
-   - Advanced: pilih desain API/database.
-3. Reward: Yen + Programmer Reputation.
+## 5. Backlog desain (dibekukan sementara)
 
-### Arubaito umum (supermarket/restoran)
-- Cashier: scan & hitung kembalian (timed).
-- Stocking: letakkan barang ke shelf kosong.
-- Server: antar pesanan benar.
-- Dish washing: tap-to-clean timed.
-- 2–5 menit per sesi.
+1. Arubaito non-fishing.
+2. Hiking gameplay.
+3. Multi-language runtime (`ja`, `id`).
+4. Ekspansi area map besar lintas distrik.
 
-### Memancing
-- Cast di spot valid (pilih spot by ikon).
-- Timing: tap saat bar di zona.
-- Hasil ikan tergantung waktu/cuaca/musim/umpan/level.
-- Ikan: jual / masak / koleksi / hadiah NPC / quest.
-
-### Hiking
-- Beli/sewa perlengkapan.
-- Pilih jalur → stamina bar → obstacle (jalan licin, climb).
-- Foto viewpoint → collectible → kembali sebelum malam.
-- Time trial & group expedition opsional.
-
-### Festival
-- Countdown event → yukata → stall (ring toss, goldfish-inspired) → dance emote → fireworks → group reward → badge limited.
-
-## 4. Struktur Quest
-
-```text
-QuestDef:
-  id, titleKey, descKey, giverNpcId,
-  requirements (level, item, quest-lain),
-  objectives[] (type, target, count, current),
-  rewards (xp, yen, itemId, reputation),
-  dialogFlowId
-```
-
-## 5. NPC
-
-- Setiap NPC: id, displayName, schedule (waktu+tempat), dialogue set, friendship.
-- Interaksi: ProximityPrompt → dialog tree (branching) → quest trigger.
-- Dialogue level-gated (Japanese Level menentukan kalimat).
-
-## 6. Ekonomi
-
-- Semua perubahan Yen diproses server (anti-cheat).
-- Sumber: arubaito, jual ikan, quest.
-- Sink: makanan, pakaian, peralatan, dekorasi, sepeda upgrade.
-- Logging transaksi (audit).
-
-## 7. Day/Time System
-
-- 1 hari game = X menit real (default 20 menit, tuning).
-- Fase: pagi (6–10), siang (10–16), sore (16–19), malam (19–24), larut (24–6).
-- Cuaca: cerah / hujan / salju (musiman), memengaruhi memancing & hiking.
-- Musim: semi / panas / gugur / dingin (rotasi mingguan atau event).
-
-## 8. Antisipasi Anti-Exploit
-
-- Rate limit RemoteEvent per detik.
-- Validasi server untuk: hasil pekerjaan, memancing, belanja, quest.
-- Teleport & check-in divalidasi posisi.
+Backlog hanya dibuka setelah seluruh fase aktif stabil dan lolos playtest manual.

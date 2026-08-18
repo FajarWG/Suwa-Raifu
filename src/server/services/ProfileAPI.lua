@@ -9,6 +9,14 @@ local QuestService = require(script.Parent:WaitForChild('QuestService'))
 
 local ProfileAPI = {}
 
+local function pushHudState(player: Player)
+	local profile = ProfileService.getProfile(player.UserId)
+	if profile then
+		RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+	end
+	RemoteRegistry.fireClient(player, 'QuestLogUpdated', QuestService.getActiveQuests(player.UserId))
+end
+
 function ProfileAPI.init()
 	-- Beri client profile (sanitized, tanpa data sensitif)
 	RemoteRegistry.registerFunction('GetProfile', function(player: Player)
@@ -21,6 +29,7 @@ function ProfileAPI.init()
 			return
 		end
 		QuestService.acceptQuest(player.UserId, questId)
+		pushHudState(player)
 	end)
 
 	-- Client claim quest reward
@@ -29,11 +38,16 @@ function ProfileAPI.init()
 			return
 		end
 		QuestService.completeQuest(player.UserId, questId)
+		pushHudState(player)
 	end)
 
 	-- Client ambil quest aktif (untuk HUD)
 	RemoteRegistry.registerFunction('GetQuestLog', function(player: Player)
 		return QuestService.getActiveQuests(player.UserId)
+	end)
+
+	ProfileService.onProfileLoaded(function(player: Player)
+		pushHudState(player)
 	end)
 end
 

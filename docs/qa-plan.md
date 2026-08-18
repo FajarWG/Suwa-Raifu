@@ -2,71 +2,68 @@
 
 ## Suwa Life: Nihongo Days
 
-**Versi:** 0.1
-**Status:** Draft
+**Versi:** 0.2  
+**Status:** Aktif (mengikuti flow implementasi bertahap)
+
+Dokumen ini mengikuti `docs/IMPLEMENTATION_FLOW.md`. Tujuan QA sekarang adalah
+menahan scope agar fitur selesai satu per satu, playable, dan aman.
 
 ---
 
-## 1. Jenis test
+## 1. Gate utama sebelum pindah fitur
 
-| Jenis | Tool | Kapan |
-|---|---|---|
-| Unit test (Luau) | TestEZ (`rojo test`) | tiap commit |
-| Lint | Selene | tiap commit |
-| Format | StyLua | tiap commit |
-| Playtest manual | Roblox Studio | tiap fitur selesai |
-| Playtest multiplayer | Roblox (server publik/private) | per milestone |
-| Performance (mobile) | Studio device emulation | tiap phase visual |
+Setiap fitur hanya boleh dinyatakan selesai jika semua ini lulus:
 
-## 2. Playtest checklist (per fitur)
+1. Build place sukses.
+2. Tidak ada error berulang di Output Studio selama sesi test.
+3. Alur utama fitur berhasil dijalankan minimal 3 kali berturut-turut.
+4. Data profile/economy/inventory konsisten jika fitur menyentuh persistence.
+5. Tidak ada bug `High` atau `Critical` terbuka pada fitur tersebut.
 
-- [ ] Fitur berjalan sesuai GDD.
-- [ ] Tidak ada error di Output console (server & client).
-- [ ] UI ok di PC & mobile (dimensi, font, touch).
-- [ ] Save/load tidak corrupt (test disconnect, reconnect).
-- [ ] Anti-exploit: tidak bisa spoof yen/XP dari client.
-- [ ] Rate limit remote tidak meledakkan server.
+## 2. Command QA standar
 
-## 3. Performance checklist
+```sh
+rojo build default.project.json --output SuwaLife.rbxlx
+rojo serve default.project.json
+selene src
+stylua --check src
+rojo build tests.project.json --output build/SuwaLife-Test.rbxlx
+```
 
-- [ ] FPS ≥ 30 di mobile kelas menengah.
-- [ ] Loading pertama < 15 detik (koneksi wajar).
-- [ ] Streaming aktif; tidak memuat seluruh map.
-- [ ] Particle & VFX dibatasi (kembang api client-side).
-- [ ] NPC aktif hanya dekat pemain.
+Catatan: TestEZ dijalankan dari Roblox Studio pada place test, bukan `rojo test`.
 
-## 4. Accessibility checklist
+## 3. Checklist regresi minimum (wajib setiap merge)
 
-- [ ] Furigana bisa on/off.
-- [ ] Romaji opsional.
-- [ ] Subtitle audio.
-- [ ] Volume kembang api terpisah.
-- [ ] Reduced visual effects.
-- [ ] Kontrol mobile nyaman.
-- [ ] Warna bukan satu-satunya sinyal.
+1. Spawn berada di area plaza lakeside.
+2. HUD menampilkan Yen/XP/Level.
+3. Dialog NPC terbuka dan quest intro bisa di-accept.
+4. School panel terbuka dan quiz bisa di-submit.
+5. Bag UI terbuka, inventory tampil, dan shop bisa beli item.
+6. Fishing flow menghasilkan state valid (waiting/bite/reel/caught/failed).
+7. Sepeda bisa dinaiki dan dituruni tanpa softlock.
+8. Perahu bisa dikendarai tanpa menembus shoreline.
+9. Fireworks console bisa start dan berhenti normal.
+10. Keluar-masuk game tidak merusak profile.
 
-## 5. Regression checklist (MVP — PRD §22)
+## 4. Checklist anti-exploit minimum
 
-1. [ ] Spawn di sculpture plaza Sekicho-inspired dan menghadap ke danau.
-2. [ ] Pergi ke sekolah.
-3. [ ] Ikut 1 pelajaran.
-4. [ ] Dapat Japanese XP.
-5. [ ] Bekerja programmer.
-6. [ ] Terima yen.
-7. [ ] Beli makanan.
-8. [ ] Memancing.
-9. [ ] Pergi ke viewpoint.
-10. [ ] Lihat kembang api.
-11. [ ] Progress tersimpan.
-12. [ ] 20 pemain stabil.
-13. [ ] UI PC & mobile.
-14. [ ] UI/dialog English; papan lokasi Jepang (multi-language ditunda).
-15. [ ] Chat filtering.
-16. [ ] Tanpa nama/logo/wajah nyata tanpa izin.
+1. Remote spam terkena rate limit (`RemoteRegistryService`).
+2. Tidak ada perubahan Yen/XP langsung dari client tanpa validasi server.
+3. Aksi fishing/shop/inventory invalid tidak mengubah state profile.
 
-## 6. Bug triage flow
+## 5. Prioritas test per fase
 
-1. Player lapor (Roblox feedback / Discord).
-2. Reproduce di Studio.
-3. Tulis repro steps + severity.
-4. Fix → unit test jika perlu → playtest → commit.
+1. Fase 0: bootstrap, profile load, map load sequence.
+2. Fase 1: onboarding quest + school.
+3. Fase 2: mobilitas sepeda/perahu.
+4. Fase 3: fishing economy loop.
+5. Fase 4: festival event.
+
+Fase berikutnya tidak boleh dimulai sebelum fase aktif lulus gate.
+
+## 6. Bug triage
+
+1. Catat repro step yang jelas (map, posisi, input, expected, actual).
+2. Label severity: `Critical`, `High`, `Medium`, `Low`.
+3. `Critical` dan `High` wajib ditutup sebelum pindah fase.
+4. Setelah fix, ulang regression minimum.

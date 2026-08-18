@@ -42,6 +42,9 @@ local Remotes: RemoteDefinitions = {
 		'OpenShop',
 		'ShopResult',
 		'InventoryAction',
+		'ProfileUpdated',
+		'QuestLogUpdated',
+		'QuizResult',
 	},
 	functions = {
 		'GetProfile',
