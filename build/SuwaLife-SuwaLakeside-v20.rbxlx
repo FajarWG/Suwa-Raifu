@@ -5099,15 +5099,22 @@ local slideBusy: { [Player]: boolean } = {}
 local function addSitPrompt(seat: Seat, objectText: string)
 	local prompt = Instance.new('ProximityPrompt')
 	prompt.Name = 'SitPrompt'
-	prompt.ActionText = 'Sit'
+	prompt.ActionText = 'Duduk'
 	prompt.ObjectText = objectText
-	prompt.HoldDuration = 0.1
+	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 8
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = seat
+	
+	-- Hide prompt when occupied (as a fallback)
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+		prompt.Enabled = (seat.Occupant == nil)
+	end)
+
 	prompt.Triggered:Connect(function(player)
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass('Humanoid')
-		if humanoid and not seat.Occupant then
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass('Humanoid')
+		if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
 			seat:Sit(humanoid)
 		end
 	end)
@@ -5130,9 +5137,18 @@ end
 
 local function configureBenches()
 	for _, descendant in workspace:GetDescendants() do
-		if
+		if descendant:IsA('Seat') then
+			-- Existing Seat objects (e.g. from Creator Store benches)
+			if not descendant:FindFirstAncestor("Bicycles")
+				and not descendant:FindFirstAncestor("LakeCrafts") 
+				and not descendant:FindFirstChild("SitPrompt") 
+				and not descendant:FindFirstChild("RidePrompt")
+			then
+				descendant.CanTouch = false
+				addSitPrompt(descendant, 'Bangku')
+			end
+		elseif
 			descendant:IsA('BasePart')
-			and not descendant:IsA('Seat')
 			and not descendant:IsA('VehicleSeat')
 			and string.find(descendant.Name, 'Seat')
 			and not string.find(descendant.Name, 'SwingSeat')
