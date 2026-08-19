@@ -26,9 +26,17 @@ local function hookCharacter(character: Model)
 	if humanoid and humanoid:IsA('Humanoid') then
 		currentHumanoid = humanoid
 		applySpeed()
+		
+		-- Hide all proximity prompts when sitting
+		humanoid:GetPropertyChangedSignal("SeatPart"):Connect(function()
+			game:GetService("ProximityPromptService").Enabled = (humanoid.SeatPart == nil)
+		end)
+		game:GetService("ProximityPromptService").Enabled = (humanoid.SeatPart == nil)
+		
 		humanoid.Died:Connect(function()
 			sprinting = false
 			currentHumanoid = nil
+			game:GetService("ProximityPromptService").Enabled = true
 		end)
 	end
 end

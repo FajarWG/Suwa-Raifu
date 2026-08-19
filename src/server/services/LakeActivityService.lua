@@ -589,6 +589,47 @@ local function updateCraft(model: Model, deltaTime: number)
 	craftSpeeds[model] = speed
 end
 
+local function configureCreatorStoreBoat(model: Model)
+	for _, seat in ipairs(model:GetDescendants()) do
+		if seat:IsA("VehicleSeat") or seat:IsA("Seat") then
+			seat.CanTouch = false
+			if seat:IsA("VehicleSeat") then
+				seat.HeadsUpDisplay = false -- Remove the default Speed GUI
+			end
+			
+			local existingPrompt = seat:FindFirstChild("RidePrompt")
+			if existingPrompt then existingPrompt:Destroy() end
+			
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "RidePrompt"
+			if seat:IsA("VehicleSeat") then
+				prompt.ActionText = "Mengemudi"
+				prompt.ObjectText = "Perahu"
+			else
+				prompt.ActionText = "Menumpang"
+				prompt.ObjectText = "Kursi Penumpang"
+			end
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.MaxActivationDistance = 8
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = seat
+			
+			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+				prompt.Enabled = (seat.Occupant == nil)
+			end)
+			
+			prompt.Triggered:Connect(function(player)
+				local character = player.Character
+				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+				-- Prevent sitting if already in a seat
+				if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
+					seat:Sit(humanoid)
+				end
+			end)
+		end
+	end
+end
+
 local function buildLakeFeatures()
 	local previous = workspace:FindFirstChild('LakeActivitySet')
 	if previous then
@@ -603,7 +644,7 @@ local function buildLakeFeatures()
 	if crafts then
 		for _, child in crafts:GetChildren() do
 			if child:IsA('Model') then
-				configureCraft(child)
+				configureCreatorStoreBoat(child)
 			end
 		end
 	end
@@ -617,17 +658,6 @@ end
 
 function LakeActivityService.init()
 	buildLakeFeatures()
-	RunService.Heartbeat:Connect(function(deltaTime)
-		for model in craftSpeeds do
-			if model.Parent then
-				updateCraft(model, deltaTime)
-			else
-				craftSpeeds[model] = nil
-				craftHeights[model] = nil
-				craftHalfLengths[model] = nil
-			end
-		end
-	end)
 end
 
 return LakeActivityService

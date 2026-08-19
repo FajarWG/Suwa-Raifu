@@ -768,6 +768,9 @@ local Remotes: RemoteDefinitions = {
 		'OpenShop',
 		'ShopResult',
 		'InventoryAction',
+		'ProfileUpdated',
+		'QuestLogUpdated',
+		'QuizResult',
 	},
 	functions = {
 		'GetProfile',
@@ -1475,359 +1478,63 @@ print('[Server] Suwa Life server runner ready.')
             <string name="Name">BicycleService</string>
             <string name="Source"><![CDATA[--!strict
 
--- Lightweight arcade bicycles for the compact map. The detailed mamachari
--- meshes stay anchored and are moved as one model, which keeps them stable on
--- mobile and avoids a fragile wheel-constraint setup during this map phase.
-
-local RunService = game:GetService('RunService')
-local Players = game:GetService('Players')
-
-local BICYCLE_VERSION = 9
-local TARGET_LENGTH = 3.6
-local GROUND_CLEARANCE = 0.08
-local TOP_SPEED = 24
-local ACCELERATION = 22
-local BRAKING = 30
-local TURN_RATE = math.rad(72)
+-- BicycleService: Creator Store vehicle handling
+-- Adds ProximityPrompt to bikes to require pressing 'E' to ride,
+-- and disables auto-sit upon walking over the seat.
 
 local BicycleService = {}
-local speeds: { [Model]: number } = {}
-local groundOffsets: { [Model]: number } = {}
-
-local function isOverheadPart(part: Instance): boolean
-	local lowerName = string.lower(part.Name)
-	return string.find(lowerName, 'roof') ~= nil
-		or string.find(lowerName, 'canopy') ~= nil
-		or string.find(lowerName, 'cable') ~= nil
-		or string.find(lowerName, 'wire') ~= nil
-		or string.find(lowerName, 'branch') ~= nil
-		or string.find(lowerName, 'crown') ~= nil
-		or string.find(lowerName, 'sign') ~= nil
-end
-
-local function buildRaycastExclusions(currentBicycle: Model): { Instance }
-	local exclusions: { Instance } = { currentBicycle }
-	local bicyclesFolder = workspace:FindFirstChild('Bicycles')
-	if bicyclesFolder then
-		table.insert(exclusions, bicyclesFolder)
-	end
-	for _, player in Players:GetPlayers() do
-		if player.Character then
-			table.insert(exclusions, player.Character)
-		end
-	end
-	return exclusions
-end
-
-local function surfaceHeight(model: Model, position: Vector3): number
-	local exclusions = buildRaycastExclusions(model)
-	local parameters = RaycastParams.new()
-	parameters.FilterType = Enum.RaycastFilterType.Exclude
-	parameters.FilterDescendantsInstances = exclusions
-	parameters.IgnoreWater = true
-	local origin = position + Vector3.new(0, 30, 0)
-	for _ = 1, 15 do
-		local result = workspace:Raycast(origin, Vector3.new(0, -100, 0), parameters)
-		if not result then
-			return 0
-		end
-		local hit = result.Instance
-		if isOverheadPart(hit) or (hit:IsA('BasePart') and not hit.CanCollide) then
-			table.insert(exclusions, hit)
-			parameters.FilterDescendantsInstances = exclusions
-			origin = result.Position - Vector3.new(0, 0.05, 0)
-		else
-			return result.Position.Y
-		end
-	end
-	return 0
-end
-
-local function scaleGeometryToLength(model: Model, targetLength: number)
-	local pivot = model:GetPivot()
-	local _, initialSize = model:GetBoundingBox()
-	local initialLength = math.max(initialSize.X, initialSize.Z)
-	if initialLength <= 0.01 then
-		return
-	end
-	local factor = targetLength / initialLength
-	if math.abs(factor - 1) <= 0.01 then
-		return
-	end
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA('BasePart') then
-			local relative = pivot:ToObjectSpace(descendant.CFrame)
-			descendant.Size *= factor
-			descendant.CFrame = pivot * CFrame.new(relative.Position * factor) * relative.Rotation
-		end
-	end
-end
-
-local function addSitPrompt(seat: Seat, actionText: string, objectText: string)
-	local prompt = Instance.new('ProximityPrompt')
-	prompt.Name = 'SitPrompt'
-	prompt.ActionText = actionText
-	prompt.ObjectText = objectText
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.MaxActivationDistance = 8
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
-	prompt.Triggered:Connect(function(player)
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass('Humanoid')
-		if humanoid and not seat.Occupant then
-			seat:Sit(humanoid)
-		end
-	end)
-end
-
-local function makeSeat(model: Model): VehicleSeat
-	local existing = model:FindFirstChild('RideSeat')
-	local seat: VehicleSeat
-	if existing and existing:IsA('VehicleSeat') then
-		seat = existing
-	else
-		seat = Instance.new('VehicleSeat')
-		seat.Name = 'RideSeat'
-		seat.Size = Vector3.new(0.75, 0.3, 0.8)
-		seat.Color = Color3.fromRGB(38, 34, 31)
-		seat.Material = Enum.Material.Leather
-		seat.Transparency = 1
-		seat.Anchored = true
-		seat.CanCollide = false
-		seat.Massless = true
-		seat.CFrame = model:GetPivot() * CFrame.new(0, 0.55, 0.1)
-		seat.Parent = model
-	end
-
-	local oldPrompt = seat:FindFirstChild('RidePrompt')
-	if oldPrompt then
-		oldPrompt:Destroy()
-	end
-	local prompt = Instance.new('ProximityPrompt')
-	prompt.Name = 'RidePrompt'
-	prompt.ActionText = 'Naik Sepeda'
-	prompt.ObjectText = 'Mamachari (Kemudi)'
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.MaxActivationDistance = 10
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
-	prompt.Triggered:Connect(function(player)
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass('Humanoid')
-		if humanoid then
-			seat:Sit(humanoid)
-		end
-	end)
-
-	return seat
-end
-
-local function makePassengerSeat(model: Model)
-	local oldSeat = model:FindFirstChild('PassengerSeat')
-	if oldSeat then
-		oldSeat:Destroy()
-	end
-	local seat = Instance.new('Seat')
-	seat.Name = 'PassengerSeat'
-	seat.Size = Vector3.new(0.75, 0.3, 0.75)
-	seat.CFrame = model:GetPivot() * CFrame.new(0, 0.55, 1.1)
-	seat.Transparency = 1
-	seat.Anchored = true
-	seat.CanCollide = false
-	seat.CanTouch = false
-	seat.Parent = model
-	addSitPrompt(seat, 'Bonceng Sepeda', 'Mamachari (Kursi Belakang)')
-end
-
-local function makeCollisionBody(model: Model, visualBottom: number)
-	local previous = model:FindFirstChild('SolidBicycleCollider')
-	if previous then
-		previous:Destroy()
-	end
-	local boundingCFrame, boundingSize = model:GetBoundingBox()
-	local collider = Instance.new('Part')
-	collider.Name = 'SolidBicycleCollider'
-	collider.Size = Vector3.new(math.max(0.85, boundingSize.X * 0.8), 0.5, TARGET_LENGTH * 0.85)
-	collider.CFrame = CFrame.new(boundingCFrame.X, visualBottom + 0.55, boundingCFrame.Z) * model:GetPivot().Rotation
-	collider.Transparency = 1
-	collider.Anchored = true
-	collider.CanCollide = true
-	collider.CanTouch = true
-	collider.CanQuery = true
-	collider.Parent = model
-	model:SetAttribute('SolidVehicle', true)
-end
-
-local function configureBicycle(model: Model, parkingSlot: number?)
-	local oldSeat = model:FindFirstChild('RideSeat')
-	if oldSeat then
-		oldSeat:Destroy()
-	end
-
-	local oldPassengerSeat = model:FindFirstChild('PassengerSeat')
-	if oldPassengerSeat then
-		oldPassengerSeat:Destroy()
-	end
-	local oldCollider = model:FindFirstChild('SolidBicycleCollider')
-	if oldCollider then
-		oldCollider:Destroy()
-	end
-	scaleGeometryToLength(model, TARGET_LENGTH)
-	if parkingSlot then
-		local slotX = 410 + (parkingSlot - 1) * 5.5
-		local oldPivot = model:GetPivot()
-		model:PivotTo(CFrame.new(slotX, oldPivot.Y, -70) * oldPivot.Rotation)
-	end
-
-	local boundingCFrame, boundingSize = model:GetBoundingBox()
-	local bottom = boundingCFrame.Y - boundingSize.Y / 2
-	local currentPivot = model:GetPivot()
-	local targetBottom = surfaceHeight(model, currentPivot.Position) + GROUND_CLEARANCE
-	local lift = targetBottom - bottom
-	local pivot = model:GetPivot()
-	model:PivotTo(CFrame.new(pivot.Position + Vector3.new(0, lift, 0)) * pivot.Rotation)
-	if parkingSlot then
-		model:SetAttribute('HomeFacility', 'CoveredMamachariParking')
-		model:SetAttribute('ParkingSlot', parkingSlot)
-	end
-	local adjustedBoundingCFrame, adjustedBoundingSize = model:GetBoundingBox()
-	groundOffsets[model] = model:GetPivot().Y - (adjustedBoundingCFrame.Y - adjustedBoundingSize.Y / 2)
-	model:SetAttribute('BicycleVersion', BICYCLE_VERSION)
-	model:SetAttribute('TargetLengthStuds', TARGET_LENGTH)
-	model:SetAttribute('ActualLengthStuds', math.max(adjustedBoundingSize.X, adjustedBoundingSize.Z))
-	model:SetAttribute('GroundClearanceStuds', GROUND_CLEARANCE)
-	model:SetAttribute('ScaleBasis', '5.5-stud avatar')
-
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA('BasePart') then
-			descendant.Anchored = true
-			descendant.CanCollide = false
-		end
-	end
-
-	makeCollisionBody(model, targetBottom)
-	makeSeat(model)
-	makePassengerSeat(model)
-	speeds[model] = 0
-end
-
-local function findRideSurface(model: Model, position: Vector3, occupant: Humanoid?): (number?, boolean)
-	local exclusions = buildRaycastExclusions(model)
-	if occupant and occupant.Parent then
-		table.insert(exclusions, occupant.Parent)
-	end
-	local parameters = RaycastParams.new()
-	parameters.FilterType = Enum.RaycastFilterType.Exclude
-	parameters.FilterDescendantsInstances = exclusions
-	parameters.IgnoreWater = true
-
-	local origin = position + Vector3.new(0, 20, 0)
-	for _ = 1, 12 do
-		local result = workspace:Raycast(origin, Vector3.new(0, -80, 0), parameters)
-		if not result then
-			return nil, false
-		end
-		local hit = result.Instance
-		if isOverheadPart(hit) or (hit:IsA('BasePart') and not hit.CanCollide) then
-			table.insert(exclusions, hit)
-			parameters.FilterDescendantsInstances = exclusions
-			origin = result.Position - Vector3.new(0, 0.05, 0)
-		else
-			return result.Position.Y, result.Normal.Y < 0.58
-		end
-	end
-	return nil, false
-end
-
-local function updateBicycle(model: Model, deltaTime: number)
-	local seat = model:FindFirstChild('RideSeat')
-	if not seat or not seat:IsA('VehicleSeat') then
-		return
-	end
-
-	local speed = speeds[model] or 0
-	local occupied = seat.Occupant ~= nil
-	local throttle = if occupied then seat.ThrottleFloat else 0
-	local steer = if occupied then seat.SteerFloat else 0
-
-	if math.abs(throttle) > 0.05 then
-		speed += throttle * ACCELERATION * deltaTime
-		speed = math.clamp(speed, -TOP_SPEED * 0.35, TOP_SPEED)
-	else
-		local reduction = BRAKING * deltaTime
-		if math.abs(speed) <= reduction then
-			speed = 0
-		else
-			speed -= math.sign(speed) * reduction
-		end
-	end
-
-	if occupied and math.abs(speed) > 0.2 then
-		local turnDirection = if speed >= 0 then 1 else -1
-		local yaw = -steer * TURN_RATE * turnDirection * deltaTime
-		local pivot = model:GetPivot() * CFrame.Angles(0, yaw, 0)
-		local displacement = pivot.LookVector * speed * deltaTime
-		local horizontalPosition = pivot.Position + Vector3.new(displacement.X, 0, displacement.Z)
-		local groundY, tooSteep = findRideSurface(model, horizontalPosition, seat.Occupant)
-		if tooSteep then
-			speed = 0
-		elseif groundY then
-			local nextPosition = Vector3.new(
-				horizontalPosition.X,
-				groundY + (groundOffsets[model] or 1) + GROUND_CLEARANCE,
-				horizontalPosition.Z
-			)
-			model:PivotTo(CFrame.new(nextPosition) * pivot.Rotation)
-		end
-	end
-
-	speeds[model] = speed
-end
 
 function BicycleService.init()
+	print('[BicycleService] Setting up ProximityPrompts for Creator Store Bikes...')
+	
 	local folder = workspace:FindFirstChild('Bicycles')
-	if not folder then
-		return
-	end
+	if not folder then return end
 
-	-- One usable mamachari per visible rack section. Clones are generated at
-	-- runtime so all eight are individually rideable without bloating the place.
-	for _, child in folder:GetChildren() do
-		if child:IsA('Model') and child:GetAttribute('GeneratedParkingBicycle') then
-			child:Destroy()
-		end
-	end
-	local parkTemplate = folder:FindFirstChild('ParkMamachari')
-	local parkingBicycles: { Model } = {}
-	if parkTemplate and parkTemplate:IsA('Model') then
-		table.insert(parkingBicycles, parkTemplate)
-		for slot = 2, 8 do
-			local clone = parkTemplate:Clone()
-			clone.Name = string.format('ParkMamachari%02d', slot)
-			clone:SetAttribute('GeneratedParkingBicycle', true)
-			clone.Parent = folder
-			table.insert(parkingBicycles, clone)
-		end
-	end
-	for slot, bicycle in parkingBicycles do
-		configureBicycle(bicycle, slot)
-	end
-	for _, child in folder:GetChildren() do
-		if child:IsA('Model') and not table.find(parkingBicycles, child) then
-			configureBicycle(child)
-		end
-	end
-
-	RunService.Heartbeat:Connect(function(deltaTime)
-		for model in speeds do
-			if model.Parent then
-				updateBicycle(model, deltaTime)
-			else
-				speeds[model] = nil
-				groundOffsets[model] = nil
+	for _, bike in ipairs(folder:GetChildren()) do
+		if bike:IsA("Model") then
+			-- Iterate over all seats (VehicleSeat and regular Seat)
+			for _, seat in ipairs(bike:GetDescendants()) do
+				if seat:IsA("VehicleSeat") or seat:IsA("Seat") then
+					-- Disable auto-sit when touched
+					seat.CanTouch = false
+					
+					-- Remove any existing prompt just in case
+					local existingPrompt = seat:FindFirstChild("RidePrompt")
+					if existingPrompt then existingPrompt:Destroy() end
+					
+					-- Create prompt
+					local prompt = Instance.new("ProximityPrompt")
+					prompt.Name = "RidePrompt"
+					if seat:IsA("VehicleSeat") then
+						prompt.ActionText = "Mengemudi"
+						prompt.ObjectText = "Sepeda"
+					else
+						prompt.ActionText = "Menumpang"
+						prompt.ObjectText = "Kursi Penumpang"
+					end
+					prompt.KeyboardKeyCode = Enum.KeyCode.E
+					prompt.MaxActivationDistance = 8
+					prompt.RequiresLineOfSight = false
+					prompt.Parent = seat
+					
+					-- Hide prompt when someone is sitting
+					seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+						prompt.Enabled = (seat.Occupant == nil)
+					end)
+					
+					prompt.Triggered:Connect(function(player)
+						local character = player.Character
+						local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+						-- Check if player is NOT already sitting in something else!
+						if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
+							-- Force the player to sit
+							seat:Sit(humanoid)
+						end
+					end)
+				end
 			end
 		end
-	end)
+	end
 end
 
 return BicycleService
@@ -3546,7 +3253,13 @@ local function configureCraft(model: Model)
 	craftHeights[model] = model:GetPivot().Y
 
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA('BasePart') and descendant.Name ~= 'DriveSeat' and descendant.Name ~= 'PassengerSeat01' and descendant.Name ~= 'PassengerSeat02' and descendant.Name ~= 'PassengerSeat03' then
+		if
+			descendant:IsA('BasePart')
+			and descendant.Name ~= 'DriveSeat'
+			and descendant.Name ~= 'PassengerSeat01'
+			and descendant.Name ~= 'PassengerSeat02'
+			and descendant.Name ~= 'PassengerSeat03'
+		then
 			descendant.CanCollide = true
 			descendant.CanTouch = true
 			descendant.CanQuery = true
@@ -3614,7 +3327,12 @@ local function configureCraft(model: Model)
 				Vector3.new(0, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 1.85),
 			}
 		do
-			makePassengerSeat(model, `PassengerSeat0{index}`, base * CFrame.new(offset), `Perahu Danau (Penumpang {index})`)
+			makePassengerSeat(
+				model,
+				`PassengerSeat0{index}`,
+				base * CFrame.new(offset),
+				`Perahu Danau (Penumpang {index})`
+			)
 		end
 	end
 	makeMovementSound(model, driverSeat, isDuckBoat)
@@ -3709,6 +3427,47 @@ local function updateCraft(model: Model, deltaTime: number)
 	craftSpeeds[model] = speed
 end
 
+local function configureCreatorStoreBoat(model: Model)
+	for _, seat in ipairs(model:GetDescendants()) do
+		if seat:IsA("VehicleSeat") or seat:IsA("Seat") then
+			seat.CanTouch = false
+			if seat:IsA("VehicleSeat") then
+				seat.HeadsUpDisplay = false -- Remove the default Speed GUI
+			end
+			
+			local existingPrompt = seat:FindFirstChild("RidePrompt")
+			if existingPrompt then existingPrompt:Destroy() end
+			
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "RidePrompt"
+			if seat:IsA("VehicleSeat") then
+				prompt.ActionText = "Mengemudi"
+				prompt.ObjectText = "Perahu"
+			else
+				prompt.ActionText = "Menumpang"
+				prompt.ObjectText = "Kursi Penumpang"
+			end
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.MaxActivationDistance = 8
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = seat
+			
+			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+				prompt.Enabled = (seat.Occupant == nil)
+			end)
+			
+			prompt.Triggered:Connect(function(player)
+				local character = player.Character
+				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+				-- Prevent sitting if already in a seat
+				if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
+					seat:Sit(humanoid)
+				end
+			end)
+		end
+	end
+end
+
 local function buildLakeFeatures()
 	local previous = workspace:FindFirstChild('LakeActivitySet')
 	if previous then
@@ -3723,7 +3482,7 @@ local function buildLakeFeatures()
 	if crafts then
 		for _, child in crafts:GetChildren() do
 			if child:IsA('Model') then
-				configureCraft(child)
+				configureCreatorStoreBoat(child)
 			end
 		end
 	end
@@ -3737,17 +3496,6 @@ end
 
 function LakeActivityService.init()
 	buildLakeFeatures()
-	RunService.Heartbeat:Connect(function(deltaTime)
-		for model in craftSpeeds do
-			if model.Parent then
-				updateCraft(model, deltaTime)
-			else
-				craftSpeeds[model] = nil
-				craftHeights[model] = nil
-				craftHalfLengths[model] = nil
-			end
-		end
-	end)
 end
 
 return LakeActivityService
@@ -5555,6 +5303,14 @@ local QuestService = require(script.Parent:WaitForChild('QuestService'))
 
 local ProfileAPI = {}
 
+local function pushHudState(player: Player)
+	local profile = ProfileService.getProfile(player.UserId)
+	if profile then
+		RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+	end
+	RemoteRegistry.fireClient(player, 'QuestLogUpdated', QuestService.getActiveQuests(player.UserId))
+end
+
 function ProfileAPI.init()
 	-- Beri client profile (sanitized, tanpa data sensitif)
 	RemoteRegistry.registerFunction('GetProfile', function(player: Player)
@@ -5567,6 +5323,7 @@ function ProfileAPI.init()
 			return
 		end
 		QuestService.acceptQuest(player.UserId, questId)
+		pushHudState(player)
 	end)
 
 	-- Client claim quest reward
@@ -5575,11 +5332,16 @@ function ProfileAPI.init()
 			return
 		end
 		QuestService.completeQuest(player.UserId, questId)
+		pushHudState(player)
 	end)
 
 	-- Client ambil quest aktif (untuk HUD)
 	RemoteRegistry.registerFunction('GetQuestLog', function(player: Player)
 		return QuestService.getActiveQuests(player.UserId)
+	end)
+
+	ProfileService.onProfileLoaded(function(player: Player)
+		pushHudState(player)
 	end)
 end
 
@@ -6246,7 +6008,13 @@ end
 
 function SchoolService.init()
 	RemoteRegistry.registerEvent('SchoolCheckIn', function(player: Player)
-		SchoolService.checkIn(player.UserId)
+		local result = SchoolService.checkIn(player.UserId)
+		if result.ok then
+			local profile = ProfileService.getProfile(player.UserId)
+			if profile then
+				RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+			end
+		end
 	end)
 
 	RemoteRegistry.registerFunction('LessonGet', function(player: Player)
@@ -6262,7 +6030,14 @@ function SchoolService.init()
 		if type(lessonId) ~= 'string' or type(answers) ~= 'table' then
 			return
 		end
-		SchoolService.submitQuiz(player.UserId, lessonId, answers)
+		local result = SchoolService.submitQuiz(player.UserId, lessonId, answers)
+		if result.ok and result.data then
+			RemoteRegistry.fireClient(player, 'QuizResult', result.data)
+			local profile = ProfileService.getProfile(player.UserId)
+			if profile then
+				RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+			end
+		end
 	end)
 end
 
@@ -6292,26 +6067,84 @@ local NPC_SPAWNS: { [string]: Vector3 } = {
 
 local SpawnService = {}
 
+local function resolveDisplayName(npcId: string): string
+	if npcId == 'teacher_sakura' then
+		return 'Teacher Sakura'
+	end
+	return npcId
+end
+
+local function findSpawnLocation(): SpawnLocation?
+	for _, descendant in Workspace:GetDescendants() do
+		if descendant:IsA('SpawnLocation') then
+			return descendant
+		end
+	end
+	return nil
+end
+
+local function groundedPosition(preferred: Vector3?): Vector3
+	if preferred then
+		local origin = Vector3.new(preferred.X, 300, preferred.Z)
+		local result = Workspace:Raycast(origin, Vector3.new(0, -1200, 0))
+		if result then
+			return Vector3.new(preferred.X, result.Position.Y + 2.6, preferred.Z)
+		end
+	end
+
+	local spawnLocation = findSpawnLocation()
+	if spawnLocation then
+		local anchor = spawnLocation.CFrame.Position + spawnLocation.CFrame.LookVector * 8
+		local fallbackOrigin = Vector3.new(anchor.X, 300, anchor.Z)
+		local fallbackHit = Workspace:Raycast(fallbackOrigin, Vector3.new(0, -1200, 0))
+		if fallbackHit then
+			return Vector3.new(anchor.X, fallbackHit.Position.Y + 2.6, anchor.Z)
+		end
+		return anchor + Vector3.new(0, 2.6, 0)
+	end
+
+	return Vector3.new(0, 6, 0)
+end
+
+local function getNpcFolder(): Folder
+	local folder = Workspace:FindFirstChild('NPCs')
+	if folder and folder:IsA('Folder') then
+		return folder
+	end
+
+	folder = Instance.new('Folder')
+	folder.Name = 'NPCs'
+	folder.Parent = Workspace
+	return folder
+end
+
 function SpawnService.spawnNPC(npcId: string)
 	local npc = NPCs[npcId]
 	if not npc then
 		warn(`[Spawn] Unknown NPC: {npcId}`)
 		return nil
 	end
-	local position = NPC_SPAWNS[npcId] or Vector3.new(0, 3, 0)
+	local position = groundedPosition(NPC_SPAWNS[npcId])
+	local folder = getNpcFolder()
+	local existing = folder:FindFirstChild(npcId)
+	if existing then
+		existing:Destroy()
+	end
 
 	local model = Instance.new('Model')
 	model.Name = npcId
 
 	local part = Instance.new('Part')
-	part.Size = Vector3.new(2, 4, 1)
+	part.Size = Vector3.new(2.5, 5, 2)
 	part.Anchored = true
 	part.Position = position
 	part.Name = 'Body'
+	part.Color = Color3.fromRGB(247, 187, 208)
+	part.Material = Enum.Material.SmoothPlastic
 	part.Parent = model
 
 	local humanoid = Instance.new('Humanoid')
-	humanoid.DisplayName = npcId
+	humanoid.DisplayName = resolveDisplayName(npcId)
 	humanoid.Parent = model
 
 	local prompt = Instance.new('ProximityPrompt')
@@ -6319,15 +6152,35 @@ function SpawnService.spawnNPC(npcId: string)
 	prompt.ActionText = 'Talk'
 	prompt.ObjectText = npcId
 	prompt.MaxActivationDistance = 8
-	prompt.RequiresLineOfSight = true
+	prompt.RequiresLineOfSight = false
 	prompt.Parent = part
 
-	model.Parent = Workspace
+	local marker = Instance.new('BillboardGui')
+	marker.Name = 'NameTag'
+	marker.Size = UDim2.fromOffset(180, 36)
+	marker.StudsOffset = Vector3.new(0, 3.2, 0)
+	marker.AlwaysOnTop = true
+	marker.Parent = part
+
+	local nameLabel = Instance.new('TextLabel')
+	nameLabel.Size = UDim2.fromScale(1, 1)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextScaled = true
+	nameLabel.TextColor3 = Color3.fromRGB(255, 245, 190)
+	nameLabel.TextStrokeTransparency = 0.45
+	nameLabel.Text = resolveDisplayName(npcId)
+	nameLabel.Parent = marker
+
+	model.Parent = folder
 	return model
 end
 
 function SpawnService.init()
-	task.spawn(function()
+	SpawnService.spawnNPC(Config.spawnNpcId)
+	-- Terrain/map services may still be finalizing during startup, so respawn once
+	-- after a short delay to keep NPC visible on the final ground level.
+	task.delay(2, function()
 		SpawnService.spawnNPC(Config.spawnNpcId)
 	end)
 end
@@ -7612,14 +7465,8 @@ local function makeDuck(parent: Instance, position: Vector3, index: number): Mod
 	local headColor = if isMallard then Color3.fromRGB(25, 115, 75) else bodyColor
 	local beakColor = if isMallard then Color3.fromRGB(240, 175, 35) else Color3.fromRGB(245, 140, 30)
 
-	local body = part(
-		model,
-		'Body',
-		Vector3.new(1.4, 0.9, 2.3),
-		CFrame.new(position),
-		bodyColor,
-		Enum.Material.SmoothPlastic
-	)
+	local body =
+		part(model, 'Body', Vector3.new(1.4, 0.9, 2.3), CFrame.new(position), bodyColor, Enum.Material.SmoothPlastic)
 	body.Shape = Enum.PartType.Ball
 
 	if isMallard then
@@ -7630,7 +7477,8 @@ local function makeDuck(parent: Instance, position: Vector3, index: number): Mod
 			CFrame.new(position + Vector3.new(0, 0.35, -0.7)),
 			Color3.fromRGB(250, 250, 250),
 			Enum.Material.SmoothPlastic
-		).Shape = Enum.PartType.Cylinder
+		).Shape =
+			Enum.PartType.Cylinder
 	end
 
 	local head = part(
@@ -7805,14 +7653,17 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 		CFrame.new(center.X, ground + 1.9, center.Z),
 		bellyColor,
 		Enum.Material.SmoothPlastic
-	).Shape = Enum.PartType.Ball
+	).Shape =
+		Enum.PartType.Ball
 
-	for _, spec in {
-		{ -0.6, 1.35, -1.1 },
-		{ 0.6, 1.35, -1.1 },
-		{ -0.6, 1.35, 1.1 },
-		{ 0.6, 1.35, 1.1 },
-	} do
+	for _, spec in
+		{
+			{ -0.6, 1.35, -1.1 },
+			{ 0.6, 1.35, -1.1 },
+			{ -0.6, 1.35, 1.1 },
+			{ 0.6, 1.35, 1.1 },
+		}
+	do
 		part(
 			model,
 			'Leg',
@@ -7887,7 +7738,8 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 				model,
 				'AntlerMain',
 				Vector3.new(0.12, 1.5, 0.12),
-				CFrame.new(center.X + side * 0.28, ground + 5.2, center.Z - 1.75) * CFrame.Angles(math.rad(-15), 0, math.rad(side * 18)),
+				CFrame.new(center.X + side * 0.28, ground + 5.2, center.Z - 1.75)
+					* CFrame.Angles(math.rad(-15), 0, math.rad(side * 18)),
 				Color3.fromRGB(210, 195, 170),
 				Enum.Material.Wood
 			)
@@ -7895,7 +7747,8 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 				model,
 				'AntlerTine',
 				Vector3.new(0.1, 0.7, 0.1),
-				CFrame.new(center.X + side * 0.42, ground + 5.4, center.Z - 1.9) * CFrame.Angles(math.rad(-45), 0, math.rad(side * 30)),
+				CFrame.new(center.X + side * 0.42, ground + 5.4, center.Z - 1.9)
+					* CFrame.Angles(math.rad(-45), 0, math.rad(side * 30)),
 				Color3.fromRGB(210, 195, 170),
 				Enum.Material.Wood
 			)
@@ -7912,7 +7765,8 @@ local function makeSikaDeer(parent: Instance, center: Vector3, index: number): M
 			CFrame.new(center.X + side * 0.72, ground + 2.7, center.Z + zOff),
 			Color3.fromRGB(250, 245, 235),
 			Enum.Material.SmoothPlastic
-		).Shape = Enum.PartType.Ball
+		).Shape =
+			Enum.PartType.Ball
 	end
 
 	part(
@@ -8029,13 +7883,13 @@ local function updateWildlife()
 			local angle = swimmer.phase + now * swimmer.speed
 			local bobOffset = math.sin(now * 2.2 + swimmer.phase) * swimmer.bob
 			local position = swimmer.center
-				+ Vector3.new(
-					math.cos(angle) * swimmer.radiusX,
-					bobOffset,
-					math.sin(angle) * swimmer.radiusZ
-				)
+				+ Vector3.new(math.cos(angle) * swimmer.radiusX, bobOffset, math.sin(angle) * swimmer.radiusZ)
 			local nextPosition = swimmer.center
-				+ Vector3.new(math.cos(angle + 0.05) * swimmer.radiusX, bobOffset, math.sin(angle + 0.05) * swimmer.radiusZ)
+				+ Vector3.new(
+					math.cos(angle + 0.05) * swimmer.radiusX,
+					bobOffset,
+					math.sin(angle + 0.05) * swimmer.radiusZ
+				)
 
 			local targetCFrame = CFrame.lookAt(position, nextPosition)
 
@@ -8600,6 +8454,8 @@ return FishingController
 
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local RunService = game:GetService('RunService')
+local Workspace = game:GetService('Workspace')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 local LocalizationService =
@@ -8611,8 +8467,170 @@ local PlayerGui = player:WaitForChild('PlayerGui')
 
 local currentLocale = 'en'
 local hudGui: ScreenGui?
+local currentProfile: ProfileTypes.Profile? = nil
+local currentQuests: { { id: string } } = {}
+local sakuraHighlight: Highlight? = nil
+local navBeam: Beam? = nil
+local navFromAttachment: Attachment? = nil
+local navToAttachment: Attachment? = nil
 
 local HUDController = {}
+
+local function getSakuraBody(): BasePart?
+	local npcs = Workspace:FindFirstChild('NPCs')
+	if npcs then
+		local sakuraModel = npcs:FindFirstChild('teacher_sakura')
+		if sakuraModel and sakuraModel:IsA('Model') then
+			local body = sakuraModel:FindFirstChild('Body')
+			if body and body:IsA('BasePart') then
+				return body
+			end
+		end
+	end
+
+	local direct = Workspace:FindFirstChild('teacher_sakura')
+	if direct and direct:IsA('Model') then
+		local body = direct:FindFirstChild('Body')
+		if body and body:IsA('BasePart') then
+			return body
+		end
+	end
+
+	return nil
+end
+
+local function getCharacterRoot(): BasePart?
+	local character = player.Character
+	if not character then
+		return nil
+	end
+	local root = character:FindFirstChild('HumanoidRootPart')
+	if root and root:IsA('BasePart') then
+		return root
+	end
+	return nil
+end
+
+local function hasQuest(questId: string): boolean
+	for _, quest in currentQuests do
+		if quest.id == questId then
+			return true
+		end
+	end
+	return false
+end
+
+local function isQuestCompleted(questId: string): boolean
+	if not currentProfile then
+		return false
+	end
+	for _, completedId in currentProfile.quests.completed do
+		if completedId == questId then
+			return true
+		end
+	end
+	return false
+end
+
+local function shouldShowOnboarding(): boolean
+	if isQuestCompleted('quest_intro') then
+		return false
+	end
+	if hasQuest('quest_intro') then
+		return false
+	end
+	return true
+end
+
+local function clearNavigationAssist()
+	if navBeam then
+		navBeam:Destroy()
+		navBeam = nil
+	end
+	if navFromAttachment then
+		navFromAttachment:Destroy()
+		navFromAttachment = nil
+	end
+	if navToAttachment then
+		navToAttachment:Destroy()
+		navToAttachment = nil
+	end
+	if sakuraHighlight then
+		sakuraHighlight:Destroy()
+		sakuraHighlight = nil
+	end
+end
+
+local function ensureNavigationAssist(root: BasePart, sakuraBody: BasePart)
+	if not sakuraHighlight then
+		local model = sakuraBody:FindFirstAncestorOfClass('Model')
+		if model then
+			local highlight = Instance.new('Highlight')
+			highlight.Name = 'OnboardingSakuraHighlight'
+			highlight.FillColor = Color3.fromRGB(255, 214, 102)
+			highlight.OutlineColor = Color3.fromRGB(255, 248, 210)
+			highlight.FillTransparency = 0.58
+			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			highlight.Adornee = model
+			highlight.Parent = model
+			sakuraHighlight = highlight
+		end
+	end
+
+	if not navFromAttachment or navFromAttachment.Parent ~= root then
+		if navFromAttachment then
+			navFromAttachment:Destroy()
+		end
+		navFromAttachment = Instance.new('Attachment')
+		navFromAttachment.Name = 'OnboardingNavFrom'
+		navFromAttachment.Position = Vector3.new(0, 1.6, 0)
+		navFromAttachment.Parent = root
+	end
+
+	if not navToAttachment or navToAttachment.Parent ~= sakuraBody then
+		if navToAttachment then
+			navToAttachment:Destroy()
+		end
+		navToAttachment = Instance.new('Attachment')
+		navToAttachment.Name = 'OnboardingNavTo'
+		navToAttachment.Position = Vector3.new(0, 3, 0)
+		navToAttachment.Parent = sakuraBody
+	end
+
+	if not navBeam or navBeam.Parent ~= root then
+		if navBeam then
+			navBeam:Destroy()
+		end
+		navBeam = Instance.new('Beam')
+		navBeam.Name = 'OnboardingGuideBeam'
+		navBeam.FaceCamera = true
+		navBeam.Width0 = 0.09
+		navBeam.Width1 = 0.12
+		navBeam.LightEmission = 0.9
+		navBeam.LightInfluence = 0
+		navBeam.Transparency = NumberSequence.new(0.12)
+		navBeam.Color = ColorSequence.new(Color3.fromRGB(120, 229, 255), Color3.fromRGB(255, 243, 170))
+		navBeam.Parent = root
+	end
+
+	navBeam.Attachment0 = navFromAttachment
+	navBeam.Attachment1 = navToAttachment
+end
+
+local function directionHint(from: Vector3, to: Vector3): string
+	local delta = to - from
+	if delta.Magnitude < 2 then
+		return 'You are at Sakura.'
+	end
+	local eastWest = if delta.X > 0 then 'east' else 'west'
+	local northSouth = if delta.Z > 0 then 'south' else 'north'
+	if math.abs(delta.X) > math.abs(delta.Z) * 1.5 then
+		return `Move {eastWest}.`
+	elseif math.abs(delta.Z) > math.abs(delta.X) * 1.5 then
+		return `Move {northSouth}.`
+	end
+	return `Move {northSouth}-{eastWest}.`
+end
 
 local function createGui(): ScreenGui
 	if hudGui then
@@ -8705,8 +8723,94 @@ local function createGui(): ScreenGui
 		SchoolController.open()
 	end)
 
+	local onboardingPanel = Instance.new('Frame')
+	onboardingPanel.Name = 'OnboardingPanel'
+	onboardingPanel.AnchorPoint = Vector2.new(0.5, 0)
+	onboardingPanel.Position = UDim2.new(0.5, 0, 0, 10)
+	onboardingPanel.Size = UDim2.new(0, 440, 0, 88)
+	onboardingPanel.BackgroundColor3 = Color3.fromRGB(22, 32, 45)
+	onboardingPanel.BackgroundTransparency = 0.16
+	onboardingPanel.BorderSizePixel = 0
+	onboardingPanel.Visible = false
+	onboardingPanel.Parent = gui
+
+	local onboardingTitle = Instance.new('TextLabel')
+	onboardingTitle.Name = 'Title'
+	onboardingTitle.Position = UDim2.new(0, 12, 0, 6)
+	onboardingTitle.Size = UDim2.new(1, -24, 0, 24)
+	onboardingTitle.BackgroundTransparency = 1
+	onboardingTitle.Font = Enum.Font.GothamBold
+	onboardingTitle.TextColor3 = Color3.fromRGB(255, 236, 170)
+	onboardingTitle.TextXAlignment = Enum.TextXAlignment.Left
+	onboardingTitle.Text = 'Onboarding: Find Teacher Sakura'
+	onboardingTitle.Parent = onboardingPanel
+
+	local onboardingHint = Instance.new('TextLabel')
+	onboardingHint.Name = 'Hint'
+	onboardingHint.Position = UDim2.new(0, 12, 0, 30)
+	onboardingHint.Size = UDim2.new(1, -24, 0, 24)
+	onboardingHint.BackgroundTransparency = 1
+	onboardingHint.Font = Enum.Font.Gotham
+	onboardingHint.TextColor3 = Color3.fromRGB(199, 222, 241)
+	onboardingHint.TextXAlignment = Enum.TextXAlignment.Left
+	onboardingHint.Text = 'Follow the guidance line and approach Sakura.'
+	onboardingHint.Parent = onboardingPanel
+
+	local onboardingDistance = Instance.new('TextLabel')
+	onboardingDistance.Name = 'Distance'
+	onboardingDistance.Position = UDim2.new(0, 12, 0, 54)
+	onboardingDistance.Size = UDim2.new(1, -24, 0, 24)
+	onboardingDistance.BackgroundTransparency = 1
+	onboardingDistance.Font = Enum.Font.GothamBold
+	onboardingDistance.TextColor3 = Color3.fromRGB(125, 234, 255)
+	onboardingDistance.TextXAlignment = Enum.TextXAlignment.Left
+	onboardingDistance.Text = 'Distance: --'
+	onboardingDistance.Parent = onboardingPanel
+
 	hudGui = gui
 	return gui
+end
+
+local function updateOnboardingDisplay()
+	if not hudGui then
+		return
+	end
+
+	local panel = hudGui:FindFirstChild('OnboardingPanel')
+	if not panel or not panel:IsA('Frame') then
+		return
+	end
+
+	if not shouldShowOnboarding() then
+		panel.Visible = false
+		clearNavigationAssist()
+		return
+	end
+
+	panel.Visible = true
+	local hint = panel:FindFirstChild('Hint')
+	local distanceLabel = panel:FindFirstChild('Distance')
+	if not hint or not hint:IsA('TextLabel') or not distanceLabel or not distanceLabel:IsA('TextLabel') then
+		return
+	end
+
+	local root = getCharacterRoot()
+	local sakuraBody = getSakuraBody()
+	if not root or not sakuraBody then
+		hint.Text = 'Waiting for Sakura marker...'
+		distanceLabel.Text = 'Distance: --'
+		clearNavigationAssist()
+		return
+	end
+
+	ensureNavigationAssist(root, sakuraBody)
+	local distance = (sakuraBody.Position - root.Position).Magnitude
+	distanceLabel.Text = `Distance: {math.floor(distance)} studs`
+	if distance <= 10 then
+		hint.Text = 'Sakura is nearby. Press Talk on the prompt.'
+	else
+		hint.Text = directionHint(root.Position, sakuraBody.Position)
+	end
 end
 
 local function clearQuestList()
@@ -8723,15 +8827,18 @@ local function setStatus(profile: ProfileTypes.Profile)
 	if not hudGui then
 		return
 	end
+	currentProfile = profile
 	hudGui.StatusPanel.Yen.Text = '¥ ' .. tostring(profile.economy.yen)
 	hudGui.StatusPanel.Xp.Text = 'JP XP: ' .. tostring(profile.progress.japaneseXp)
 	hudGui.StatusPanel.Level.Text = 'Level: ' .. tostring(profile.progress.japaneseLevel)
+	updateOnboardingDisplay()
 end
 
 local function setQuests(quests: { { id: string } })
 	if not hudGui then
 		return
 	end
+	currentQuests = quests
 	clearQuestList()
 	local list = hudGui.QuestPanel.List
 	if #quests == 0 then
@@ -8757,6 +8864,7 @@ local function setQuests(quests: { { id: string } })
 		label.Text = LocalizationService.get(currentLocale, 'quest.' .. quest.id .. '.title')
 		label.Parent = list
 	end
+	updateOnboardingDisplay()
 end
 
 function HUDController.setLocale(locale: string)
@@ -8775,6 +8883,15 @@ end
 function HUDController.init()
 	createGui()
 	setQuests({})
+	RunService.RenderStepped:Connect(updateOnboardingDisplay)
+
+	RemoteController.onEvent('ProfileUpdated', function(profile: ProfileTypes.Profile)
+		setStatus(profile)
+	end)
+
+	RemoteController.onEvent('QuestLogUpdated', function(quests: { { id: string } })
+		setQuests(quests)
+	end)
 
 	-- Ambil profile & quest aktif dari server
 	task.spawn(function()
@@ -9188,12 +9305,15 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 local LocalizationService =
 	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
+local LessonTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('LessonTypes'))
 
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild('PlayerGui')
 
 local currentLocale = 'en'
 local schoolGui: ScreenGui?
+local resultLabel: TextLabel?
+local pendingLessonId: string? = nil
 
 local SchoolController = {}
 
@@ -9247,6 +9367,19 @@ local function createGui(): ScreenGui
 		frame.Visible = false
 	end)
 
+	local result = Instance.new('TextLabel')
+	result.Name = 'Result'
+	result.Position = UDim2.new(0, 10, 1, -36)
+	result.Size = UDim2.new(1, -20, 0, 24)
+	result.BackgroundTransparency = 1
+	result.Font = Enum.Font.GothamBold
+	result.TextSize = 14
+	result.TextXAlignment = Enum.TextXAlignment.Left
+	result.Text = ''
+	result.TextColor3 = Color3.fromRGB(180, 180, 180)
+	result.Parent = frame
+	resultLabel = result
+
 	schoolGui = gui
 	return gui
 end
@@ -9299,8 +9432,12 @@ local function showQuiz(lessonId: string)
 		local question = lesson.quiz[index]
 		if not question then
 			-- Submit
+			pendingLessonId = lessonId
+			if resultLabel then
+				resultLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+				resultLabel.Text = 'Submitting quiz...'
+			end
 			RemoteController.fire('QuizSubmit', { lessonId = lessonId, answers = answers })
-			schoolGui.SchoolFrame.Visible = false
 			return
 		end
 		promptLabel.Text = LocalizationService.get(currentLocale, question.promptKey)
@@ -9379,6 +9516,27 @@ end
 function SchoolController.init()
 	-- Skeleton: tombol buka panel dipasang nanti / oleh input.
 	createGui()
+	RemoteController.onEvent('QuizResult', function(result: LessonTypes.QuizResult)
+		if not resultLabel then
+			return
+		end
+		if pendingLessonId and result.lessonId ~= pendingLessonId then
+			return
+		end
+		if result.passed then
+			resultLabel.TextColor3 = Color3.fromRGB(126, 215, 124)
+			resultLabel.Text = `PASS ({result.correct}/{result.total}) +{result.earnedXp} XP`
+		else
+			resultLabel.TextColor3 = Color3.fromRGB(231, 111, 81)
+			resultLabel.Text = `FAIL ({result.correct}/{result.total}) - Try again`
+		end
+		pendingLessonId = nil
+		task.delay(0.8, function()
+			if schoolGui and schoolGui.SchoolFrame.Visible then
+				showLessonList()
+			end
+		end)
+	end)
 end
 
 return SchoolController
