@@ -1,4 +1,7 @@
---!strict
+
+local sss = game:GetService("ServerScriptService")
+local serverScript = sss:FindFirstChild("LakeActivityService", true)
+if serverScript then serverScript.Source = [==[--!strict
 
 -- Hatsushima-inspired islet, lake craft, active water propulsion, world boundary & anti-ghost ride.
 
@@ -371,7 +374,7 @@ local function configureCreatorStoreBoat(model: Model)
 		bg.Name = "BoatGyro"
 		bg.Parent = driveSeat
 	end
-	bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
 	bg.P = 12000
 	bg.D = 800
 	local _, initYaw, _ = driveSeat.CFrame:ToOrientation()
@@ -638,13 +641,6 @@ function LakeActivityService.init()
 			-- Driver is in seat: server handles audio and boundary watchdog
 			local speed = seat.AssemblyLinearVelocity.Magnitude
 
-			-- Boundary Watchdog
-			local pos = seat.Position
-			local dist = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
-			if dist > 760 or terrainHeight(pos.X, pos.Z, -10) > -0.5 then
-				seat.AssemblyLinearVelocity = Vector3.zero
-			end
-
 			-- Dynamic Audio
 			if speed > 1 then
 				if waterSound then
@@ -667,3 +663,192 @@ function LakeActivityService.init()
 end
 
 return LakeActivityService
+]==] end
+
+local rps = game:GetService("ReplicatedStorage")
+local clientScript = game:GetService("StarterPlayer").StarterPlayerScripts:FindFirstChild("BoatDriveController", true)
+if clientScript then clientScript.Source = [==[--!strict
+
+-- BoatDriveController: Pure, smooth, responsive boat controller.
+-- Uses physical BodyGyro and BodyPosition to lock height and orientation without physics explosions.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local PhysicsService = game:GetService("PhysicsService")
+
+pcall(function()
+	PhysicsService:RegisterCollisionGroup("BoatDecks")
+	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
+	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
+	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
+end)
+
+local BoatDriveController = {}
+local player = Players.LocalPlayer
+
+local currentSeat: VehicleSeat? = nil
+local currentWaterlineY: number = 1.0
+local currentBaseSpeed: number = 30
+local currentTurnSpeed: number = 1.5
+local currentYaw: number = 0
+
+local currentGyro: BodyGyro? = nil
+local currentPos: BodyPosition? = nil
+
+local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
+	local bg = seat:FindFirstChild("BoatGyro") :: BodyGyro?
+	if not bg then
+		bg = Instance.new("BodyGyro")
+		bg.Name = "BoatGyro"
+		bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+		bg.P = 12000
+		bg.D = 800
+		local _, y, _ = seat.CFrame:ToOrientation()
+		bg.CFrame = CFrame.Angles(0, y, 0)
+		bg.Parent = seat
+	end
+
+	local bp = seat:FindFirstChild("BoatPosition") :: BodyPosition?
+	if not bp then
+		bp = Instance.new("BodyPosition")
+		bp.Name = "BoatPosition"
+		bp.MaxForce = Vector3.new(0, 1e7, 0)
+		bp.P = 15000
+		bp.D = 1000
+		bp.Position = Vector3.new(0, currentWaterlineY, 0)
+		bp.Parent = seat
+	end
+
+	return bg, bp
+end
+
+local function onSeated(active: boolean, currentSeatPart: Instance?)
+	local char = player.Character
+	if active and currentSeatPart then
+		local lakeCrafts = workspace:FindFirstChild("LakeCrafts")
+		if lakeCrafts and currentSeatPart:IsDescendantOf(lakeCrafts) then
+			-- Assign seated avatar to SeatedAvatars collision group so seated avatar doesn't clip with the boat
+			if char then
+				for _, p in ipairs(char:GetDescendants()) do
+					if p:IsA("BasePart") then
+						pcall(function()
+							p.CollisionGroup = "SeatedAvatars"
+						end)
+					end
+				end
+			end
+
+			if currentSeatPart:IsA("VehicleSeat") then
+				currentSeat = currentSeatPart
+				currentBaseSpeed = currentSeat:GetAttribute("BaseSpeed") or 30
+				currentTurnSpeed = currentSeat:GetAttribute("TurnSpeed") or 1.5
+				currentWaterlineY = currentSeat:GetAttribute("WaterlineY") or currentSeat.Position.Y
+				
+				local _, yaw, _ = currentSeat.CFrame:ToOrientation()
+				currentYaw = yaw
+
+				currentGyro, currentPos = getOrCreateMovers(currentSeat)
+				if currentGyro then
+					currentGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+					currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+				end
+				if currentPos then
+					currentPos.MaxForce = Vector3.new(0, 1e7, 0)
+					currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+				end
+				return
+			end
+		end
+	else
+		-- Restore avatar collisions to Default when standing up
+		if char then
+			for _, p in ipairs(char:GetDescendants()) do
+				if p:IsA("BasePart") then
+					pcall(function()
+						p.CollisionGroup = "Default"
+						p.CanCollide = true
+					end)
+				end
+			end
+		end
+	end
+	currentSeat = nil
+	currentGyro = nil
+	currentPos = nil
+end
+
+local function setupCharacter(char: Model)
+	local humanoid = char:WaitForChild("Humanoid", 10) :: Humanoid?
+	if humanoid then
+		humanoid.Seated:Connect(onSeated)
+		if humanoid.SeatPart and humanoid.SeatPart:IsA("VehicleSeat") then
+			onSeated(true, humanoid.SeatPart)
+		end
+	end
+end
+
+function BoatDriveController.init()
+	if player.Character then
+		setupCharacter(player.Character)
+	end
+	player.CharacterAdded:Connect(setupCharacter)
+
+	RunService.RenderStepped:Connect(function(dt: number)
+		if not currentSeat or not currentSeat.Parent then
+			return
+		end
+
+		local throttle = currentSeat.ThrottleFloat
+		local steer = currentSeat.SteerFloat
+
+		-- Direct keyboard WASD & Arrow fallback
+		if math.abs(throttle) < 0.05 and math.abs(steer) < 0.05 then
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then
+				throttle = 1
+			elseif UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down) then
+				throttle = -1
+			end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left) then
+				steer = -1
+			elseif UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right) then
+				steer = 1
+			end
+		end
+
+		-- Read current yaw and integrate steering input over delta time
+		if math.abs(steer) > 0.05 then
+			currentYaw = currentYaw + (-steer * currentTurnSpeed * dt)
+		end
+
+		-- Apply target orientation and height via physical movers
+		if currentGyro then
+			currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+		end
+		if currentPos then
+			currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+		end
+
+		-- Horizontal propulsion direction derived from smooth currentYaw
+		local flatLook = Vector3.new(-math.sin(currentYaw), 0, -math.cos(currentYaw))
+		local targetVelocity: Vector3
+
+		if math.abs(throttle) > 0.05 then
+			local forwardSpeed = throttle * currentBaseSpeed
+			targetVelocity = flatLook * forwardSpeed
+		else
+			-- Smooth coasting in water with fluid drag
+			local vel = currentSeat.AssemblyLinearVelocity
+			targetVelocity = Vector3.new(vel.X * 0.94, 0, vel.Z * 0.94)
+		end
+
+		-- Set strictly horizontal linear & angular velocity (Y = 0)
+		currentSeat.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, 0, targetVelocity.Z)
+		currentSeat.AssemblyAngularVelocity = Vector3.new(0, -steer * currentTurnSpeed, 0)
+	end)
+end
+
+return BoatDriveController
+]==] end
+return "Synced both scripts!"

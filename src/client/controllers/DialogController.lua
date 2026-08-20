@@ -218,6 +218,9 @@ function DialogController.init()
 
 	-- Cari ProximityPrompt di Workspace (NPC model)
 	local function connectPrompt(prompt: ProximityPrompt)
+		if prompt.Name ~= 'InteractPrompt' then
+			return
+		end
 		local npcId = prompt.ObjectText
 		prompt.Triggered:Connect(function()
 			RemoteController.fire('NPCInteract', npcId)
@@ -232,7 +235,7 @@ function DialogController.init()
 		end
 	end
 	workspace.DescendantAdded:Connect(function(desc)
-		if desc:IsA('ProximityPrompt') then
+		if desc:IsA('ProximityPrompt') and desc.Name == 'InteractPrompt' then
 			connectPrompt(desc)
 		end
 	end)
