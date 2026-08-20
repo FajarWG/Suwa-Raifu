@@ -95,9 +95,9 @@
 		<Item class="Camera" referent="RBXdf696374238d445c88c909c219fa3354">
 			<Properties>
 				<CoordinateFrame name="CFrame">
-					<X>35.7009048</X>
-					<Y>175.487671</Y>
-					<Z>44.198925</Z>
+					<X>167.384933</X>
+					<Y>49.4635925</Y>
+					<Z>-154.992554</Z>
 					<R00>1</R00>
 					<R01>0</R01>
 					<R02>-0</R02>
@@ -113,9 +113,9 @@
 				<float name="FieldOfView">70</float>
 				<token name="FieldOfViewMode">0</token>
 				<CoordinateFrame name="Focus">
-					<X>35.7009048</X>
-					<Y>174.23822</Y>
-					<Z>42.6372185</Z>
+					<X>167.384933</X>
+					<Y>48.2141418</Y>
+					<Z>-156.55426</Z>
 					<R00>1</R00>
 					<R01>0</R01>
 					<R02>0</R02>
@@ -93015,6 +93015,63 @@ AAAAgD8AAAAAAAAAAAAAAAAvpn8/O15WPQAAAAA7Xla9L6Z/PwoAAABXYXRlcmxpbmVZBq5H
 								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002672f</UniqueId>
 							</Properties>
 						</Item>
+						<Item class="BodyPosition" referent="RBX0213df8eed564e218980dd69ddb0eb6d">
+							<Properties>
+								<float name="D">1000</float>
+								<Vector3 name="MaxForce">
+									<X>0</X>
+									<Y>10000000</Y>
+									<Z>0</Z>
+								</Vector3>
+								<float name="P">15000</float>
+								<Vector3 name="Position">
+									<X>0</X>
+									<Y>4.42000008</Y>
+									<Z>0</Z>
+								</Vector3>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatPosition</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cba7</UniqueId>
+							</Properties>
+						</Item>
+						<Item class="BodyGyro" referent="RBX0d6752d404314c87bb69165c14c26d3e">
+							<Properties>
+								<CoordinateFrame name="CFrame">
+									<X>0</X>
+									<Y>0</Y>
+									<Z>0</Z>
+									<R00>1</R00>
+									<R01>-0</R01>
+									<R02>2.83844298e-15</R02>
+									<R10>0</R10>
+									<R11>1</R11>
+									<R12>-0</R12>
+									<R20>-2.83844298e-15</R20>
+									<R21>0</R21>
+									<R22>1</R22>
+								</CoordinateFrame>
+								<float name="D">800</float>
+								<Vector3 name="MaxTorque">
+									<X>10000000</X>
+									<Y>10000000</Y>
+									<Z>10000000</Z>
+								</Vector3>
+								<float name="P">12000</float>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatGyro</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cba8</UniqueId>
+							</Properties>
+						</Item>
 					</Item>
 					<Item class="Part" referent="RBX01b6584f71014ebe8c6af2e5fbecc2d4">
 						<Properties>
@@ -103852,6 +103909,63 @@ AAAAgD8AAAAAAAAAAAAAAAAvpn8/O15WPQAAAAA7Xla9L6Z/PwoAAABXYXRlcmxpbmVZBq5H
 								<UniqueId name="UniqueId">389c2cc92dde872b0a982de100026738</UniqueId>
 							</Properties>
 						</Item>
+						<Item class="BodyPosition" referent="RBXef853782b4ad4ea9a02240370e7e56f5">
+							<Properties>
+								<float name="D">1000</float>
+								<Vector3 name="MaxForce">
+									<X>0</X>
+									<Y>10000000</Y>
+									<Z>0</Z>
+								</Vector3>
+								<float name="P">15000</float>
+								<Vector3 name="Position">
+									<X>0</X>
+									<Y>4.42000008</Y>
+									<Z>0</Z>
+								</Vector3>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatPosition</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cba9</UniqueId>
+							</Properties>
+						</Item>
+						<Item class="BodyGyro" referent="RBXc59c84ec91484d8f811666c4a44b0b61">
+							<Properties>
+								<CoordinateFrame name="CFrame">
+									<X>0</X>
+									<Y>0</Y>
+									<Z>0</Z>
+									<R00>1</R00>
+									<R01>-0</R01>
+									<R02>2.83844298e-15</R02>
+									<R10>0</R10>
+									<R11>1</R11>
+									<R12>-0</R12>
+									<R20>-2.83844298e-15</R20>
+									<R21>0</R21>
+									<R22>1</R22>
+								</CoordinateFrame>
+								<float name="D">800</float>
+								<Vector3 name="MaxTorque">
+									<X>10000000</X>
+									<Y>10000000</Y>
+									<Z>10000000</Z>
+								</Vector3>
+								<float name="P">12000</float>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatGyro</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cbaa</UniqueId>
+							</Properties>
+						</Item>
 					</Item>
 					<Item class="Part" referent="RBX2a2c248a6c6b45a59e1e50cb94d8ede8">
 						<Properties>
@@ -114687,6 +114801,63 @@ AAAAgD8AAAAAAAAAAAAAAAAvpn8/O15WPQAAAAA7Xla9L6Z/PwoAAABXYXRlcmxpbmVZBq5H
 								<int64 name="SourceAssetId">-1</int64>
 								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 								<UniqueId name="UniqueId">389c2cc92dde872b0a982de100026741</UniqueId>
+							</Properties>
+						</Item>
+						<Item class="BodyPosition" referent="RBXb7485ad54af340738feb436a129c7cfc">
+							<Properties>
+								<float name="D">1000</float>
+								<Vector3 name="MaxForce">
+									<X>0</X>
+									<Y>10000000</Y>
+									<Z>0</Z>
+								</Vector3>
+								<float name="P">15000</float>
+								<Vector3 name="Position">
+									<X>0</X>
+									<Y>4.42000008</Y>
+									<Z>0</Z>
+								</Vector3>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatPosition</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cbab</UniqueId>
+							</Properties>
+						</Item>
+						<Item class="BodyGyro" referent="RBX77927eeb530b47b4b12c998baf69a29b">
+							<Properties>
+								<CoordinateFrame name="CFrame">
+									<X>0</X>
+									<Y>0</Y>
+									<Z>0</Z>
+									<R00>1</R00>
+									<R01>-0</R01>
+									<R02>2.83844298e-15</R02>
+									<R10>0</R10>
+									<R11>1</R11>
+									<R12>-0</R12>
+									<R20>-2.83844298e-15</R20>
+									<R21>0</R21>
+									<R22>1</R22>
+								</CoordinateFrame>
+								<float name="D">800</float>
+								<Vector3 name="MaxTorque">
+									<X>10000000</X>
+									<Y>10000000</Y>
+									<Z>10000000</Z>
+								</Vector3>
+								<float name="P">12000</float>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatGyro</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cbac</UniqueId>
 							</Properties>
 						</Item>
 					</Item>
@@ -128275,6 +128446,63 @@ dGVybGluZVkGKVyPwvUoBEA=]]></BinaryString>
 								<UniqueId name="UniqueId">389c2cc92dde872b0a982de100026748</UniqueId>
 							</Properties>
 						</Item>
+						<Item class="BodyPosition" referent="RBX15479ec81157494a9f935c3814bedec7">
+							<Properties>
+								<float name="D">1000</float>
+								<Vector3 name="MaxForce">
+									<X>0</X>
+									<Y>10000000</Y>
+									<Z>0</Z>
+								</Vector3>
+								<float name="P">15000</float>
+								<Vector3 name="Position">
+									<X>0</X>
+									<Y>2.51999998</Y>
+									<Z>0</Z>
+								</Vector3>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatPosition</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cbad</UniqueId>
+							</Properties>
+						</Item>
+						<Item class="BodyGyro" referent="RBX66eea85100b4439db43b552014ad3d0e">
+							<Properties>
+								<CoordinateFrame name="CFrame">
+									<X>0</X>
+									<Y>0</Y>
+									<Z>0</Z>
+									<R00>1</R00>
+									<R01>-0</R01>
+									<R02>-1.64618541e-08</R02>
+									<R10>0</R10>
+									<R11>1</R11>
+									<R12>-0</R12>
+									<R20>1.64618541e-08</R20>
+									<R21>0</R21>
+									<R22>1</R22>
+								</CoordinateFrame>
+								<float name="D">800</float>
+								<Vector3 name="MaxTorque">
+									<X>10000000</X>
+									<Y>10000000</Y>
+									<Z>10000000</Z>
+								</Vector3>
+								<float name="P">12000</float>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+								<bool name="DefinesCapabilities">false</bool>
+								<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+								<string name="Name">BoatGyro</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+								<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cbae</UniqueId>
+							</Properties>
+						</Item>
 					</Item>
 					<Item class="WedgePart" referent="RBX49196134dbe74194b5a4fd221e5a2fbb">
 						<Properties>
@@ -137605,6 +137833,63 @@ dGVybGluZVkG16NwPQrX4z8=]]></BinaryString>
 										<int64 name="SourceAssetId">-1</int64>
 										<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
 										<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002674c</UniqueId>
+									</Properties>
+								</Item>
+								<Item class="BodyGyro" referent="RBX295ba92f172a4e218f0f75736325f7fb">
+									<Properties>
+										<CoordinateFrame name="CFrame">
+											<X>0</X>
+											<Y>0</Y>
+											<Z>0</Z>
+											<R00>1</R00>
+											<R01>-0</R01>
+											<R02>7.17930902e-07</R02>
+											<R10>0</R10>
+											<R11>1</R11>
+											<R12>-0</R12>
+											<R20>-7.17930902e-07</R20>
+											<R21>0</R21>
+											<R22>1</R22>
+										</CoordinateFrame>
+										<float name="D">800</float>
+										<Vector3 name="MaxTorque">
+											<X>10000000</X>
+											<Y>10000000</Y>
+											<Z>10000000</Z>
+										</Vector3>
+										<float name="P">12000</float>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+										<bool name="DefinesCapabilities">false</bool>
+										<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+										<string name="Name">BoatGyro</string>
+										<int64 name="SourceAssetId">-1</int64>
+										<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+										<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cba5</UniqueId>
+									</Properties>
+								</Item>
+								<Item class="BodyPosition" referent="RBX1510c90303634ebaba70ab3dd8d4bbf5">
+									<Properties>
+										<float name="D">1000</float>
+										<Vector3 name="MaxForce">
+											<X>0</X>
+											<Y>10000000</Y>
+											<Z>0</Z>
+										</Vector3>
+										<float name="P">15000</float>
+										<Vector3 name="Position">
+											<X>0</X>
+											<Y>0.620000005</Y>
+											<Z>0</Z>
+										</Vector3>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+										<bool name="DefinesCapabilities">false</bool>
+										<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
+										<string name="Name">BoatPosition</string>
+										<int64 name="SourceAssetId">-1</int64>
+										<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
+										<UniqueId name="UniqueId">389c2cc92dde872b0a982de10002cba6</UniqueId>
 									</Properties>
 								</Item>
 							</Item>
@@ -177083,12 +177368,20 @@ return SchoolController
 							<ProtectedString name="Source"><![CDATA[--!strict
 
 -- BoatDriveController: Pure, smooth, responsive boat controller.
--- Provides forward/reverse (W/S) and steering (A/D) with locked waterline Y.
--- Boundary repulsion loops have been completely removed.
+-- Uses physical BodyGyro and BodyPosition to lock height and orientation without physics explosions.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+
+local PhysicsService = game:GetService("PhysicsService")
+
+pcall(function()
+	PhysicsService:RegisterCollisionGroup("BoatDecks")
+	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
+	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
+	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
+end)
 
 local BoatDriveController = {}
 local player = Players.LocalPlayer
@@ -177097,18 +177390,50 @@ local currentSeat: VehicleSeat? = nil
 local currentWaterlineY: number = 1.0
 local currentBaseSpeed: number = 30
 local currentTurnSpeed: number = 1.5
+local currentYaw: number = 0
+
+local currentGyro: BodyGyro? = nil
+local currentPos: BodyPosition? = nil
+
+local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
+	local bg = seat:FindFirstChild("BoatGyro") :: BodyGyro?
+	if not bg then
+		bg = Instance.new("BodyGyro")
+		bg.Name = "BoatGyro"
+		bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+		bg.P = 12000
+		bg.D = 800
+		local _, y, _ = seat.CFrame:ToOrientation()
+		bg.CFrame = CFrame.Angles(0, y, 0)
+		bg.Parent = seat
+	end
+
+	local bp = seat:FindFirstChild("BoatPosition") :: BodyPosition?
+	if not bp then
+		bp = Instance.new("BodyPosition")
+		bp.Name = "BoatPosition"
+		bp.MaxForce = Vector3.new(0, 1e7, 0)
+		bp.P = 15000
+		bp.D = 1000
+		bp.Position = Vector3.new(0, currentWaterlineY, 0)
+		bp.Parent = seat
+	end
+
+	return bg, bp
+end
 
 local function onSeated(active: boolean, currentSeatPart: Instance?)
 	local char = player.Character
 	if active and currentSeatPart then
 		local lakeCrafts = workspace:FindFirstChild("LakeCrafts")
 		if lakeCrafts and currentSeatPart:IsDescendantOf(lakeCrafts) then
-			-- Disable avatar collisions with boat parts while seated to eliminate physics conflicts
+			-- Assign seated avatar to SeatedAvatars collision group so seated avatar doesn't clip with the boat
 			if char then
 				for _, p in ipairs(char:GetDescendants()) do
 					if p:IsA("BasePart") then
-						p.CollisionGroup = "SeatedAvatars"
-						p.CanCollide = false
+						pcall(function()
+							p.CollisionGroup = "SeatedAvatars"
+						end)
 					end
 				end
 			end
@@ -177118,21 +177443,38 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 				currentBaseSpeed = currentSeat:GetAttribute("BaseSpeed") or 30
 				currentTurnSpeed = currentSeat:GetAttribute("TurnSpeed") or 1.5
 				currentWaterlineY = currentSeat:GetAttribute("WaterlineY") or currentSeat.Position.Y
+				
+				local _, yaw, _ = currentSeat.CFrame:ToOrientation()
+				currentYaw = yaw
+
+				currentGyro, currentPos = getOrCreateMovers(currentSeat)
+				if currentGyro then
+					currentGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+					currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+				end
+				if currentPos then
+					currentPos.MaxForce = Vector3.new(0, 1e7, 0)
+					currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+				end
 				return
 			end
 		end
 	else
-		-- Restore avatar collisions when standing up
+		-- Restore avatar collisions to Default when standing up
 		if char then
 			for _, p in ipairs(char:GetDescendants()) do
 				if p:IsA("BasePart") then
-					p.CollisionGroup = "Default"
-					p.CanCollide = true
+					pcall(function()
+						p.CollisionGroup = "Default"
+						p.CanCollide = true
+					end)
 				end
 			end
 		end
 	end
 	currentSeat = nil
+	currentGyro = nil
+	currentPos = nil
 end
 
 local function setupCharacter(char: Model)
@@ -177178,11 +177520,19 @@ function BoatDriveController.init()
 		end
 
 		-- Read current yaw and integrate steering input over delta time
-		local _, currentYaw, _ = currentSeat.CFrame:ToOrientation()
 		if math.abs(steer) > 0.05 then
 			currentYaw = currentYaw + (-steer * currentTurnSpeed * dt)
 		end
 
+		-- Apply target orientation and height via physical movers
+		if currentGyro then
+			currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+		end
+		if currentPos then
+			currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+		end
+
+		-- Horizontal propulsion direction derived from smooth currentYaw
 		local flatLook = Vector3.new(-math.sin(currentYaw), 0, -math.cos(currentYaw))
 		local targetVelocity: Vector3
 
@@ -177190,21 +177540,19 @@ function BoatDriveController.init()
 			local forwardSpeed = throttle * currentBaseSpeed
 			targetVelocity = flatLook * forwardSpeed
 		else
-			-- Smooth coasting in water
+			-- Smooth coasting in water with fluid drag
 			local vel = currentSeat.AssemblyLinearVelocity
-			targetVelocity = Vector3.new(vel.X * 0.92, 0, vel.Z * 0.92)
+			targetVelocity = Vector3.new(vel.X * 0.94, 0, vel.Z * 0.94)
 		end
 
-		-- Set strictly horizontal linear & angular velocity
+		-- Set strictly horizontal linear & angular velocity (Y = 0)
 		currentSeat.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, 0, targetVelocity.Z)
 		currentSeat.AssemblyAngularVelocity = Vector3.new(0, -steer * currentTurnSpeed, 0)
-
-		-- Lock height to waterline Y and yaw orientation (smooth, level, no pitching or flipping)
-		currentSeat.CFrame = CFrame.new(currentSeat.Position.X, currentWaterlineY, currentSeat.Position.Z) * CFrame.Angles(0, currentYaw, 0)
 	end)
 end
 
-return BoatDriveController]]></ProtectedString>
+return BoatDriveController
+]]></ProtectedString>
 							<string name="ScriptGuid">{d004f99a-116c-4fb2-ae8b-43146c6e6215}</string>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
@@ -180802,14 +181150,6 @@ return InventoryService
 -- Hatsushima-inspired islet, lake craft, active water propulsion, world boundary & anti-ghost ride.
 
 local RunService = game:GetService('RunService')
-local PhysicsService = game:GetService('PhysicsService')
-
-pcall(function()
-	PhysicsService:RegisterCollisionGroup("BoatDecks")
-	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
-	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
-	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
-end)
 
 local LakeActivityService = {}
 local activeBoats: { [Model]: { seat: VehicleSeat, engineSound: Sound?, waterSound: Sound?, rootPart: BasePart, baseSpeed: number, turnSpeed: number, waterlineY: number } } = {}
@@ -180949,7 +181289,7 @@ local function buildIslandDetails(root: Model)
 	island:SetAttribute('FestivalCapacity', 20)
 	island:SetAttribute('Center', ISLAND_CENTER)
 	island.Parent = root
-	
+
 	for _, tree in
 		{
 			{ Vector3.new(-66, 2, -607), 1.2 },
@@ -181092,6 +181432,15 @@ local function buildIslandDetails(root: Model)
 	end
 end
 
+local PhysicsService = game:GetService("PhysicsService")
+
+pcall(function()
+	PhysicsService:RegisterCollisionGroup("BoatDecks")
+	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
+	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
+	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
+end)
+
 local function configureCreatorStoreBoat(model: Model)
 	local boatName = string.lower(model.Name)
 	local isMotorized = string.find(boatName, "fune") ~= nil
@@ -181105,11 +181454,14 @@ local function configureCreatorStoreBoat(model: Model)
 
 	model.PrimaryPart = driveSeat
 	driveSeat.RootPriority = 127
+	driveSeat.Massless = false
+	driveSeat.CanCollide = false
+	driveSeat.CanTouch = false
 	driveSeat.MaxSpeed = 0
 	driveSeat.Torque = 0
 	driveSeat.HeadsUpDisplay = false
 
-	-- Remove any old leveler constraints so client steering is 100% responsive
+	-- Remove legacy constraint objects if any
 	local existingLeveler = driveSeat:FindFirstChild("BoatLeveler")
 	if existingLeveler then
 		existingLeveler:Destroy()
@@ -181147,17 +181499,46 @@ local function configureCreatorStoreBoat(model: Model)
 	local waterlineY = driveSeat:GetAttribute("WaterlineY") or defaultWaterline
 	driveSeat:SetAttribute("WaterlineY", waterlineY)
 
-	local woodProps = PhysicalProperties.new(Enum.Material.Wood)
+	-- Setup BodyPosition for strict Y waterline holding
+	local bp = driveSeat:FindFirstChild("BoatPosition") :: BodyPosition?
+	if not bp then
+		bp = Instance.new("BodyPosition")
+		bp.Name = "BoatPosition"
+		bp.Parent = driveSeat
+	end
+	bp.MaxForce = Vector3.new(0, 1e7, 0)
+	bp.P = 15000
+	bp.D = 1000
+	bp.Position = Vector3.new(0, waterlineY, 0)
 
-	-- Seats are non-collidable so seated avatars never glitch; floor, deck, hull, and railings are collidable with BoatDecks collision group
+	-- Setup BodyGyro for level pitch/roll and smooth yaw turning
+	local bg = driveSeat:FindFirstChild("BoatGyro") :: BodyGyro?
+	if not bg then
+		bg = Instance.new("BodyGyro")
+		bg.Name = "BoatGyro"
+		bg.Parent = driveSeat
+	end
+	bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+	bg.P = 12000
+	bg.D = 800
+	local _, initYaw, _ = driveSeat.CFrame:ToOrientation()
+	bg.CFrame = CFrame.Angles(0, initYaw, 0)
+
+	-- Sanitize all subparts: Massless = true for stable center of mass.
+	-- Make deck, hull, pontoons, railings, and walls solid (CanCollide = true, BoatDecks group) so boat is a solid physical object.
 	for _, p in ipairs(model:GetDescendants()) do
 		if p:IsA("BasePart") then
-			p.Anchored = false
-			p.CustomPhysicalProperties = woodProps
-
 			local pName = string.lower(p.Name)
 			local isSeat = p:IsA("Seat") or p:IsA("VehicleSeat") or string.find(pName, "seat") ~= nil
-			local isEffect = string.find(pName, "teleport") ~= nil or string.find(pName, "effect") ~= nil or string.find(pName, "emmiter") ~= nil or string.find(pName, "logo") ~= nil
+			local isEffect = string.find(pName, "emmiter") ~= nil 
+				or string.find(pName, "effect") ~= nil 
+				or string.find(pName, "teleport") ~= nil 
+				or string.find(pName, "logo") ~= nil
+
+			if p ~= driveSeat then
+				p.Anchored = false
+				p.Massless = true
+			end
 
 			if isSeat or isEffect then
 				p.CanCollide = false
@@ -181165,12 +181546,33 @@ local function configureCreatorStoreBoat(model: Model)
 			else
 				p.CanCollide = true
 				p.CanTouch = true
-				pcall(function() p.CollisionGroup = "BoatDecks" end)
+				pcall(function()
+					p.CollisionGroup = "BoatDecks"
+				end)
 			end
 		end
 	end
 
-	-- Drive seat anchored initially until driven
+	-- Ensure all subparts are rigidly welded to driveSeat
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") and p ~= driveSeat then
+			local hasWeld = false
+			for _, w in ipairs(model:GetDescendants()) do
+				if w:IsA("WeldConstraint") and ((w.Part0 == p and w.Part1 == driveSeat) or (w.Part0 == driveSeat and w.Part1 == p)) then
+					hasWeld = true
+					break
+				end
+			end
+			if not hasWeld then
+				local wc = Instance.new("WeldConstraint")
+				wc.Part0 = driveSeat
+				wc.Part1 = p
+				wc.Parent = driveSeat
+			end
+		end
+	end
+
+	-- Drive seat anchored initially while parked
 	driveSeat.Anchored = true
 
 	for _, seat in ipairs(model:GetDescendants()) do
@@ -181239,6 +181641,9 @@ local function configureCreatorStoreBoat(model: Model)
 							pcall(function() driveSeat:SetNetworkOwner(ownerPlayer) end)
 						end
 					end
+					local _, y, _ = driveSeat.CFrame:ToOrientation()
+					bg.CFrame = CFrame.Angles(0, y, 0)
+					bp.Position = Vector3.new(0, waterlineY, 0)
 				else
 					-- Driver exited -> Anti-Ghost Ride: Zero velocity and re-anchor in place
 					driveSeat.AssemblyLinearVelocity = Vector3.zero
@@ -181249,6 +181654,10 @@ local function configureCreatorStoreBoat(model: Model)
 					driveSeat.SteerFloat = 0
 					driveSeat.Anchored = true
 					pcall(function() driveSeat:SetNetworkOwnershipAuto() end)
+					local _, curYaw, _ = driveSeat.CFrame:ToOrientation()
+					driveSeat.CFrame = CFrame.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z) * CFrame.Angles(0, curYaw, 0)
+					bg.CFrame = CFrame.Angles(0, curYaw, 0)
+					bp.Position = Vector3.new(0, waterlineY, 0)
 				end
 			end
 		end)
@@ -181324,7 +181733,7 @@ end
 function LakeActivityService.init()
 	buildLakeFeatures()
 
-	-- Runtime loop for active water propulsion, audio, and anti-ghost ride
+	-- Runtime loop for active water propulsion, strict land blocking, audio, and anti-ghost ride
 	RunService.Heartbeat:Connect(function()
 		for boat, data in pairs(activeBoats) do
 			local seat = data.seat
@@ -181352,7 +181761,7 @@ function LakeActivityService.init()
 				continue
 			end
 
-			-- Driver is in seat: server handles audio
+			-- Driver is in seat: server handles audio and boundary watchdog
 			local speed = seat.AssemblyLinearVelocity.Magnitude
 
 			-- Dynamic Audio
@@ -181376,7 +181785,8 @@ function LakeActivityService.init()
 	end)
 end
 
-return LakeActivityService]]></ProtectedString>
+return LakeActivityService
+]]></ProtectedString>
 						<string name="ScriptGuid">{9b4649ea-c9cf-43de-81fa-31557e3ae763}</string>
 						<BinaryString name="AttributesSerialize"></BinaryString>
 						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>

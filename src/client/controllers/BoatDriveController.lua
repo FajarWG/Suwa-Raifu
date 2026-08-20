@@ -9,9 +9,16 @@ local UserInputService = game:GetService("UserInputService")
 
 local PhysicsService = game:GetService("PhysicsService")
 
+local function safeRegisterCollisionGroup(name: string)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(name)
+	end)
+end
+
+safeRegisterCollisionGroup("BoatDecks")
+safeRegisterCollisionGroup("SeatedAvatars")
+
 pcall(function()
-	PhysicsService:RegisterCollisionGroup("BoatDecks")
-	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
 end)
@@ -24,6 +31,8 @@ local currentWaterlineY: number = 1.0
 local currentBaseSpeed: number = 30
 local currentTurnSpeed: number = 1.5
 local currentYaw: number = 0
+local currentInitPitch: number = 0
+local currentInitRoll: number = 0
 
 local currentGyro: BodyGyro? = nil
 local currentPos: BodyPosition? = nil
@@ -44,11 +53,11 @@ local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
 	if not bg then
 		bg = Instance.new("BodyGyro")
 		bg.Name = "BoatGyro"
-		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
 		bg.P = 12000
 		bg.D = 800
-		local _, y, _ = seat.CFrame:ToOrientation()
-		bg.CFrame = CFrame.Angles(0, y, 0)
+		local initPitch, y, initRoll = seat.CFrame:ToOrientation()
+		bg.CFrame = CFrame.fromOrientation(initPitch, y, initRoll)
 		bg.Parent = seat
 	end
 
@@ -59,7 +68,7 @@ local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
 		bp.MaxForce = Vector3.new(0, 1e7, 0)
 		bp.P = 15000
 		bp.D = 1000
-		bp.Position = Vector3.new(0, currentWaterlineY, 0)
+		bp.Position = Vector3.new(seat.Position.X, currentWaterlineY, seat.Position.Z)
 		bp.Parent = seat
 	end
 
@@ -71,12 +80,14 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 	if active and currentSeatPart then
 		local lakeCrafts = workspace:FindFirstChild("LakeCrafts")
 		if lakeCrafts and currentSeatPart:IsDescendantOf(lakeCrafts) then
-			-- Assign seated avatar to SeatedAvatars collision group so seated avatar doesn't clip with the boat
+			-- Immediately disable avatar collisions before SeatWeld is created
+			-- to prevent fling/rejection from boat hull or water surface.
 			if char then
 				for _, p in ipairs(char:GetDescendants()) do
 					if p:IsA("BasePart") then
 						pcall(function()
 							p.CollisionGroup = "SeatedAvatars"
+							p.CanCollide = false
 						end)
 					end
 				end
@@ -88,29 +99,36 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 				currentTurnSpeed = currentSeat:GetAttribute("TurnSpeed") or 1.5
 				currentWaterlineY = currentSeat:GetAttribute("WaterlineY") or currentSeat.Position.Y
 				
-				local _, yaw, _ = currentSeat.CFrame:ToOrientation()
+				local pitch, yaw, roll = currentSeat.CFrame:ToOrientation()
 				currentYaw = yaw
+				currentInitPitch = currentSeat:GetAttribute("InitPitch") or pitch
+				currentInitRoll = currentSeat:GetAttribute("InitRoll") or roll
 
 				currentGyro, currentPos = getOrCreateMovers(currentSeat)
 				if currentGyro then
-					currentGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-					currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+					currentGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+					currentGyro.CFrame = CFrame.fromOrientation(currentInitPitch, currentYaw, currentInitRoll)
 				end
 				if currentPos then
 					currentPos.MaxForce = Vector3.new(0, 1e7, 0)
-					currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+					currentPos.Position = Vector3.new(currentSeat.Position.X, currentWaterlineY, currentSeat.Position.Z)
 				end
 				return
 			end
 		end
 	else
-		-- Restore avatar collisions to Default when standing up
+		-- Player berdiri dari perahu.
+		-- JANGAN set CanCollide = true dari client! Server (LakeActivityService) yang
+		-- restore collision group ke "Default" via Occupant changed signal.
+		-- Kalau client juga set CanCollide=true, bisa race condition / fling saat
+		-- player langsung naik perahu lagi sebelum server selesai reset.
 		if char then
 			for _, p in ipairs(char:GetDescendants()) do
 				if p:IsA("BasePart") then
 					pcall(function()
 						p.CollisionGroup = "Default"
-						p.CanCollide = true
+						-- Note: CanCollide sengaja TIDAK di-set di sini.
+						-- Server yang handle via LakeActivityService Occupant changed.
 					end)
 				end
 			end
@@ -166,10 +184,10 @@ function BoatDriveController.init()
 
 		-- Apply target orientation and height via physical movers
 		if currentGyro then
-			currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+			currentGyro.CFrame = CFrame.fromOrientation(currentInitPitch, currentYaw, currentInitRoll)
 		end
 		if currentPos then
-			currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+			currentPos.Position = Vector3.new(currentSeat.Position.X, currentWaterlineY, currentSeat.Position.Z)
 		end
 
 		-- Horizontal propulsion direction derived from smooth currentYaw
@@ -186,24 +204,21 @@ function BoatDriveController.init()
 		end
 
 		-- Boundary Check (Lookahead)
-		if targetVelocity.Magnitude > 0.1 then
-			local lookAhead = targetVelocity.Unit * math.max(3, targetVelocity.Magnitude * 0.25)
-			local pos = currentSeat.Position
-			local nextPos = pos + lookAhead
-			local nextTHeight = getTerrainHeight(nextPos.X, nextPos.Z)
-			local nextDist = (Vector3.new(nextPos.X, 0, nextPos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
-			
-			if nextDist > 750 or nextTHeight > -1.5 then
-				targetVelocity = Vector3.zero
-			end
-		end
+		-- if targetVelocity.Magnitude > 0.1 then
+		-- 	local lookAhead = targetVelocity.Unit * math.max(3, targetVelocity.Magnitude * 0.25)
+		-- 	local pos = currentSeat.Position
+		-- 	local nextPos = pos + lookAhead
+		-- 	local nextTHeight = getTerrainHeight(nextPos.X, nextPos.Z)
+		-- 	local nextDist = (Vector3.new(nextPos.X, 0, nextPos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
+		-- 	
+		-- 	if nextDist > 750 or nextTHeight > -1.5 then
+		-- 		targetVelocity = Vector3.zero
+		-- 	end
+		-- end
 
-		-- Preserve Y linear velocity (for BodyPosition) and X/Z angular velocity (for BodyGyro)
+		-- Preserve Y linear velocity (for BodyPosition)
 		local currentVel = currentSeat.AssemblyLinearVelocity
-		local currentAngVel = currentSeat.AssemblyAngularVelocity
-		
 		currentSeat.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, currentVel.Y, targetVelocity.Z)
-		currentSeat.AssemblyAngularVelocity = Vector3.new(currentAngVel.X, -steer * currentTurnSpeed, currentAngVel.Z)
 	end)
 end
 

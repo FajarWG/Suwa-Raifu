@@ -143,6 +143,10 @@ function BicycleService.init()
 	if bicyclesFolder then
 		for _, descendant in ipairs(bicyclesFolder:GetDescendants()) do
 			if descendant:IsA("Model") and descendant:FindFirstChildWhichIsA("VehicleSeat", true) then
+				local name = string.lower(descendant.Name)
+				if string.find(name, "boat") or string.find(name, "fune") or string.find(name, "pontoon") or string.find(name, "speed") then
+					continue
+				end
 				setupBike(descendant)
 			end
 		end

@@ -287,9 +287,16 @@ end
 
 local PhysicsService = game:GetService("PhysicsService")
 
+local function safeRegisterCollisionGroup(name: string)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(name)
+	end)
+end
+
+safeRegisterCollisionGroup("BoatDecks")
+safeRegisterCollisionGroup("SeatedAvatars")
+
 pcall(function()
-	PhysicsService:RegisterCollisionGroup("BoatDecks")
-	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
 end)
@@ -362,7 +369,7 @@ local function configureCreatorStoreBoat(model: Model)
 	bp.MaxForce = Vector3.new(0, 1e7, 0)
 	bp.P = 15000
 	bp.D = 1000
-	bp.Position = Vector3.new(0, waterlineY, 0)
+	bp.Position = Vector3.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z)
 
 	-- Setup BodyGyro for level pitch/roll and smooth yaw turning
 	local bg = driveSeat:FindFirstChild("BoatGyro") :: BodyGyro?
@@ -371,14 +378,18 @@ local function configureCreatorStoreBoat(model: Model)
 		bg.Name = "BoatGyro"
 		bg.Parent = driveSeat
 	end
-	bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
 	bg.P = 12000
 	bg.D = 800
-	local _, initYaw, _ = driveSeat.CFrame:ToOrientation()
-	bg.CFrame = CFrame.Angles(0, initYaw, 0)
+	local initPitch, initYaw, initRoll = driveSeat.CFrame:ToOrientation()
+	driveSeat:SetAttribute("InitPitch", initPitch)
+	driveSeat:SetAttribute("InitRoll", initRoll)
+	bg.CFrame = CFrame.fromOrientation(initPitch, initYaw, initRoll)
 
 	-- Sanitize all subparts: Massless = true for stable center of mass.
 	-- Make deck, hull, pontoons, railings, and walls solid (CanCollide = true, BoatDecks group) so boat is a solid physical object.
+	-- CRITICAL: Disable EnableFluidForces on ALL parts. Roblox's built-in buoyancy
+	-- fights our BodyPosition waterline control, causing boats to bounce/oscillate/fling.
 	for _, p in ipairs(model:GetDescendants()) do
 		if p:IsA("BasePart") then
 			local pName = string.lower(p.Name)
@@ -387,6 +398,9 @@ local function configureCreatorStoreBoat(model: Model)
 				or string.find(pName, "effect") ~= nil 
 				or string.find(pName, "teleport") ~= nil 
 				or string.find(pName, "logo") ~= nil
+
+			-- Disable Roblox fluid/buoyancy physics — we use BodyPosition for waterline control
+			p.EnableFluidForces = false
 
 			if p ~= driveSeat then
 				p.Anchored = false
@@ -493,9 +507,11 @@ local function configureCreatorStoreBoat(model: Model)
 							pcall(function() driveSeat:SetNetworkOwner(ownerPlayer) end)
 						end
 					end
+					local initPitch = driveSeat:GetAttribute("InitPitch") or 0
+					local initRoll = driveSeat:GetAttribute("InitRoll") or 0
 					local _, y, _ = driveSeat.CFrame:ToOrientation()
-					bg.CFrame = CFrame.Angles(0, y, 0)
-					bp.Position = Vector3.new(0, waterlineY, 0)
+					bg.CFrame = CFrame.fromOrientation(initPitch, y, initRoll)
+					bp.Position = Vector3.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z)
 
 					-- Anti-Fling: Wait 0.15 seconds before unanchoring.
 					-- This allows the SeatWeld to be created and the physics solver to resolve any
@@ -515,10 +531,12 @@ local function configureCreatorStoreBoat(model: Model)
 					driveSeat.SteerFloat = 0
 					driveSeat.Anchored = true
 					pcall(function() driveSeat:SetNetworkOwnershipAuto() end)
+					local initPitch = driveSeat:GetAttribute("InitPitch") or 0
+					local initRoll = driveSeat:GetAttribute("InitRoll") or 0
 					local _, curYaw, _ = driveSeat.CFrame:ToOrientation()
-					driveSeat.CFrame = CFrame.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z) * CFrame.Angles(0, curYaw, 0)
-					bg.CFrame = CFrame.Angles(0, curYaw, 0)
-					bp.Position = Vector3.new(0, waterlineY, 0)
+					driveSeat.CFrame = CFrame.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z) * CFrame.fromOrientation(initPitch, curYaw, initRoll)
+					bg.CFrame = CFrame.fromOrientation(initPitch, curYaw, initRoll)
+					bp.Position = Vector3.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z)
 				end
 			end
 		end)
@@ -639,11 +657,11 @@ function LakeActivityService.init()
 			local speed = seat.AssemblyLinearVelocity.Magnitude
 
 			-- Boundary Watchdog
-			local pos = seat.Position
-			local dist = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
-			if dist > 760 or terrainHeight(pos.X, pos.Z, -10) > -0.5 then
-				seat.AssemblyLinearVelocity = Vector3.zero
-			end
+			-- local pos = seat.Position
+			-- local dist = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
+			-- if dist > 760 or terrainHeight(pos.X, pos.Z, -10) > -0.5 then
+			-- 	seat.AssemblyLinearVelocity = Vector3.zero
+			-- end
 
 			-- Dynamic Audio
 			if speed > 1 then
