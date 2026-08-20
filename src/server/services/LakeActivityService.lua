@@ -1,17 +1,15 @@
 --!strict
 
--- Hatsushima-inspired islet, lake craft and simple fishing interactions.
+-- Hatsushima-inspired islet, lake craft, active water propulsion, world boundary & anti-ghost ride.
 
 local RunService = game:GetService('RunService')
 
 local LakeActivityService = {}
-local craftSpeeds: { [Model]: number } = {}
-local craftHeights: { [Model]: number } = {}
-local craftHalfLengths: { [Model]: number } = {}
-local WATERLINE_CLEARANCE = 1.15
-local DUCK_BOAT_LENGTH = 6.2
-local LEISURE_BOAT_LENGTH = 8.5
+local activeBoats: { [Model]: { seat: VehicleSeat, engineSound: Sound?, waterSound: Sound?, rootPart: BasePart, baseSpeed: number, turnSpeed: number, waterlineY: number } } = {}
 local ISLAND_CENTER = Vector3.new(0, 0, -610)
+
+local ENGINE_SOUND_ID = 'rbxassetid://1843521450'
+local WATER_SPLASH_ID = 'rbxasset://sounds/action_swim.mp3'
 
 local function terrainHeight(x: number, z: number, fallback: number): number
 	local parameters = RaycastParams.new()
@@ -145,8 +143,6 @@ local function buildIslandDetails(root: Model)
 	island:SetAttribute('Center', ISLAND_CENTER)
 	island.Parent = root
 
-	-- Keep the middle open as a festival lawn. Trees frame the beach instead of
-	-- occupying the crowd/fireworks circulation zone.
 	for _, tree in
 		{
 			{ Vector3.new(-66, 2, -607), 1.2 },
@@ -289,375 +285,261 @@ local function buildIslandDetails(root: Model)
 	end
 end
 
-local function makeSeat(model: Model, cframe: CFrame, objectText: string): VehicleSeat
-	local oldSeat = model:FindFirstChild('DriveSeat')
-	if oldSeat then
-		oldSeat:Destroy()
+-- Comprehensive Water/Land boundary check for boats
+local function isPositionNonWater(pos: Vector3): boolean
+	if pos.X < -730 or pos.X > 730 or pos.Z > -215 or pos.Z < -1350 then
+		return true
 	end
-	local seat = Instance.new('VehicleSeat')
-	seat.Name = 'DriveSeat'
-	seat.Size = Vector3.new(2, 0.6, 2)
-	seat.CFrame = cframe
-	seat.Color = Color3.fromRGB(72, 78, 82)
-	seat.Material = Enum.Material.Leather
-	seat.Transparency = 1
-	seat.Anchored = true
-	seat.CanCollide = false
-	seat.Parent = model
 
-	local prompt = Instance.new('ProximityPrompt')
-	prompt.ActionText = 'Board'
-	prompt.ObjectText = objectText
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
-	prompt.Triggered:Connect(function(player)
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass('Humanoid')
-		if humanoid then
-			seat:Sit(humanoid)
-		end
-	end)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	params.IgnoreWater = false
 
-	return seat
+	local hit = workspace:Raycast(pos + Vector3.new(0, 10, 0), Vector3.new(0, -25, 0), params)
+	if hit and hit.Material ~= Enum.Material.Water then
+		return true
+	end
+
+	if hit and hit.Position.Y > -0.2 and hit.Material ~= Enum.Material.Water then
+		return true
+	end
+
+	return false
 end
 
-local function makePassengerSeat(model: Model, name: string, cframe: CFrame, objectText: string): Seat
-	local previous = model:FindFirstChild(name)
-	if previous then
-		previous:Destroy()
-	end
-	local seat = Instance.new('Seat')
-	seat.Name = name
-	seat.Size = Vector3.new(1.1, 0.35, 1.1)
-	seat.CFrame = cframe
-	seat.Transparency = 1
-	seat.Anchored = true
-	seat.CanCollide = false
-	seat.CanTouch = false
-	seat.Parent = model
+local function isBoatTouchingLandOrEdge(seat: VehicleSeat, model: Model): boolean
+	local forward = seat.CFrame.LookVector
+	local right = seat.CFrame.RightVector
+	local cf, size = model:GetBoundingBox()
+	local halfLength = size.Z / 2
+	local halfWidth = size.X / 2
 
-	local prompt = Instance.new('ProximityPrompt')
-	prompt.Name = 'PassengerPrompt'
-	prompt.ActionText = 'Bonceng Perahu'
-	prompt.ObjectText = objectText
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
-	prompt.Triggered:Connect(function(player)
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass('Humanoid')
-		if humanoid and not seat.Occupant then
-			seat:Sit(humanoid)
+	local testPoints = {
+		seat.Position,
+		seat.Position + forward * (halfLength + 5),
+		seat.Position + forward * halfLength + right * halfWidth,
+		seat.Position + forward * halfLength - right * halfWidth,
+		seat.Position - forward * (halfLength + 4),
+	}
+
+	for _, pt in ipairs(testPoints) do
+		if isPositionNonWater(pt) then
+			return true
 		end
-	end)
-	return seat
+	end
+
+	return false
 end
 
-local function makeMovementSound(model: Model, parent: BasePart, isDuckBoat: boolean)
-	local previousWater = model:FindFirstChild('WaterMovementSound', true)
+local function configureCreatorStoreBoat(model: Model)
+	local boatName = string.lower(model.Name)
+	local isMotorized = string.find(boatName, "fune") ~= nil
+		or string.find(boatName, "pontoon") ~= nil
+		or string.find(boatName, "speedboat") ~= nil
+
+	local driveSeat: VehicleSeat? = model:FindFirstChildWhichIsA("VehicleSeat", true)
+	if not driveSeat then
+		return
+	end
+
+	model.PrimaryPart = driveSeat
+	driveSeat.RootPriority = 127
+
+	local baseSpeed = driveSeat:GetAttribute("BaseSpeed") or (if string.find(boatName, "speed") then 36 else 26)
+	local turnSpeed = driveSeat:GetAttribute("TurnSpeed") or (if string.find(boatName, "speed") then 1.8 else 1.3)
+	local waterlineY = driveSeat:GetAttribute("WaterlineY") or driveSeat.Position.Y
+
+	local physProps = PhysicalProperties.new(0.01, 0, 0, 0, 0)
+
+	-- Ensure ALL cosmetic parts are unanchored, massless, and frictionless
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Anchored = false
+			p.CanCollide = true
+			p.CanTouch = true
+			if p ~= driveSeat then
+				p.Massless = true
+			end
+			p.CustomPhysicalProperties = physProps
+		end
+	end
+
+	-- All parts unanchored and frictionless
+	driveSeat.Anchored = false
+	driveSeat.HeadsUpDisplay = false
+	driveSeat.CanTouch = false
+
+	for _, seat in ipairs(model:GetDescendants()) do
+		local existingPrompt = seat:FindFirstChild("RidePrompt")
+		if existingPrompt then
+			existingPrompt:Destroy()
+		end
+
+		if not seat:IsA("VehicleSeat") then
+			continue
+		end
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "RidePrompt"
+		prompt.ActionText = "Mengemudi"
+		prompt.ObjectText = boat.Name .. " (Kemudi)"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.MaxActivationDistance = 15
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = seat
+
+		-- Hide prompt when occupied
+		prompt.Enabled = (seat.Occupant == nil)
+
+		seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+			local isOccupied = (seat.Occupant ~= nil)
+			prompt.Enabled = not isOccupied
+
+			if seat == driveSeat then
+				if isOccupied then
+					driveSeat.Anchored = false
+					local occupant = driveSeat.Occupant
+					if occupant and occupant.Parent then
+						local ownerPlayer = game:GetService("Players"):GetPlayerFromCharacter(occupant.Parent)
+						if ownerPlayer then
+							pcall(function() driveSeat:SetNetworkOwner(ownerPlayer) end)
+						end
+					end
+				else
+					-- Driver exited -> Anti-Ghost Ride: Zero velocity and re-anchor in place
+					driveSeat.AssemblyLinearVelocity = Vector3.zero
+					driveSeat.AssemblyAngularVelocity = Vector3.zero
+					driveSeat.Throttle = 0
+					driveSeat.Steer = 0
+					driveSeat.ThrottleFloat = 0
+					driveSeat.SteerFloat = 0
+					driveSeat.Anchored = true
+					pcall(function() driveSeat:SetNetworkOwnershipAuto() end)
+				end
+			end
+		end)
+
+		prompt.Triggered:Connect(function(player)
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
+				seat:Sit(humanoid)
+			end
+		end)
+	end
+
+	local previousWater = model:FindFirstChild("WaterMovementSound", true)
 	if previousWater then
 		previousWater:Destroy()
 	end
-	local previousEngine = model:FindFirstChild('EngineMovementSound', true)
+	local previousEngine = model:FindFirstChild("EngineMovementSound", true)
 	if previousEngine then
 		previousEngine:Destroy()
 	end
 
-	local waterSound = Instance.new('Sound')
-	waterSound.Name = 'WaterMovementSound'
-	waterSound.SoundId = 'rbxasset://sounds/action_swim.mp3'
+	local waterSound = Instance.new("Sound")
+	waterSound.Name = "WaterMovementSound"
+	waterSound.SoundId = WATER_SPLASH_ID
 	waterSound.Looped = true
-	waterSound.Volume = if isDuckBoat then 0.35 else 0.45
-	waterSound.PlaybackSpeed = if isDuckBoat then 0.85 else 0.75
+	waterSound.Volume = 0
+	waterSound.PlaybackSpeed = 0.85
 	waterSound.RollOffMode = Enum.RollOffMode.InverseTapered
 	waterSound.RollOffMinDistance = 10
 	waterSound.RollOffMaxDistance = 90
-	waterSound.Parent = parent
+	waterSound.Parent = driveSeat
+	waterSound:Play()
 
-	local engineSound = Instance.new('Sound')
-	engineSound.Name = 'EngineMovementSound'
-	engineSound.SoundId = if isDuckBoat then 'rbxassetid://9114221586' else 'rbxassetid://9114223179'
-	engineSound.Looped = true
-	engineSound.Volume = 0
-	engineSound.PlaybackSpeed = if isDuckBoat then 1.0 else 0.85
-	engineSound.RollOffMode = Enum.RollOffMode.InverseTapered
-	engineSound.RollOffMinDistance = 10
-	engineSound.RollOffMaxDistance = 100
-	engineSound.Parent = parent
-end
-
-local function configureCraft(model: Model)
-	local isDuckBoat = string.find(model.Name, 'DuckPedalBoat') ~= nil
-	local targetLength = if isDuckBoat then DUCK_BOAT_LENGTH else LEISURE_BOAT_LENGTH
-	local oldSeat = model:FindFirstChild('DriveSeat')
-	if oldSeat then
-		oldSeat:Destroy()
-	end
-	for _, name in { 'PassengerSeat01', 'PassengerSeat02', 'PassengerSeat03', 'WalkableDeckCollider' } do
-		local previous = model:FindFirstChild(name)
-		if previous then
-			previous:Destroy()
-		end
+	local engineSound: Sound? = nil
+	if isMotorized then
+		engineSound = Instance.new("Sound")
+		engineSound.Name = "EngineMovementSound"
+		engineSound.SoundId = ENGINE_SOUND_ID
+		engineSound.Looped = true
+		engineSound.Volume = 0
+		engineSound.PlaybackSpeed = 0.8
+		engineSound.RollOffMode = Enum.RollOffMode.InverseTapered
+		engineSound.RollOffMinDistance = 15
+		engineSound.RollOffMaxDistance = 120
+		engineSound.Parent = driveSeat
+		engineSound:Play()
 	end
 
-	local _, initialSize = model:GetBoundingBox()
-	if math.abs(initialSize.Z - targetLength) > 0.05 then
-		model:ScaleTo(model:GetScale() * targetLength / initialSize.Z)
-	end
-
-	local boundingCFrame, boundingSize = model:GetBoundingBox()
-	local bottom = boundingCFrame.Y - boundingSize.Y / 2
-	local lift = WATERLINE_CLEARANCE - bottom
-	local oldPivot = model:GetPivot()
-	model:PivotTo(CFrame.new(oldPivot.Position + Vector3.new(0, lift, 0)) * oldPivot.Rotation)
-	boundingCFrame, boundingSize = model:GetBoundingBox()
-	craftHeights[model] = model:GetPivot().Y
-
-	for _, descendant in model:GetDescendants() do
-		if
-			descendant:IsA('BasePart')
-			and descendant.Name ~= 'DriveSeat'
-			and descendant.Name ~= 'PassengerSeat01'
-			and descendant.Name ~= 'PassengerSeat02'
-			and descendant.Name ~= 'PassengerSeat03'
-		then
-			descendant.CanCollide = true
-			descendant.CanTouch = true
-			descendant.CanQuery = true
-		end
-	end
-
-	local floor = model:FindFirstChild('WaterproofCockpitFloor')
-	if not floor or not floor:IsA('Part') then
-		floor = part(
-			model,
-			'WaterproofCockpitFloor',
-			Vector3.new(1, 0.25, 1),
-			CFrame.identity,
-			Color3.new(1, 1, 1),
-			Enum.Material.SmoothPlastic
-		)
-	end
-	floor.Size = if isDuckBoat then Vector3.new(2.4, 0.3, 3.4) else Vector3.new(3.2, 0.3, 5.2)
-	floor.Color = if isDuckBoat then Color3.fromRGB(235, 221, 181) else Color3.fromRGB(222, 234, 239)
-	floor.CanCollide = true
-	floor.CanTouch = true
-	floor.CanQuery = true
-	floor.Transparency = 0.05
-	local floorOffset = if isDuckBoat then 0.55 else -0.4
-	floor.CFrame = CFrame.new(boundingCFrame.X, WATERLINE_CLEARANCE + 0.55, boundingCFrame.Z + floorOffset)
-		* oldPivot.Rotation
-
-	local base = CFrame.new(boundingCFrame.Position) * oldPivot.Rotation
-	local deck = part(
-		model,
-		'WalkableDeckCollider',
-		if isDuckBoat then Vector3.new(3.2, 0.4, 5.5) else Vector3.new(4.2, 0.4, 7.5),
-		base * CFrame.new(0, WATERLINE_CLEARANCE + 0.68 - boundingCFrame.Y, 0),
-		Color3.fromRGB(230, 230, 220),
-		Enum.Material.SmoothPlastic
-	)
-	deck.Transparency = 1
-	deck.CanCollide = true
-	deck.CanTouch = true
-	deck.CanQuery = true
-
-	local driverSeat = makeSeat(
-		model,
-		base * CFrame.new(0, WATERLINE_CLEARANCE + 1.45 - boundingCFrame.Y, if isDuckBoat then -0.9 else -1.55),
-		if isDuckBoat then 'Boat Bebek (Kemudi)' else 'Perahu Danau (Kemudi)'
-	)
-	if isDuckBoat then
-		makePassengerSeat(
-			model,
-			'PassengerSeat01',
-			base * CFrame.new(-0.75, WATERLINE_CLEARANCE + 1.38 - boundingCFrame.Y, 0.9),
-			'Boat Bebek (Boncengan Kiri)'
-		)
-		makePassengerSeat(
-			model,
-			'PassengerSeat02',
-			base * CFrame.new(0.75, WATERLINE_CLEARANCE + 1.38 - boundingCFrame.Y, 0.9),
-			'Boat Bebek (Boncengan Kanan)'
-		)
-	else
-		for index, offset in
-			{
-				Vector3.new(-1.1, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 0.2),
-				Vector3.new(1.1, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 0.2),
-				Vector3.new(0, WATERLINE_CLEARANCE + 1.5 - boundingCFrame.Y, 1.85),
-			}
-		do
-			makePassengerSeat(
-				model,
-				`PassengerSeat0{index}`,
-				base * CFrame.new(offset),
-				`Perahu Danau (Penumpang {index})`
-			)
-		end
-	end
-	makeMovementSound(model, driverSeat, isDuckBoat)
-	model:SetAttribute('WalkableSolidDeck', true)
-	model:SetAttribute('PassengerCapacity', if isDuckBoat then 2 else 3)
-	model:SetAttribute('TargetLengthStuds', targetLength)
-	model:SetAttribute('ScaleBasis', '5.5-stud avatar')
-	craftSpeeds[model] = 0
-	craftHalfLengths[model] = targetLength * 0.58
-end
-
-local function terrainIsLand(position: Vector3): boolean
-	local parameters = RaycastParams.new()
-	parameters.FilterType = Enum.RaycastFilterType.Include
-	parameters.FilterDescendantsInstances = { workspace.Terrain }
-	parameters.IgnoreWater = true
-	local result = workspace:Raycast(position + Vector3.new(0, 18, 0), Vector3.new(0, -45, 0), parameters)
-	return result ~= nil and result.Position.Y > 0.15
-end
-
-local function craftWouldHitLand(model: Model, nextPivot: CFrame): boolean
-	local halfLength = craftHalfLengths[model] or 4
-	local forward = nextPivot.LookVector
-	local right = nextPivot.RightVector
-	for _, offset in
-		{
-			Vector3.zero,
-			forward * halfLength,
-			forward * halfLength * 0.75 + right * halfLength * 0.42,
-			forward * halfLength * 0.75 - right * halfLength * 0.42,
-			-forward * halfLength * 0.72,
-		}
-	do
-		if terrainIsLand(nextPivot.Position + offset) then
-			return true
-		end
-	end
-	return false
-end
-
-local function updateCraft(model: Model, deltaTime: number)
-	local seat = model:FindFirstChild('DriveSeat')
-	if not seat or not seat:IsA('VehicleSeat') then
-		return
-	end
-	local speed = craftSpeeds[model] or 0
-	local throttle = if seat.Occupant then seat.ThrottleFloat else 0
-	local steer = if seat.Occupant then seat.SteerFloat else 0
-	if math.abs(throttle) > 0.05 then
-		speed = math.clamp(speed + throttle * 12 * deltaTime, -4, 16)
-	else
-		speed *= math.max(0, 1 - 2.8 * deltaTime)
-	end
-	if seat.Occupant then
-		local pivot = model:GetPivot() * CFrame.Angles(0, -steer * math.rad(48) * deltaTime, 0)
-		local move = pivot.LookVector * speed * deltaTime
-		local floatHeight = craftHeights[model] or pivot.Y
-		local nextPivot = CFrame.new(pivot.X + move.X, floatHeight, pivot.Z + move.Z) * pivot.Rotation
-		if craftWouldHitLand(model, nextPivot) then
-			speed = -speed * 0.12
-		else
-			model:PivotTo(nextPivot)
-		end
-	end
-	local movementSound = model:FindFirstChild('WaterMovementSound', true)
-	if movementSound and movementSound:IsA('Sound') then
-		movementSound.PlaybackSpeed = 0.72 + math.clamp(math.abs(speed) / 16, 0, 1) * 0.42
-		if math.abs(speed) > 0.35 and seat.Occupant then
-			if not movementSound.IsPlaying then
-				movementSound:Play()
-			end
-		elseif movementSound.IsPlaying then
-			movementSound:Stop()
-		end
-	end
-	local engineSound = model:FindFirstChild('EngineMovementSound', true)
-	if engineSound and engineSound:IsA('Sound') then
-		local isMoving = math.abs(speed) > 0.35 and seat.Occupant ~= nil
-		if isMoving then
-			engineSound.Volume = math.clamp(0.2 + (math.abs(speed) / 16) * 0.45, 0.2, 0.65)
-			engineSound.PlaybackSpeed = 0.9 + (math.abs(speed) / 16) * 0.4
-			if not engineSound.IsPlaying then
-				engineSound:Play()
-			end
-		else
-			engineSound.Volume = math.max(0, engineSound.Volume - deltaTime * 1.5)
-			if engineSound.Volume <= 0.01 and engineSound.IsPlaying then
-				engineSound:Stop()
-			end
-		end
-	end
-	craftSpeeds[model] = speed
-end
-
-local function configureCreatorStoreBoat(model: Model)
-	for _, seat in ipairs(model:GetDescendants()) do
-		if seat:IsA("VehicleSeat") or seat:IsA("Seat") then
-			seat.CanTouch = false
-			if seat:IsA("VehicleSeat") then
-				seat.HeadsUpDisplay = false -- Remove the default Speed GUI
-			end
-			
-			local existingPrompt = seat:FindFirstChild("RidePrompt")
-			if existingPrompt then existingPrompt:Destroy() end
-			
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.Name = "RidePrompt"
-			if seat:IsA("VehicleSeat") then
-				prompt.ActionText = "Mengemudi"
-				prompt.ObjectText = "Perahu"
-			else
-				prompt.ActionText = "Menumpang"
-				prompt.ObjectText = "Kursi Penumpang"
-			end
-			prompt.KeyboardKeyCode = Enum.KeyCode.E
-			prompt.MaxActivationDistance = 8
-			prompt.RequiresLineOfSight = false
-			prompt.Parent = seat
-			
-			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
-				prompt.Enabled = (seat.Occupant == nil)
-			end)
-			
-			prompt.Triggered:Connect(function(player)
-				local character = player.Character
-				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-				-- Prevent sitting if already in a seat
-				if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
-					seat:Sit(humanoid)
-				end
-			end)
-		end
-	end
+	activeBoats[model] = { seat = driveSeat, engineSound = engineSound, waterSound = waterSound, rootPart = driveSeat, baseSpeed = baseSpeed, turnSpeed = turnSpeed, waterlineY = waterlineY }
 end
 
 local function buildLakeFeatures()
-	local previous = workspace:FindFirstChild('LakeActivitySet')
+	local previous = workspace:FindFirstChild("LakeActivitySet")
 	if previous then
 		previous:Destroy()
 	end
-	local root = Instance.new('Model')
-	root.Name = 'LakeActivitySet'
+	local root = Instance.new("Model")
+	root.Name = "LakeActivitySet"
 	root.Parent = workspace
 	buildIslandDetails(root)
 
-	local crafts = workspace:FindFirstChild('LakeCrafts')
+	local crafts = workspace:FindFirstChild("LakeCrafts")
 	if crafts then
-		for _, child in crafts:GetChildren() do
-			if child:IsA('Model') then
+		for _, child in ipairs(crafts:GetChildren()) do
+			if child:IsA("Model") then
 				configureCreatorStoreBoat(child)
 			end
 		end
-	end
-
-	local oldBarge = workspace:FindFirstChild('LakesideActivities')
-		and workspace.LakesideActivities:FindFirstChild('FireworksLaunchBarge')
-	if oldBarge then
-		oldBarge:Destroy()
 	end
 end
 
 function LakeActivityService.init()
 	buildLakeFeatures()
+
+	-- Runtime loop for active water propulsion, strict land blocking, audio, and anti-ghost ride
+	RunService.Heartbeat:Connect(function()
+		for boat, data in pairs(activeBoats) do
+			local seat = data.seat
+			local engineSound = data.engineSound
+			local waterSound = data.waterSound
+
+			if not seat or not seat.Parent then
+				activeBoats[boat] = nil
+				continue
+			end
+
+			-- Strict Anti-Ghost Ride: when empty, enforce 0 velocity
+			if seat.Occupant == nil then
+				seat.AssemblyLinearVelocity = Vector3.zero
+				seat.AssemblyAngularVelocity = Vector3.zero
+				seat.Throttle = 0
+				seat.Steer = 0
+				seat.ThrottleFloat = 0
+				seat.SteerFloat = 0
+				if waterSound then waterSound.Volume = 0 end
+				if engineSound then engineSound.Volume = 0 end
+				continue
+			end
+
+			-- Driver is in seat: server only handles audio and boundary.
+			-- Movement is driven entirely by BoatDriveController on the client
+			-- (client has network ownership of all boat parts).
+			local speed = seat.AssemblyLinearVelocity.Magnitude
+
+			-- Dynamic Audio
+			if speed > 1 then
+				if waterSound then
+					waterSound.Volume = math.clamp(speed / 25, 0.2, 0.6)
+					waterSound.PlaybackSpeed = math.clamp(0.7 + (speed / 40), 0.7, 1.2)
+				end
+				if engineSound then
+					engineSound.Volume = math.clamp(0.3 + (speed / 15) * 0.5, 0.3, 0.85)
+					engineSound.PlaybackSpeed = math.clamp(0.75 + (speed / 30) * 0.5, 0.75, 1.35)
+				end
+			else
+				if waterSound then waterSound.Volume = 0 end
+				if engineSound then
+					engineSound.Volume = 0.2
+					engineSound.PlaybackSpeed = 0.75
+				end
+			end
+		end
+	end)
 end
 
 return LakeActivityService

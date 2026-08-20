@@ -75,6 +75,8 @@ local function configureBenches()
 			and string.find(descendant.Name, 'Seat')
 			and not string.find(descendant.Name, 'SwingSeat')
 			and not string.find(descendant.Name, 'Seesaw')
+			and not descendant:FindFirstAncestor("Bicycles")
+			and not descendant:FindFirstAncestor("LakeCrafts")
 			and not descendant.Parent:FindFirstChild(`Functional_{descendant.Name}`)
 		then
 			makeFunctionalSeat(descendant, 'Park seat')

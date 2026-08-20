@@ -23,20 +23,18 @@ local function buildTerrain()
 
 	terrain:Clear()
 	terrain.WaterColor = Color3.fromRGB(48, 118, 151)
-	terrain.WaterTransparency = 0.2
-	terrain.WaterReflectance = 0.4
-	terrain.WaterWaveSize = 0.2
-	terrain.WaterWaveSpeed = 7
+	terrain.WaterTransparency = 0.8
+	terrain.WaterReflectance = 0.25
+	terrain.WaterWaveSize = 0.15
+	terrain.WaterWaveSpeed = 6
 
 	-- A broad body of water, with the opposite shore far enough away to read as
 	-- Lake Suwa rather than a canal. Terrain water is swimmable and has no hard
 	-- collision surface.
 	terrain:FillBlock(CFrame.new(0, -24, -810), Vector3.new(1900, 48, 1140), Enum.Material.Water)
 
-	-- The park and town sit on one broad terrain shelf. The old CityGround part
-	-- made the whole district read as a small rectangular diorama; this base is
-	-- wide enough for the full lakeside curve and its inland facilities.
-	terrain:FillBlock(CFrame.new(0, -4, 55), Vector3.new(1500, 8, 500), Enum.Material.Grass)
+	-- Solid land base under park, road, and buildings
+	terrain:FillBlock(CFrame.new(0, -4, 60), Vector3.new(1600, 10, 520), Enum.Material.Grass)
 
 	-- A chain of overlapping, rotated shallow-water coves connects the deep lake
 	-- to the beach. This removes the ruler-straight water boundary while keeping

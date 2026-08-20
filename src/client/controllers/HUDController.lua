@@ -1,186 +1,24 @@
 --!strict
 
--- HUDController (client): menampilkan status (Yen, XP, Level) dan quest aktif.
+-- HUDController: status Yen/XP, quest log, dan tombol School.
+-- Onboarding banner dan guide beam telah dinonaktifkan total agar UI bersih dan pemain bebas beraktivitas.
 
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
-local RunService = game:GetService('RunService')
-local Workspace = game:GetService('Workspace')
 
-local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
-local LocalizationService =
-	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
 local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local LocalizationService = require(ReplicatedStorage.Shared:WaitForChild('util'):WaitForChild('Localization'))
+
+local HUDController = {}
 
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild('PlayerGui')
 
-local currentLocale = 'en'
-local hudGui: ScreenGui?
+local hudGui: ScreenGui? = nil
 local currentProfile: ProfileTypes.Profile? = nil
 local currentQuests: { { id: string } } = {}
-local sakuraHighlight: Highlight? = nil
-local navBeam: Beam? = nil
-local navFromAttachment: Attachment? = nil
-local navToAttachment: Attachment? = nil
-
-local HUDController = {}
-
-local function getSakuraBody(): BasePart?
-	local npcs = Workspace:FindFirstChild('NPCs')
-	if npcs then
-		local sakuraModel = npcs:FindFirstChild('teacher_sakura')
-		if sakuraModel and sakuraModel:IsA('Model') then
-			local body = sakuraModel:FindFirstChild('Body')
-			if body and body:IsA('BasePart') then
-				return body
-			end
-		end
-	end
-
-	local direct = Workspace:FindFirstChild('teacher_sakura')
-	if direct and direct:IsA('Model') then
-		local body = direct:FindFirstChild('Body')
-		if body and body:IsA('BasePart') then
-			return body
-		end
-	end
-
-	return nil
-end
-
-local function getCharacterRoot(): BasePart?
-	local character = player.Character
-	if not character then
-		return nil
-	end
-	local root = character:FindFirstChild('HumanoidRootPart')
-	if root and root:IsA('BasePart') then
-		return root
-	end
-	return nil
-end
-
-local function hasQuest(questId: string): boolean
-	for _, quest in currentQuests do
-		if quest.id == questId then
-			return true
-		end
-	end
-	return false
-end
-
-local function isQuestCompleted(questId: string): boolean
-	if not currentProfile then
-		return false
-	end
-	for _, completedId in currentProfile.quests.completed do
-		if completedId == questId then
-			return true
-		end
-	end
-	return false
-end
-
-local function shouldShowOnboarding(): boolean
-	if isQuestCompleted('quest_intro') then
-		return false
-	end
-	if hasQuest('quest_intro') then
-		return false
-	end
-	return true
-end
-
-local function clearNavigationAssist()
-	if navBeam then
-		navBeam:Destroy()
-		navBeam = nil
-	end
-	if navFromAttachment then
-		navFromAttachment:Destroy()
-		navFromAttachment = nil
-	end
-	if navToAttachment then
-		navToAttachment:Destroy()
-		navToAttachment = nil
-	end
-	if sakuraHighlight then
-		sakuraHighlight:Destroy()
-		sakuraHighlight = nil
-	end
-end
-
-local function ensureNavigationAssist(root: BasePart, sakuraBody: BasePart)
-	if not sakuraHighlight then
-		local model = sakuraBody:FindFirstAncestorOfClass('Model')
-		if model then
-			local highlight = Instance.new('Highlight')
-			highlight.Name = 'OnboardingSakuraHighlight'
-			highlight.FillColor = Color3.fromRGB(255, 214, 102)
-			highlight.OutlineColor = Color3.fromRGB(255, 248, 210)
-			highlight.FillTransparency = 0.58
-			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			highlight.Adornee = model
-			highlight.Parent = model
-			sakuraHighlight = highlight
-		end
-	end
-
-	if not navFromAttachment or navFromAttachment.Parent ~= root then
-		if navFromAttachment then
-			navFromAttachment:Destroy()
-		end
-		navFromAttachment = Instance.new('Attachment')
-		navFromAttachment.Name = 'OnboardingNavFrom'
-		navFromAttachment.Position = Vector3.new(0, 1.6, 0)
-		navFromAttachment.Parent = root
-	end
-
-	if not navToAttachment or navToAttachment.Parent ~= sakuraBody then
-		if navToAttachment then
-			navToAttachment:Destroy()
-		end
-		navToAttachment = Instance.new('Attachment')
-		navToAttachment.Name = 'OnboardingNavTo'
-		navToAttachment.Position = Vector3.new(0, 3, 0)
-		navToAttachment.Parent = sakuraBody
-	end
-
-	if not navBeam or navBeam.Parent ~= root then
-		if navBeam then
-			navBeam:Destroy()
-		end
-		navBeam = Instance.new('Beam')
-		navBeam.Name = 'OnboardingGuideBeam'
-		navBeam.FaceCamera = true
-		navBeam.Width0 = 0.09
-		navBeam.Width1 = 0.12
-		navBeam.LightEmission = 0.9
-		navBeam.LightInfluence = 0
-		navBeam.Transparency = NumberSequence.new(0.12)
-		navBeam.Color = ColorSequence.new(Color3.fromRGB(120, 229, 255), Color3.fromRGB(255, 243, 170))
-		navBeam.Parent = root
-	end
-
-	navBeam.Attachment0 = navFromAttachment
-	navBeam.Attachment1 = navToAttachment
-end
-
-local function directionHint(from: Vector3, to: Vector3): string
-	local delta = to - from
-	if delta.Magnitude < 2 then
-		return 'You are at Sakura.'
-	end
-	local eastWest = if delta.X > 0 then 'east' else 'west'
-	local northSouth = if delta.Z > 0 then 'south' else 'north'
-	if math.abs(delta.X) > math.abs(delta.Z) * 1.5 then
-		return `Move {eastWest}.`
-	elseif math.abs(delta.Z) > math.abs(delta.X) * 1.5 then
-		return `Move {northSouth}.`
-	end
-	return `Move {northSouth}-{eastWest}.`
-end
+local currentLocale = 'en'
 
 local function createGui(): ScreenGui
 	if hudGui then
@@ -203,39 +41,42 @@ local function createGui(): ScreenGui
 
 	local yenLabel = Instance.new('TextLabel')
 	yenLabel.Name = 'Yen'
-	yenLabel.Size = UDim2.new(1, 0, 0, 22)
+	yenLabel.Position = UDim2.new(0, 5, 0, 5)
+	yenLabel.Size = UDim2.new(1, -10, 0, 18)
 	yenLabel.BackgroundTransparency = 1
 	yenLabel.Font = Enum.Font.GothamBold
-	yenLabel.TextColor3 = Color3.fromRGB(140, 220, 140)
+	yenLabel.TextColor3 = Color3.fromRGB(100, 220, 100)
 	yenLabel.TextXAlignment = Enum.TextXAlignment.Left
+	yenLabel.Text = '¥ 0'
 	yenLabel.Parent = panel
 
 	local xpLabel = Instance.new('TextLabel')
 	xpLabel.Name = 'Xp'
-	xpLabel.Position = UDim2.new(0, 0, 0, 24)
-	xpLabel.Size = UDim2.new(1, 0, 0, 22)
+	xpLabel.Position = UDim2.new(0, 5, 0, 25)
+	xpLabel.Size = UDim2.new(1, -10, 0, 18)
 	xpLabel.BackgroundTransparency = 1
 	xpLabel.Font = Enum.Font.Gotham
-	xpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	xpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	xpLabel.TextXAlignment = Enum.TextXAlignment.Left
+	xpLabel.Text = 'JP XP: 0'
 	xpLabel.Parent = panel
 
 	local levelLabel = Instance.new('TextLabel')
 	levelLabel.Name = 'Level'
-	levelLabel.Position = UDim2.new(0, 0, 0, 48)
-	levelLabel.Size = UDim2.new(1, 0, 0, 22)
+	levelLabel.Position = UDim2.new(0, 5, 0, 45)
+	levelLabel.Size = UDim2.new(1, -10, 0, 18)
 	levelLabel.BackgroundTransparency = 1
 	levelLabel.Font = Enum.Font.Gotham
-	levelLabel.TextColor3 = Color3.fromRGB(220, 200, 140)
+	levelLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Left
+	levelLabel.Text = 'Level: 1'
 	levelLabel.Parent = panel
 
-	-- Quest log kanan atas
+	-- Panel quest kanan atas
 	local questPanel = Instance.new('Frame')
 	questPanel.Name = 'QuestPanel'
-	questPanel.AnchorPoint = Vector2.new(1, 0)
-	questPanel.Position = UDim2.new(1, -10, 0, 10)
-	questPanel.Size = UDim2.new(0, 240, 0, 120)
+	questPanel.Position = UDim2.new(1, -210, 0, 10)
+	questPanel.Size = UDim2.new(0, 200, 0, 90)
 	questPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	questPanel.BackgroundTransparency = 0.3
 	questPanel.BorderSizePixel = 0
@@ -243,124 +84,46 @@ local function createGui(): ScreenGui
 
 	local questTitle = Instance.new('TextLabel')
 	questTitle.Name = 'Title'
-	questTitle.Size = UDim2.new(1, 0, 0, 24)
+	questTitle.Position = UDim2.new(0, 5, 0, 5)
+	questTitle.Size = UDim2.new(1, -10, 0, 18)
 	questTitle.BackgroundTransparency = 1
 	questTitle.Font = Enum.Font.GothamBold
-	questTitle.Text = LocalizationService.get(currentLocale, 'ui.questlog.title')
-	questTitle.TextColor3 = Color3.fromRGB(255, 220, 120)
+	questTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
 	questTitle.TextXAlignment = Enum.TextXAlignment.Left
+	questTitle.Text = LocalizationService.get(currentLocale, 'ui.questlog.title')
 	questTitle.Parent = questPanel
 
 	local questList = Instance.new('Frame')
 	questList.Name = 'List'
-	questList.Position = UDim2.new(0, 0, 0, 26)
-	questList.Size = UDim2.new(1, 0, 1, -26)
+	questList.Position = UDim2.new(0, 5, 0, 25)
+	questList.Size = UDim2.new(1, -10, 1, -30)
 	questList.BackgroundTransparency = 1
 	questList.Parent = questPanel
 
-	-- Tombol buka panel sekolah
+	-- Tombol School kiri (di bawah status)
 	local schoolBtn = Instance.new('TextButton')
 	schoolBtn.Name = 'SchoolButton'
-	schoolBtn.Position = UDim2.new(0, 10, 0, 90)
-	schoolBtn.Size = UDim2.new(0, 110, 0, 30)
+	schoolBtn.Position = UDim2.new(0, 10, 0, 88)
+	schoolBtn.Size = UDim2.new(0, 110, 0, 32)
 	schoolBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
-	schoolBtn.Font = Enum.Font.Gotham
-	schoolBtn.Text = LocalizationService.get(currentLocale, 'ui.school.open')
 	schoolBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	schoolBtn.Font = Enum.Font.GothamMedium
+	schoolBtn.TextSize = 13
+	schoolBtn.Text = LocalizationService.get(currentLocale, 'ui.school.open')
 	schoolBtn.Parent = gui
-	schoolBtn.Activated:Connect(function()
-		local SchoolController = require(script.Parent:WaitForChild('SchoolController'))
-		SchoolController.open()
+
+	local schoolCorner = Instance.new('UICorner')
+	schoolCorner.CornerRadius = UDim.new(0, 6)
+	schoolCorner.Parent = schoolBtn
+
+	schoolBtn.MouseButton1Click:Connect(function()
+		local controllers = script.Parent
+		local SchoolController = require(controllers:WaitForChild('SchoolController'))
+		SchoolController.togglePanel()
 	end)
-
-	local onboardingPanel = Instance.new('Frame')
-	onboardingPanel.Name = 'OnboardingPanel'
-	onboardingPanel.AnchorPoint = Vector2.new(0.5, 0)
-	onboardingPanel.Position = UDim2.new(0.5, 0, 0, 10)
-	onboardingPanel.Size = UDim2.new(0, 440, 0, 88)
-	onboardingPanel.BackgroundColor3 = Color3.fromRGB(22, 32, 45)
-	onboardingPanel.BackgroundTransparency = 0.16
-	onboardingPanel.BorderSizePixel = 0
-	onboardingPanel.Visible = false
-	onboardingPanel.Parent = gui
-
-	local onboardingTitle = Instance.new('TextLabel')
-	onboardingTitle.Name = 'Title'
-	onboardingTitle.Position = UDim2.new(0, 12, 0, 6)
-	onboardingTitle.Size = UDim2.new(1, -24, 0, 24)
-	onboardingTitle.BackgroundTransparency = 1
-	onboardingTitle.Font = Enum.Font.GothamBold
-	onboardingTitle.TextColor3 = Color3.fromRGB(255, 236, 170)
-	onboardingTitle.TextXAlignment = Enum.TextXAlignment.Left
-	onboardingTitle.Text = 'Onboarding: Find Teacher Sakura'
-	onboardingTitle.Parent = onboardingPanel
-
-	local onboardingHint = Instance.new('TextLabel')
-	onboardingHint.Name = 'Hint'
-	onboardingHint.Position = UDim2.new(0, 12, 0, 30)
-	onboardingHint.Size = UDim2.new(1, -24, 0, 24)
-	onboardingHint.BackgroundTransparency = 1
-	onboardingHint.Font = Enum.Font.Gotham
-	onboardingHint.TextColor3 = Color3.fromRGB(199, 222, 241)
-	onboardingHint.TextXAlignment = Enum.TextXAlignment.Left
-	onboardingHint.Text = 'Follow the guidance line and approach Sakura.'
-	onboardingHint.Parent = onboardingPanel
-
-	local onboardingDistance = Instance.new('TextLabel')
-	onboardingDistance.Name = 'Distance'
-	onboardingDistance.Position = UDim2.new(0, 12, 0, 54)
-	onboardingDistance.Size = UDim2.new(1, -24, 0, 24)
-	onboardingDistance.BackgroundTransparency = 1
-	onboardingDistance.Font = Enum.Font.GothamBold
-	onboardingDistance.TextColor3 = Color3.fromRGB(125, 234, 255)
-	onboardingDistance.TextXAlignment = Enum.TextXAlignment.Left
-	onboardingDistance.Text = 'Distance: --'
-	onboardingDistance.Parent = onboardingPanel
 
 	hudGui = gui
 	return gui
-end
-
-local function updateOnboardingDisplay()
-	if not hudGui then
-		return
-	end
-
-	local panel = hudGui:FindFirstChild('OnboardingPanel')
-	if not panel or not panel:IsA('Frame') then
-		return
-	end
-
-	if not shouldShowOnboarding() then
-		panel.Visible = false
-		clearNavigationAssist()
-		return
-	end
-
-	panel.Visible = true
-	local hint = panel:FindFirstChild('Hint')
-	local distanceLabel = panel:FindFirstChild('Distance')
-	if not hint or not hint:IsA('TextLabel') or not distanceLabel or not distanceLabel:IsA('TextLabel') then
-		return
-	end
-
-	local root = getCharacterRoot()
-	local sakuraBody = getSakuraBody()
-	if not root or not sakuraBody then
-		hint.Text = 'Waiting for Sakura marker...'
-		distanceLabel.Text = 'Distance: --'
-		clearNavigationAssist()
-		return
-	end
-
-	ensureNavigationAssist(root, sakuraBody)
-	local distance = (sakuraBody.Position - root.Position).Magnitude
-	distanceLabel.Text = `Distance: {math.floor(distance)} studs`
-	if distance <= 10 then
-		hint.Text = 'Sakura is nearby. Press Talk on the prompt.'
-	else
-		hint.Text = directionHint(root.Position, sakuraBody.Position)
-	end
 end
 
 local function clearQuestList()
@@ -381,7 +144,6 @@ local function setStatus(profile: ProfileTypes.Profile)
 	hudGui.StatusPanel.Yen.Text = '¥ ' .. tostring(profile.economy.yen)
 	hudGui.StatusPanel.Xp.Text = 'JP XP: ' .. tostring(profile.progress.japaneseXp)
 	hudGui.StatusPanel.Level.Text = 'Level: ' .. tostring(profile.progress.japaneseLevel)
-	updateOnboardingDisplay()
 end
 
 local function setQuests(quests: { { id: string } })
@@ -414,7 +176,6 @@ local function setQuests(quests: { { id: string } })
 		label.Text = LocalizationService.get(currentLocale, 'quest.' .. quest.id .. '.title')
 		label.Parent = list
 	end
-	updateOnboardingDisplay()
 end
 
 function HUDController.setLocale(locale: string)
@@ -433,7 +194,6 @@ end
 function HUDController.init()
 	createGui()
 	setQuests({})
-	RunService.RenderStepped:Connect(updateOnboardingDisplay)
 
 	RemoteController.onEvent('ProfileUpdated', function(profile: ProfileTypes.Profile)
 		setStatus(profile)

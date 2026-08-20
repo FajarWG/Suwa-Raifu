@@ -297,40 +297,14 @@ local function buildDualTrack(root: Model)
 end
 
 local function makeBench(parent: Instance, index: number, position: Vector3, yaw: number)
-	local model = Instance.new('Model')
-	model.Name = `LakeFacingBench{index}`
-	model.Parent = parent
-	local groundedPosition = Vector3.new(position.X, terrainHeight(position.X, position.Z, position.Y), position.Z)
-	local base = CFrame.new(groundedPosition) * CFrame.Angles(0, yaw, 0)
-
-	makePart(
-		'Part',
-		'Seat',
-		Vector3.new(6.6, 0.5, 2.3),
-		base * CFrame.new(0, 2.15, 0),
-		timberColor,
-		Enum.Material.WoodPlanks,
-		model
-	)
-	makePart(
-		'Part',
-		'Backrest',
-		Vector3.new(6.6, 3.1, 0.45),
-		base * CFrame.new(0, 3.5, 1.0) * CFrame.Angles(math.rad(-8), 0, 0),
-		timberColor,
-		Enum.Material.WoodPlanks,
-		model
-	)
-	for _, offset in { -2.2, 2.2 } do
-		makePart(
-			'Part',
-			'IronLeg',
-			Vector3.new(0.45, 2.1, 1.9),
-			base * CFrame.new(offset, 1.05, 0),
-			darkMetal,
-			Enum.Material.Metal,
-			model
-		)
+	local template = game:GetService("ServerStorage"):FindFirstChild("CreatorParkBench")
+	if template then
+		local bench = template:Clone()
+		bench.Name = `LakeFacingBench{index}`
+		-- Lower it by 1.6 studs so the legs are in the ground
+		local groundedPosition = Vector3.new(position.X, terrainHeight(position.X, position.Z, position.Y) - 1.6, position.Z)
+		bench:PivotTo(CFrame.new(groundedPosition) * CFrame.Angles(0, yaw, 0))
+		bench.Parent = parent
 	end
 end
 
@@ -357,47 +331,16 @@ local function buildBenches(root: Model)
 end
 
 local function makeWillow(parent: Instance, index: number, position: Vector3, scale: number)
-	local model = Instance.new('Model')
-	model.Name = `WeepingWillow{index}`
-	model.Parent = parent
-
-	local groundedPosition = Vector3.new(position.X, terrainHeight(position.X, position.Z, position.Y), position.Z)
-	makeCylinder(
-		'Trunk',
-		13 * scale,
-		2.5 * scale,
-		CFrame.new(groundedPosition + Vector3.new(0, 6.5 * scale, 0))
-			* CFrame.Angles(0, math.rad(index * 17), math.rad(3)),
-		Color3.fromRGB(89, 68, 47),
-		Enum.Material.Wood,
-		model
-	)
-
-	local leafColor = if index % 2 == 0 then Color3.fromRGB(68, 117, 64) else Color3.fromRGB(79, 127, 68)
-	makeBall(
-		'CanopyCore',
-		Vector3.new(15, 10, 14) * scale,
-		groundedPosition + Vector3.new(0, 14 * scale, 0),
-		leafColor,
-		Enum.Material.LeafyGrass,
-		model
-	).CanCollide =
-		false
-
-	for strand = 1, 8 do
-		local angle = (strand / 8) * math.pi * 2
-		local radius = (5.4 + (strand % 2) * 1.5) * scale
-		local strandPosition = groundedPosition
-			+ Vector3.new(math.cos(angle) * radius, (8.8 + (strand % 3)) * scale, math.sin(angle) * radius)
-		local foliage = makeBall(
-			'HangingFoliage',
-			Vector3.new(4.2, 13 + (strand % 3) * 2, 4.2) * scale,
-			strandPosition,
-			leafColor,
-			Enum.Material.LeafyGrass,
-			model
-		)
-		foliage.CanCollide = false
+	local isSakura = (index % 2 == 0)
+	local template = game:GetService("ServerStorage"):FindFirstChild(isSakura and "CreatorSakuraTree" or "CreatorPineTree")
+	if template then
+		local tree = template:Clone()
+		tree.Name = `ParkTree{index}`
+		local groundedPosition = Vector3.new(position.X, terrainHeight(position.X, position.Z, position.Y), position.Z)
+		local s = scale * (0.8 + (math.random() * 0.4))
+		if tree:IsA("Model") then tree:ScaleTo(s) end
+		tree:PivotTo(CFrame.new(groundedPosition) * CFrame.Angles(0, math.rad(math.random(0, 360)), 0))
+		tree.Parent = parent
 	end
 end
 
@@ -652,11 +595,17 @@ local function buildFootbathCanopy(root: Model)
 			'Part',
 			seatSpec[1] :: string,
 			Vector3.new(34, 0.55, 2.2),
-			CFrame.new(center + (seatSpec[2] :: Vector3)),
+			CFrame.new(center + (seatSpec[2] :: Vector3) + Vector3.new(0, -0.6, 0)),
 			timberColor,
 			Enum.Material.WoodPlanks,
 			canopy
 		)
+		-- Add legs to AshiyuSeat
+		for legX = -15, 15, 15 do
+			makePart('Part', 'AshiyuSeatLeg', Vector3.new(0.6, 1.5, 1.8),
+				CFrame.new(center + (seatSpec[2] :: Vector3) + Vector3.new(legX, -1.5, 0)),
+				darkMetal, Enum.Material.Metal, canopy)
+		end
 	end
 	-- Broad submerged steps provide a readable entry and stop the pool from
 	-- feeling like a blue decal. They also give avatars a safe gradual descent.
