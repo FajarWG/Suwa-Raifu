@@ -365,8 +365,8 @@ local function configureCreatorStoreBoat(model: Model)
 		end
 	end
 
-	-- All parts unanchored and frictionless
-	driveSeat.Anchored = false
+	-- Drive seat anchored initially until driven
+	driveSeat.Anchored = true
 	driveSeat.HeadsUpDisplay = false
 	driveSeat.CanTouch = false
 
@@ -376,14 +376,19 @@ local function configureCreatorStoreBoat(model: Model)
 			existingPrompt:Destroy()
 		end
 
-		if not seat:IsA("VehicleSeat") then
+		if not seat:IsA("Seat") and not seat:IsA("VehicleSeat") then
 			continue
 		end
 
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "RidePrompt"
-		prompt.ActionText = "Mengemudi"
-		prompt.ObjectText = boat.Name .. " (Kemudi)"
+		if seat:IsA("VehicleSeat") then
+			prompt.ActionText = "Mengemudi"
+			prompt.ObjectText = model.Name .. " (Kemudi)"
+		else
+			prompt.ActionText = "Menumpang"
+			prompt.ObjectText = model.Name .. " (Kursi Penumpang)"
+		end
 		prompt.KeyboardKeyCode = Enum.KeyCode.E
 		prompt.MaxActivationDistance = 15
 		prompt.RequiresLineOfSight = false

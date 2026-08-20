@@ -1,101 +1,101 @@
-{
-  "name": "suwa-life",
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {
-      "$className": "ReplicatedStorage",
-      "Shared": {
-        "$path": "src/shared"
-      }
-    },
-    "ServerScriptService": {
-      "$className": "ServerScriptService",
-      "Server": {
-        "$path": "src/server"
-      }
-    },
-    "StarterPlayer": {
-      "$className": "StarterPlayer",
-      "StarterPlayerScripts": {
-        "$className": "StarterPlayerScripts",
-        "Client": {
-          "$path": "src/client"
+  {
+    "name": "suwa-life",
+    "tree": {
+      "$className": "DataModel",
+      "ReplicatedStorage": {
+        "$className": "ReplicatedStorage",
+        "Shared": {
+          "$path": "src/shared"
         }
-      }
-    },
-    "Workspace": {
-      "$className": "Workspace",
-      "$properties": {
-        "StreamingEnabled": true,
-        "StreamingMinRadius": 128,
-        "StreamingTargetRadius": 256
       },
-      "SuwaCentral": {
-        "$path": "maps/SuwaCentral.model.json"
+      "ServerScriptService": {
+        "$className": "ServerScriptService",
+        "Server": {
+          "$path": "src/server"
+        }
       },
-      "Dormitory": {
-        "$path": "maps/Dormitory.model.json"
+      "StarterPlayer": {
+        "$className": "StarterPlayer",
+        "StarterPlayerScripts": {
+          "$className": "StarterPlayerScripts",
+          "Client": {
+            "$path": "src/client"
+          }
+        }
       },
-      "LanguageAcademy": {
-        "$path": "maps/LanguageAcademy.model.json"
-      },
-      "Bicycles": {
-        "$className": "Folder"
-      },
-      "LakesideOpenMic": {
-        "$path": "maps/LakesideOpenMic.model.json"
-      },
-      "LakesideActivities": {
-        "$path": "maps/LakesideActivities.model.json"
-      },
-      "LakeCrafts": {
-        "$className": "Folder"
-      }
-    },
-    "VoiceChatService": {
-      "$className": "VoiceChatService",
-      "$properties": {
-        "EnableDefaultVoice": true
-      }
-    },
-    "Lighting": {
-      "$className": "Lighting",
-      "$properties": {
-        "Ambient": [
-          0.46,
-          0.49,
-          0.54
-        ],
-        "Brightness": 2.15,
-        "ClockTime": 17.55,
-        "EnvironmentDiffuseScale": 0.5,
-        "EnvironmentSpecularScale": 0.8,
-        "OutdoorAmbient": [
-          0.64,
-          0.62,
-          0.58
-        ],
-        "ShadowSoftness": 0.5,
-        "Technology": "Future"
-      },
-      "SuwaTwilightAtmosphere": {
-        "$className": "Atmosphere",
+      "Workspace": {
+        "$className": "Workspace",
         "$properties": {
-          "Color": [
-            0.88,
-            0.82,
-            0.75
-          ],
-          "Decay": [
+          "StreamingEnabled": true,
+          "StreamingMinRadius": 128,
+          "StreamingTargetRadius": 256
+        },
+        "SuwaCentral": {
+          "$path": "maps/SuwaCentral.model.json"
+        },
+        "Dormitory": {
+          "$path": "maps/Dormitory.model.json"
+        },
+        "LanguageAcademy": {
+          "$path": "maps/LanguageAcademy.model.json"
+        },
+        "Bicycles": {
+          "$className": "Folder"
+        },
+        "LakesideOpenMic": {
+          "$path": "maps/LakesideOpenMic.model.json"
+        },
+        "LakesideActivities": {
+          "$path": "maps/LakesideActivities.model.json"
+        },
+        "LakeCrafts": {
+          "$className": "Folder"
+        }
+      },
+      "VoiceChatService": {
+        "$className": "VoiceChatService",
+        "$properties": {
+          "EnableDefaultVoice": true
+        }
+      },
+      "Lighting": {
+        "$className": "Lighting",
+        "$properties": {
+          "Ambient": [
             0.46,
-            0.54,
-            0.62
+            0.49,
+            0.54
           ],
-          "Density": 0.2,
-          "Glare": 0.12,
-          "Haze": 0.8
+          "Brightness": 2.15,
+          "ClockTime": 17.55,
+          "EnvironmentDiffuseScale": 0.5,
+          "EnvironmentSpecularScale": 0.8,
+          "OutdoorAmbient": [
+            0.64,
+            0.62,
+            0.58
+          ],
+          "ShadowSoftness": 0.5,
+          "Technology": "Future"
+        },
+        "SuwaTwilightAtmosphere": {
+          "$className": "Atmosphere",
+          "$properties": {
+            "Color": [
+              0.88,
+              0.82,
+              0.75
+            ],
+            "Decay": [
+              0.46,
+              0.54,
+              0.62
+            ],
+            "Density": 0.2,
+            "Glare": 0.12,
+            "Haze": 0.8
+          }
         }
       }
     }
   }
-}
