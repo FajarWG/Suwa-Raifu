@@ -40,7 +40,8 @@
           "$path": "maps/LanguageAcademy.model.json"
         },
         "Bicycles": {
-          "$path": "maps/Bicycles.model.json"
+          "$className": "Folder",
+          "$ignoreUnknownInstances": true
         },
         "LakesideOpenMic": {
           "$path": "maps/LakesideOpenMic.model.json"
@@ -49,7 +50,8 @@
           "$path": "maps/LakesideActivities.model.json"
         },
         "LakeCrafts": {
-          "$path": "maps/LakeCrafts.model.json"
+          "$className": "Folder",
+          "$ignoreUnknownInstances": true
         }
       },
       "VoiceChatService": {
