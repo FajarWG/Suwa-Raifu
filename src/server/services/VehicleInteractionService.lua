@@ -142,21 +142,26 @@ function VehicleInteractionService.init()
                     part.Anchored = false
                 end
             end
-            rootPart.Anchored = false
             
-            -- Creator Store static props are often held together by Anchored=true instead of welds.
-            -- We must weld everything to the rootPart before unanchoring, or the boat will collapse!
-            for _, part in ipairs(model:GetDescendants()) do
-                if part:IsA("BasePart") and part ~= rootPart then
-                    local weld = Instance.new("WeldConstraint")
-                    weld.Part0 = rootPart
-                    weld.Part1 = part
-                    weld.Parent = rootPart
-                    part.Anchored = false
-                    -- Set density to 0.15 to perfectly match the Speedboat's heavy stability!
-                    part.CustomPhysicalProperties = PhysicalProperties.new(0.15, 0.3, 0.5)
-                end
-            end
+            -- ULTIMATE STABILITY SYSTEM (Kunci Keseimbangan Absolut)
+            -- This completely bypasses Roblox's glitchy water buoyancy!
+            local floatAtt = Instance.new("Attachment")
+            floatAtt.Name = "StabilityAttachment"
+            floatAtt.Parent = rootPart
+            -- VERY IMPORTANT: Set WorldAxis to World Up so the boat doesn't tilt to the sky!
+            floatAtt.WorldAxis = Vector3.new(0, 1, 0)
+            
+            -- 1. LOCK TILT: Prevents the boat from ever wobbling or capsizing
+            local alignOri = Instance.new("AlignOrientation")
+            alignOri.Name = "StabilityOrientation"
+            alignOri.Attachment0 = floatAtt
+            alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
+            alignOri.AlignType = Enum.AlignType.PrimaryAxisParallel
+            alignOri.PrimaryAxisOnly = true -- Allows turning (yaw), but locks pitch and roll
+            alignOri.PrimaryAxis = Vector3.new(0, 1, 0)
+            alignOri.RigidityEnabled = true -- 100% rigid, feels like concrete!
+            alignOri.Parent = rootPart
+            
             rootPart.Anchored = false
             rootPart.CustomPhysicalProperties = PhysicalProperties.new(0.15, 0.3, 0.5)
 
