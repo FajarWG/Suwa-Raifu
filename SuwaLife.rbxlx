@@ -1629,6 +1629,10 @@ function BicycleService.init()
 	if bicyclesFolder then
 		for _, descendant in ipairs(bicyclesFolder:GetDescendants()) do
 			if descendant:IsA("Model") and descendant:FindFirstChildWhichIsA("VehicleSeat", true) then
+				local name = string.lower(descendant.Name)
+				if string.find(name, "boat") or string.find(name, "fune") or string.find(name, "pontoon") or string.find(name, "speed") then
+					continue
+				end
 				setupBike(descendant)
 			end
 		end
@@ -3267,9 +3271,16 @@ end
 
 local PhysicsService = game:GetService("PhysicsService")
 
+local function safeRegisterCollisionGroup(name: string)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(name)
+	end)
+end
+
+safeRegisterCollisionGroup("BoatDecks")
+safeRegisterCollisionGroup("SeatedAvatars")
+
 pcall(function()
-	PhysicsService:RegisterCollisionGroup("BoatDecks")
-	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
 end)
@@ -3342,7 +3353,7 @@ local function configureCreatorStoreBoat(model: Model)
 	bp.MaxForce = Vector3.new(0, 1e7, 0)
 	bp.P = 15000
 	bp.D = 1000
-	bp.Position = Vector3.new(0, waterlineY, 0)
+	bp.Position = Vector3.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z)
 
 	-- Setup BodyGyro for level pitch/roll and smooth yaw turning
 	local bg = driveSeat:FindFirstChild("BoatGyro") :: BodyGyro?
@@ -3354,11 +3365,15 @@ local function configureCreatorStoreBoat(model: Model)
 	bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
 	bg.P = 12000
 	bg.D = 800
-	local _, initYaw, _ = driveSeat.CFrame:ToOrientation()
-	bg.CFrame = CFrame.Angles(0, initYaw, 0)
+	local initPitch, initYaw, initRoll = driveSeat.CFrame:ToOrientation()
+	driveSeat:SetAttribute("InitPitch", initPitch)
+	driveSeat:SetAttribute("InitRoll", initRoll)
+	bg.CFrame = CFrame.fromOrientation(initPitch, initYaw, initRoll)
 
 	-- Sanitize all subparts: Massless = true for stable center of mass.
 	-- Make deck, hull, pontoons, railings, and walls solid (CanCollide = true, BoatDecks group) so boat is a solid physical object.
+	-- CRITICAL: Disable EnableFluidForces on ALL parts. Roblox's built-in buoyancy
+	-- fights our BodyPosition waterline control, causing boats to bounce/oscillate/fling.
 	for _, p in ipairs(model:GetDescendants()) do
 		if p:IsA("BasePart") then
 			local pName = string.lower(p.Name)
@@ -3367,6 +3382,9 @@ local function configureCreatorStoreBoat(model: Model)
 				or string.find(pName, "effect") ~= nil 
 				or string.find(pName, "teleport") ~= nil 
 				or string.find(pName, "logo") ~= nil
+
+			-- Disable Roblox fluid/buoyancy physics — we use BodyPosition for waterline control
+			p.EnableFluidForces = false
 
 			if p ~= driveSeat then
 				p.Anchored = false
@@ -3449,6 +3467,9 @@ local function configureCreatorStoreBoat(model: Model)
 						pcall(function()
 							charPart.CollisionGroup = "SeatedAvatars"
 							charPart.CanCollide = false
+							-- Disable fluid forces on character to prevent buoyancy
+							-- from flinging the boat assembly upward
+							charPart.EnableFluidForces = false
 						end)
 					end
 				end
@@ -3458,6 +3479,8 @@ local function configureCreatorStoreBoat(model: Model)
 						pcall(function()
 							charPart.CollisionGroup = "Default"
 							charPart.CanCollide = true
+							-- Restore fluid forces when exiting boat
+							charPart.EnableFluidForces = true
 						end)
 					end
 				end
@@ -3473,9 +3496,11 @@ local function configureCreatorStoreBoat(model: Model)
 							pcall(function() driveSeat:SetNetworkOwner(ownerPlayer) end)
 						end
 					end
+					local initPitch = driveSeat:GetAttribute("InitPitch") or 0
+					local initRoll = driveSeat:GetAttribute("InitRoll") or 0
 					local _, y, _ = driveSeat.CFrame:ToOrientation()
-					bg.CFrame = CFrame.Angles(0, y, 0)
-					bp.Position = Vector3.new(0, waterlineY, 0)
+					bg.CFrame = CFrame.fromOrientation(initPitch, y, initRoll)
+					bp.Position = Vector3.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z)
 
 					-- Anti-Fling: Wait 0.15 seconds before unanchoring.
 					-- This allows the SeatWeld to be created and the physics solver to resolve any
@@ -3495,10 +3520,12 @@ local function configureCreatorStoreBoat(model: Model)
 					driveSeat.SteerFloat = 0
 					driveSeat.Anchored = true
 					pcall(function() driveSeat:SetNetworkOwnershipAuto() end)
+					local initPitch = driveSeat:GetAttribute("InitPitch") or 0
+					local initRoll = driveSeat:GetAttribute("InitRoll") or 0
 					local _, curYaw, _ = driveSeat.CFrame:ToOrientation()
-					driveSeat.CFrame = CFrame.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z) * CFrame.Angles(0, curYaw, 0)
-					bg.CFrame = CFrame.Angles(0, curYaw, 0)
-					bp.Position = Vector3.new(0, waterlineY, 0)
+					driveSeat.CFrame = CFrame.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z) * CFrame.fromOrientation(initPitch, curYaw, initRoll)
+					bg.CFrame = CFrame.fromOrientation(initPitch, curYaw, initRoll)
+					bp.Position = Vector3.new(driveSeat.Position.X, waterlineY, driveSeat.Position.Z)
 				end
 			end
 		end)
@@ -3512,6 +3539,7 @@ local function configureCreatorStoreBoat(model: Model)
 					if charPart:IsA("BasePart") then
 						pcall(function()
 							charPart.CollisionGroup = "SeatedAvatars"
+							charPart.EnableFluidForces = false
 						end)
 					end
 				end
@@ -3617,6 +3645,13 @@ function LakeActivityService.init()
 
 			-- Driver is in seat: server handles audio and boundary watchdog
 			local speed = seat.AssemblyLinearVelocity.Magnitude
+
+			-- Boundary Watchdog
+			-- local pos = seat.Position
+			-- local dist = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
+			-- if dist > 760 or terrainHeight(pos.X, pos.Z, -10) > -0.5 then
+			-- 	seat.AssemblyLinearVelocity = Vector3.zero
+			-- end
 
 			-- Dynamic Audio
 			if speed > 1 then
@@ -8098,9 +8133,16 @@ local UserInputService = game:GetService("UserInputService")
 
 local PhysicsService = game:GetService("PhysicsService")
 
+local function safeRegisterCollisionGroup(name: string)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(name)
+	end)
+end
+
+safeRegisterCollisionGroup("BoatDecks")
+safeRegisterCollisionGroup("SeatedAvatars")
+
 pcall(function()
-	PhysicsService:RegisterCollisionGroup("BoatDecks")
-	PhysicsService:RegisterCollisionGroup("SeatedAvatars")
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "Default", true)
 	PhysicsService:CollisionGroupSetCollidable("BoatDecks", "SeatedAvatars", false)
 end)
@@ -8113,9 +8155,22 @@ local currentWaterlineY: number = 1.0
 local currentBaseSpeed: number = 30
 local currentTurnSpeed: number = 1.5
 local currentYaw: number = 0
+local currentInitPitch: number = 0
+local currentInitRoll: number = 0
 
 local currentGyro: BodyGyro? = nil
 local currentPos: BodyPosition? = nil
+
+local ISLAND_CENTER = Vector3.new(0, 0, -610)
+
+local function getTerrainHeight(x: number, z: number): number
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = {workspace.Terrain}
+	params.IgnoreWater = true
+	local res = workspace:Raycast(Vector3.new(x, 80, z), Vector3.new(0, -180, 0), params)
+	return if res then res.Position.Y else -10
+end
 
 local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
 	local bg = seat:FindFirstChild("BoatGyro") :: BodyGyro?
@@ -8125,8 +8180,8 @@ local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
 		bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
 		bg.P = 12000
 		bg.D = 800
-		local _, y, _ = seat.CFrame:ToOrientation()
-		bg.CFrame = CFrame.Angles(0, y, 0)
+		local initPitch, y, initRoll = seat.CFrame:ToOrientation()
+		bg.CFrame = CFrame.fromOrientation(initPitch, y, initRoll)
 		bg.Parent = seat
 	end
 
@@ -8137,7 +8192,7 @@ local function getOrCreateMovers(seat: VehicleSeat): (BodyGyro, BodyPosition)
 		bp.MaxForce = Vector3.new(0, 1e7, 0)
 		bp.P = 15000
 		bp.D = 1000
-		bp.Position = Vector3.new(0, currentWaterlineY, 0)
+		bp.Position = Vector3.new(seat.Position.X, currentWaterlineY, seat.Position.Z)
 		bp.Parent = seat
 	end
 
@@ -8149,12 +8204,17 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 	if active and currentSeatPart then
 		local lakeCrafts = workspace:FindFirstChild("LakeCrafts")
 		if lakeCrafts and currentSeatPart:IsDescendantOf(lakeCrafts) then
-			-- Assign seated avatar to SeatedAvatars collision group so seated avatar doesn't clip with the boat
+			-- Immediately disable avatar collisions before SeatWeld is created
+			-- to prevent fling/rejection from boat hull or water surface.
 			if char then
 				for _, p in ipairs(char:GetDescendants()) do
 					if p:IsA("BasePart") then
 						pcall(function()
 							p.CollisionGroup = "SeatedAvatars"
+							p.CanCollide = false
+							-- Disable fluid forces on character to prevent buoyancy
+							-- from flinging the boat assembly upward
+							p.EnableFluidForces = false
 						end)
 					end
 				end
@@ -8166,29 +8226,38 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 				currentTurnSpeed = currentSeat:GetAttribute("TurnSpeed") or 1.5
 				currentWaterlineY = currentSeat:GetAttribute("WaterlineY") or currentSeat.Position.Y
 				
-				local _, yaw, _ = currentSeat.CFrame:ToOrientation()
+				local pitch, yaw, roll = currentSeat.CFrame:ToOrientation()
 				currentYaw = yaw
+				currentInitPitch = currentSeat:GetAttribute("InitPitch") or pitch
+				currentInitRoll = currentSeat:GetAttribute("InitRoll") or roll
 
 				currentGyro, currentPos = getOrCreateMovers(currentSeat)
 				if currentGyro then
 					currentGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
-					currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+					currentGyro.CFrame = CFrame.fromOrientation(currentInitPitch, currentYaw, currentInitRoll)
 				end
 				if currentPos then
 					currentPos.MaxForce = Vector3.new(0, 1e7, 0)
-					currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+					currentPos.Position = Vector3.new(currentSeat.Position.X, currentWaterlineY, currentSeat.Position.Z)
 				end
 				return
 			end
 		end
 	else
-		-- Restore avatar collisions to Default when standing up
+		-- Player berdiri dari perahu.
+		-- JANGAN set CanCollide = true dari client! Server (LakeActivityService) yang
+		-- restore collision group ke "Default" via Occupant changed signal.
+		-- Kalau client juga set CanCollide=true, bisa race condition / fling saat
+		-- player langsung naik perahu lagi sebelum server selesai reset.
 		if char then
 			for _, p in ipairs(char:GetDescendants()) do
 				if p:IsA("BasePart") then
 					pcall(function()
 						p.CollisionGroup = "Default"
-						p.CanCollide = true
+						-- Note: CanCollide sengaja TIDAK di-set di sini.
+						-- Server yang handle via LakeActivityService Occupant changed.
+						-- Restore fluid forces when exiting boat
+						p.EnableFluidForces = true
 					end)
 				end
 			end
@@ -8244,10 +8313,10 @@ function BoatDriveController.init()
 
 		-- Apply target orientation and height via physical movers
 		if currentGyro then
-			currentGyro.CFrame = CFrame.Angles(0, currentYaw, 0)
+			currentGyro.CFrame = CFrame.fromOrientation(currentInitPitch, currentYaw, currentInitRoll)
 		end
 		if currentPos then
-			currentPos.Position = Vector3.new(0, currentWaterlineY, 0)
+			currentPos.Position = Vector3.new(currentSeat.Position.X, currentWaterlineY, currentSeat.Position.Z)
 		end
 
 		-- Horizontal propulsion direction derived from smooth currentYaw
@@ -8263,9 +8332,22 @@ function BoatDriveController.init()
 			targetVelocity = Vector3.new(vel.X * 0.94, 0, vel.Z * 0.94)
 		end
 
-		-- Set strictly horizontal linear & angular velocity (Y = 0)
-		currentSeat.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, 0, targetVelocity.Z)
-		currentSeat.AssemblyAngularVelocity = Vector3.new(0, -steer * currentTurnSpeed, 0)
+		-- Boundary Check (Lookahead)
+		-- if targetVelocity.Magnitude > 0.1 then
+		-- 	local lookAhead = targetVelocity.Unit * math.max(3, targetVelocity.Magnitude * 0.25)
+		-- 	local pos = currentSeat.Position
+		-- 	local nextPos = pos + lookAhead
+		-- 	local nextTHeight = getTerrainHeight(nextPos.X, nextPos.Z)
+		-- 	local nextDist = (Vector3.new(nextPos.X, 0, nextPos.Z) - Vector3.new(ISLAND_CENTER.X, 0, ISLAND_CENTER.Z)).Magnitude
+		-- 	
+		-- 	if nextDist > 750 or nextTHeight > -1.5 then
+		-- 		targetVelocity = Vector3.zero
+		-- 	end
+		-- end
+
+		-- Preserve Y linear velocity (for BodyPosition)
+		local currentVel = currentSeat.AssemblyLinearVelocity
+		currentSeat.AssemblyLinearVelocity = Vector3.new(targetVelocity.X, currentVel.Y, targetVelocity.Z)
 	end)
 end
 
@@ -9739,17 +9821,1498 @@ print('[Client] Suwa Life client runner ready.')
       <int name="StreamingMinRadius">128</int>
       <int name="StreamingTargetRadius">256</int>
     </Properties>
-    <Item class="Folder" referent="68">
+    <Item class="Model" referent="68">
       <Properties>
         <string name="Name">Bicycles</string>
+        <bool name="NeedsPivotMigration">false</bool>
       </Properties>
+      <Item class="Model" referent="69">
+        <Properties>
+          <string name="Name">ParkMamachari</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="70">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>410</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="71">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>410</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="72">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>410</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="73">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>410</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="74">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>410</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="75">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>410</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="76">
+        <Properties>
+          <string name="Name">ParkMamachari02</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="77">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>415.5</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="78">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>415.5</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="79">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>415.5</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="80">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>415.5</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="81">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>415.5</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="82">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>415.5</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="83">
+        <Properties>
+          <string name="Name">ParkMamachari03</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="84">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>421</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="85">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>421</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="86">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>421</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="87">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>421</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="88">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>421</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="89">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>421</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="90">
+        <Properties>
+          <string name="Name">ParkMamachari04</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="91">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>426.5</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="92">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>426.5</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="93">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>426.5</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="94">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>426.5</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="95">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>426.5</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="96">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>426.5</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="97">
+        <Properties>
+          <string name="Name">ParkMamachari05</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="98">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>432</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="99">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>432</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="100">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>432</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="101">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>432</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="102">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>432</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="103">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>432</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="104">
+        <Properties>
+          <string name="Name">ParkMamachari06</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="105">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>437.5</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="106">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>437.5</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="107">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>437.5</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="108">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>437.5</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="109">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>437.5</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="110">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>437.5</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="111">
+        <Properties>
+          <string name="Name">ParkMamachari07</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="112">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>443</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="113">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>443</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="114">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>443</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="115">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>443</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="116">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>443</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="117">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>443</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="118">
+        <Properties>
+          <string name="Name">ParkMamachari08</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="MeshPart" referent="119">
+          <Properties>
+            <string name="Name">BodyAndWheels</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>448.5</X>
+              <Y>1.31</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://74673162001305</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.719588</X>
+              <Y>2.081301</Y>
+              <Z>3.6</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://97309290475089</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="120">
+          <Properties>
+            <string name="Name">Handlebars</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>448.5</X>
+              <Y>2.445</Y>
+              <Z>-70.56</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://83658583052874</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>1.499221</X>
+              <Y>0.414858</Y>
+              <Z>0.429092</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://112463237208712</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="MeshPart" referent="121">
+          <Properties>
+            <string name="Name">Pedals</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>448.5</X>
+              <Y>0.681</Y>
+              <Z>-69.813</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Content name="MeshContent">
+              <uri>rbxassetid://103681995324668</uri>
+            </Content>
+            <Vector3 name="size">
+              <X>0.93486</X>
+              <Y>0.335472</Y>
+              <Z>0.181331</Z>
+            </Vector3>
+            <Content name="TextureContent">
+              <uri>rbxassetid://91481322667336</uri>
+            </Content>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="122">
+          <Properties>
+            <string name="Name">SolidBicycleCollider</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>448.5</X>
+              <Y>1.23</Y>
+              <Z>-70</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <bool name="CanQuery">true</bool>
+            <bool name="CanTouch">true</bool>
+            <Vector3 name="size">
+              <X>0.85</X>
+              <Y>0.5</Y>
+              <Z>3.06</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="VehicleSeat" referent="123">
+          <Properties>
+            <string name="Name">RideSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>448.5</X>
+              <Y>1.23</Y>
+              <Z>-69.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.8</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="124">
+          <Properties>
+            <string name="Name">PassengerSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>448.5</X>
+              <Y>1.23</Y>
+              <Z>-68.9</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>0.75</X>
+              <Y>0.3</Y>
+              <Z>0.75</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+      </Item>
     </Item>
-    <Item class="Model" referent="69">
+    <Item class="Model" referent="125">
       <Properties>
         <string name="Name">Dormitory</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Part" referent="70">
+      <Item class="Part" referent="126">
         <Properties>
           <string name="Name">Foundation</string>
           <bool name="Anchored">true</bool>
@@ -9776,7 +11339,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="71">
+      <Item class="Part" referent="127">
         <Properties>
           <string name="Name">BuildingLower</string>
           <bool name="Anchored">true</bool>
@@ -9803,7 +11366,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="72">
+      <Item class="Part" referent="128">
         <Properties>
           <string name="Name">BuildingUpper</string>
           <bool name="Anchored">true</bool>
@@ -9830,7 +11393,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="WedgePart" referent="73">
+      <Item class="WedgePart" referent="129">
         <Properties>
           <string name="Name">RoofWest</string>
           <bool name="Anchored">true</bool>
@@ -9857,7 +11420,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="WedgePart" referent="74">
+      <Item class="WedgePart" referent="130">
         <Properties>
           <string name="Name">RoofEast</string>
           <bool name="Anchored">true</bool>
@@ -9884,7 +11447,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="75">
+      <Item class="Part" referent="131">
         <Properties>
           <string name="Name">SecondFloorBalcony</string>
           <bool name="Anchored">true</bool>
@@ -9911,7 +11474,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="76">
+      <Item class="Part" referent="132">
         <Properties>
           <string name="Name">BalconyRailTop</string>
           <bool name="Anchored">true</bool>
@@ -9938,7 +11501,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="77">
+      <Item class="Part" referent="133">
         <Properties>
           <string name="Name">BalconyRailMiddle</string>
           <bool name="Anchored">true</bool>
@@ -9965,12 +11528,12 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Model" referent="78">
+      <Item class="Model" referent="134">
         <Properties>
           <string name="Name">FrontDoors</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="79">
+        <Item class="Part" referent="135">
           <Properties>
             <string name="Name">Door01</string>
             <bool name="Anchored">true</bool>
@@ -9997,7 +11560,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="80">
+        <Item class="Part" referent="136">
           <Properties>
             <string name="Name">Door02</string>
             <bool name="Anchored">true</bool>
@@ -10024,7 +11587,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="81">
+        <Item class="Part" referent="137">
           <Properties>
             <string name="Name">Door03</string>
             <bool name="Anchored">true</bool>
@@ -10051,7 +11614,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="82">
+        <Item class="Part" referent="138">
           <Properties>
             <string name="Name">Door04</string>
             <bool name="Anchored">true</bool>
@@ -10078,7 +11641,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="83">
+        <Item class="Part" referent="139">
           <Properties>
             <string name="Name">Door05</string>
             <bool name="Anchored">true</bool>
@@ -10105,7 +11668,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="84">
+        <Item class="Part" referent="140">
           <Properties>
             <string name="Name">Door06</string>
             <bool name="Anchored">true</bool>
@@ -10133,12 +11696,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="85">
+      <Item class="Model" referent="141">
         <Properties>
           <string name="Name">UpperWindows</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="86">
+        <Item class="Part" referent="142">
           <Properties>
             <string name="Name">Window01</string>
             <bool name="Anchored">true</bool>
@@ -10167,7 +11730,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.18</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="87">
+        <Item class="Part" referent="143">
           <Properties>
             <string name="Name">Window02</string>
             <bool name="Anchored">true</bool>
@@ -10196,7 +11759,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.18</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="88">
+        <Item class="Part" referent="144">
           <Properties>
             <string name="Name">Window03</string>
             <bool name="Anchored">true</bool>
@@ -10225,7 +11788,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.18</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="89">
+        <Item class="Part" referent="145">
           <Properties>
             <string name="Name">Window04</string>
             <bool name="Anchored">true</bool>
@@ -10254,7 +11817,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.18</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="90">
+        <Item class="Part" referent="146">
           <Properties>
             <string name="Name">Window05</string>
             <bool name="Anchored">true</bool>
@@ -10283,7 +11846,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.18</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="91">
+        <Item class="Part" referent="147">
           <Properties>
             <string name="Name">Window06</string>
             <bool name="Anchored">true</bool>
@@ -10313,12 +11876,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="92">
+      <Item class="Model" referent="148">
         <Properties>
           <string name="Name">ExteriorStairs</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="93">
+        <Item class="Part" referent="149">
           <Properties>
             <string name="Name">Landing</string>
             <bool name="Anchored">true</bool>
@@ -10345,7 +11908,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="94">
+        <Item class="Part" referent="150">
           <Properties>
             <string name="Name">StairRun</string>
             <bool name="Anchored">true</bool>
@@ -10372,7 +11935,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="95">
+        <Item class="Part" referent="151">
           <Properties>
             <string name="Name">StairRail</string>
             <bool name="Anchored">true</bool>
@@ -10400,7 +11963,7 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Part" referent="96">
+      <Item class="Part" referent="152">
         <Properties>
           <string name="Name">ParkingLot</string>
           <bool name="Anchored">true</bool>
@@ -10427,12 +11990,12 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Model" referent="97">
+      <Item class="Model" referent="153">
         <Properties>
           <string name="Name">ParkingLines</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="98">
+        <Item class="Part" referent="154">
           <Properties>
             <string name="Name">Line01</string>
             <bool name="Anchored">true</bool>
@@ -10460,7 +12023,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="99">
+        <Item class="Part" referent="155">
           <Properties>
             <string name="Name">Line02</string>
             <bool name="Anchored">true</bool>
@@ -10488,7 +12051,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="100">
+        <Item class="Part" referent="156">
           <Properties>
             <string name="Name">Line03</string>
             <bool name="Anchored">true</bool>
@@ -10516,7 +12079,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="101">
+        <Item class="Part" referent="157">
           <Properties>
             <string name="Name">Line04</string>
             <bool name="Anchored">true</bool>
@@ -10544,7 +12107,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="102">
+        <Item class="Part" referent="158">
           <Properties>
             <string name="Name">Line05</string>
             <bool name="Anchored">true</bool>
@@ -10573,7 +12136,7 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Part" referent="103">
+      <Item class="Part" referent="159">
         <Properties>
           <string name="Name">DormitorySign</string>
           <bool name="Anchored">true</bool>
@@ -10599,14 +12162,14 @@ print('[Client] Suwa Life client runner ready.')
             <Z>1</Z>
           </Vector3>
         </Properties>
-        <Item class="SurfaceGui" referent="104">
+        <Item class="SurfaceGui" referent="160">
           <Properties>
             <string name="Name">JapaneseSignGui</string>
             <token name="Face">5</token>
             <float name="LightInfluence">0</float>
             <float name="PixelsPerStud">40</float>
           </Properties>
-          <Item class="TextLabel" referent="105">
+          <Item class="TextLabel" referent="161">
             <Properties>
               <string name="Name">Text</string>
               <float name="BackgroundTransparency">1</float>
@@ -10635,22 +12198,1253 @@ print('[Client] Suwa Life client runner ready.')
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="106">
+    <Item class="Model" referent="162">
       <Properties>
         <string name="Name">LakeCrafts</string>
+        <bool name="NeedsPivotMigration">false</bool>
       </Properties>
+      <Item class="Model" referent="163">
+        <Properties>
+          <string name="Name">Wooden Boat</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="VehicleSeat" referent="164">
+          <Properties>
+            <string name="Name">DriverSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>225</X>
+              <Y>0.62</Y>
+              <Z>-250</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>2</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="165">
+          <Properties>
+            <string name="Name">WoodenHull</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>225</X>
+              <Y>0.4</Y>
+              <Z>-250</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">7554857</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>3.4</X>
+              <Y>1.8</Y>
+              <Z>8.5</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="166">
+          <Properties>
+            <string name="Name">DeckFloor</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>225</X>
+              <Y>0.6</Y>
+              <Z>-250</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">10382141</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.8</X>
+              <Y>0.3</Y>
+              <Z>7.5</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="167">
+          <Properties>
+            <string name="Name">RailingLeft</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>223.4</X>
+              <Y>1.2</Y>
+              <Z>-250</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">5847071</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="size">
+              <X>0.3</X>
+              <Y>0.8</Y>
+              <Z>8</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="168">
+          <Properties>
+            <string name="Name">RailingRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>226.6</X>
+              <Y>1.2</Y>
+              <Z>-250</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">5847071</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="size">
+              <X>0.3</X>
+              <Y>0.8</Y>
+              <Z>8</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="169">
+          <Properties>
+            <string name="Name">PassengerSeatFront</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>225</X>
+              <Y>0.9</Y>
+              <Z>-252.8</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.4</Y>
+              <Z>1</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="170">
+          <Properties>
+            <string name="Name">PassengerSeatRear</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>225</X>
+              <Y>0.9</Y>
+              <Z>-247.2</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.4</Y>
+              <Z>1</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="171">
+        <Properties>
+          <string name="Name">Fune 1</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="VehicleSeat" referent="172">
+          <Properties>
+            <string name="Name">DriverSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>240</X>
+              <Y>4.42</Y>
+              <Z>-255</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>2</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="173">
+          <Properties>
+            <string name="Name">PontoonHullLeft</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>237.2</X>
+              <Y>3.2</Y>
+              <Z>-255</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">4210759</Color3uint8>
+            <token name="Material">1088</token>
+            <Vector3 name="size">
+              <X>1.4</X>
+              <Y>1.8</Y>
+              <Z>14</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="174">
+          <Properties>
+            <string name="Name">PontoonHullRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>242.8</X>
+              <Y>3.2</Y>
+              <Z>-255</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">4210759</Color3uint8>
+            <token name="Material">1088</token>
+            <Vector3 name="size">
+              <X>1.4</X>
+              <Y>1.8</Y>
+              <Z>14</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="175">
+          <Properties>
+            <string name="Name">MainDeck</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>240</X>
+              <Y>4.2</Y>
+              <Z>-255</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">12092754</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>7</X>
+              <Y>0.4</Y>
+              <Z>14</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="176">
+          <Properties>
+            <string name="Name">CanopyRoof</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>240</X>
+              <Y>7.5</Y>
+              <Z>-255</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">3029069</Color3uint8>
+            <token name="Material">1312</token>
+            <Vector3 name="size">
+              <X>6.8</X>
+              <Y>0.3</Y>
+              <Z>10</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="177">
+          <Properties>
+            <string name="Name">PassengerBench01</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>238</X>
+              <Y>4.7</Y>
+              <Z>-257</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="178">
+          <Properties>
+            <string name="Name">PassengerBench02</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>242</X>
+              <Y>4.7</Y>
+              <Z>-257</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="179">
+          <Properties>
+            <string name="Name">PassengerBench03</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>238</X>
+              <Y>4.7</Y>
+              <Z>-253</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="180">
+          <Properties>
+            <string name="Name">PassengerBench04</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>242</X>
+              <Y>4.7</Y>
+              <Z>-253</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="181">
+        <Properties>
+          <string name="Name">Fune 2</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="VehicleSeat" referent="182">
+          <Properties>
+            <string name="Name">DriverSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>255</X>
+              <Y>4.42</Y>
+              <Z>-260</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>2</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="183">
+          <Properties>
+            <string name="Name">PontoonHullLeft</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>252.2</X>
+              <Y>3.2</Y>
+              <Z>-260</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">4210759</Color3uint8>
+            <token name="Material">1088</token>
+            <Vector3 name="size">
+              <X>1.4</X>
+              <Y>1.8</Y>
+              <Z>14</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="184">
+          <Properties>
+            <string name="Name">PontoonHullRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>257.8</X>
+              <Y>3.2</Y>
+              <Z>-260</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">4210759</Color3uint8>
+            <token name="Material">1088</token>
+            <Vector3 name="size">
+              <X>1.4</X>
+              <Y>1.8</Y>
+              <Z>14</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="185">
+          <Properties>
+            <string name="Name">MainDeck</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>255</X>
+              <Y>4.2</Y>
+              <Z>-260</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">11369037</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>7</X>
+              <Y>0.4</Y>
+              <Z>14</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="186">
+          <Properties>
+            <string name="Name">TraditionalRoof</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>255</X>
+              <Y>7.5</Y>
+              <Z>-260</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">10040102</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="size">
+              <X>6.8</X>
+              <Y>0.3</Y>
+              <Z>10</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="187">
+          <Properties>
+            <string name="Name">PassengerBench01</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>253</X>
+              <Y>4.7</Y>
+              <Z>-262</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="188">
+          <Properties>
+            <string name="Name">PassengerBench02</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>257</X>
+              <Y>4.7</Y>
+              <Z>-262</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="189">
+        <Properties>
+          <string name="Name">Fune 3</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="VehicleSeat" referent="190">
+          <Properties>
+            <string name="Name">DriverSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>275</X>
+              <Y>4.42</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>2</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="191">
+          <Properties>
+            <string name="Name">DoublePontoonHullLeft</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>271.5</X>
+              <Y>3.2</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">3684416</Color3uint8>
+            <token name="Material">1088</token>
+            <Vector3 name="size">
+              <X>1.8</X>
+              <Y>2</Y>
+              <Z>18</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="192">
+          <Properties>
+            <string name="Name">DoublePontoonHullRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>278.5</X>
+              <Y>3.2</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">3684416</Color3uint8>
+            <token name="Material">1088</token>
+            <Vector3 name="size">
+              <X>1.8</X>
+              <Y>2</Y>
+              <Z>18</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="193">
+          <Properties>
+            <string name="Name">LowerDeck</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>275</X>
+              <Y>4.2</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">11763789</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>8.8</X>
+              <Y>0.5</Y>
+              <Z>18</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="194">
+          <Properties>
+            <string name="Name">UpperDeckTingkat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>275</X>
+              <Y>8.2</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">10908487</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>8</X>
+              <Y>0.4</Y>
+              <Z>12</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="195">
+          <Properties>
+            <string name="Name">UpperDeckRailingLeft</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>271.1</X>
+              <Y>9</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">6701094</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="size">
+              <X>0.3</X>
+              <Y>1.2</Y>
+              <Z>12</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="196">
+          <Properties>
+            <string name="Name">UpperDeckRailingRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>278.9</X>
+              <Y>9</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">6701094</Color3uint8>
+            <token name="Material">512</token>
+            <Vector3 name="size">
+              <X>0.3</X>
+              <Y>1.2</Y>
+              <Z>12</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="197">
+          <Properties>
+            <string name="Name">UpperRoofCanopy</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>275</X>
+              <Y>12</Y>
+              <Z>-265</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">2503488</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>8.4</X>
+              <Y>0.3</Y>
+              <Z>11</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="198">
+          <Properties>
+            <string name="Name">UpperSeat01</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>273</X>
+              <Y>8.7</Y>
+              <Z>-267</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="199">
+          <Properties>
+            <string name="Name">UpperSeat02</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>277</X>
+              <Y>8.7</Y>
+              <Z>-267</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="200">
+          <Properties>
+            <string name="Name">LowerSeat01</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>273</X>
+              <Y>4.7</Y>
+              <Z>-262</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="201">
+          <Properties>
+            <string name="Name">LowerSeat02</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>277</X>
+              <Y>4.7</Y>
+              <Z>-262</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">9197875</Color3uint8>
+            <token name="Material">528</token>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="Model" referent="202">
+        <Properties>
+          <string name="Name">Speedboat</string>
+          <bool name="NeedsPivotMigration">false</bool>
+        </Properties>
+        <Item class="VehicleSeat" referent="203">
+          <Properties>
+            <string name="Name">DriverSeat</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>295</X>
+              <Y>2.52</Y>
+              <Z>-270</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Vector3 name="size">
+              <X>2</X>
+              <Y>0.5</Y>
+              <Z>2</Z>
+            </Vector3>
+            <float name="Transparency">1</float>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="204">
+          <Properties>
+            <string name="Name">SpeedboatHull</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>295</X>
+              <Y>2.2</Y>
+              <Z>-270</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">15921914</Color3uint8>
+            <token name="Material">272</token>
+            <Vector3 name="size">
+              <X>3.6</X>
+              <Y>2.2</Y>
+              <Z>10.5</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="205">
+          <Properties>
+            <string name="Name">SpeedboatStripe</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>295</X>
+              <Y>2.4</Y>
+              <Z>-270</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">2516697</Color3uint8>
+            <token name="Material">272</token>
+            <Vector3 name="size">
+              <X>3.7</X>
+              <Y>0.4</Y>
+              <Z>10.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="206">
+          <Properties>
+            <string name="Name">CockpitFloor</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>295</X>
+              <Y>2.4</Y>
+              <Z>-270</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">true</bool>
+            <Color3uint8 name="Color3uint8">14278886</Color3uint8>
+            <token name="Material">272</token>
+            <Vector3 name="size">
+              <X>2.8</X>
+              <Y>0.3</Y>
+              <Z>6.5</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Part" referent="207">
+          <Properties>
+            <string name="Name">Windshield</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>295</X>
+              <Y>3.8</Y>
+              <Z>-272.5</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">10082802</Color3uint8>
+            <token name="Material">1568</token>
+            <Vector3 name="size">
+              <X>3.2</X>
+              <Y>1.2</Y>
+              <Z>0.3</Z>
+            </Vector3>
+            <float name="Transparency">0.4</float>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="208">
+          <Properties>
+            <string name="Name">PassengerSeatFrontRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>296.2</X>
+              <Y>2.7</Y>
+              <Z>-270</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">3355456</Color3uint8>
+            <token name="Material">1312</token>
+            <Vector3 name="size">
+              <X>1.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="209">
+          <Properties>
+            <string name="Name">PassengerSeatRearLeft</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>293.8</X>
+              <Y>2.7</Y>
+              <Z>-267.5</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">3355456</Color3uint8>
+            <token name="Material">1312</token>
+            <Vector3 name="size">
+              <X>1.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+        <Item class="Seat" referent="210">
+          <Properties>
+            <string name="Name">PassengerSeatRearRight</string>
+            <bool name="Anchored">true</bool>
+            <CoordinateFrame name="CFrame">
+              <X>296.2</X>
+              <Y>2.7</Y>
+              <Z>-267.5</Z>
+              <R00>1</R00>
+              <R01>0</R01>
+              <R02>0</R02>
+              <R10>0</R10>
+              <R11>1</R11>
+              <R12>0</R12>
+              <R20>0</R20>
+              <R21>0</R21>
+              <R22>1</R22>
+            </CoordinateFrame>
+            <bool name="CanCollide">false</bool>
+            <Color3uint8 name="Color3uint8">3355456</Color3uint8>
+            <token name="Material">1312</token>
+            <Vector3 name="size">
+              <X>1.2</X>
+              <Y>0.5</Y>
+              <Z>1.2</Z>
+            </Vector3>
+          </Properties>
+        </Item>
+      </Item>
     </Item>
-    <Item class="Model" referent="107">
+    <Item class="Model" referent="211">
       <Properties>
         <string name="Name">LakesideActivities</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Model" referent="108">
+      <Item class="Model" referent="212">
         <Properties>
           <string name="Name">LakesideTrails</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="109">
+        <Item class="Part" referent="213">
           <Properties>
             <string name="Name">BikeLane</string>
             <bool name="Anchored">true</bool>
@@ -10678,7 +13472,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="110">
+        <Item class="Part" referent="214">
           <Properties>
             <string name="Name">WalkingLane</string>
             <bool name="Anchored">true</bool>
@@ -10706,7 +13500,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="111">
+        <Item class="Part" referent="215">
           <Properties>
             <string name="Name">BikeDash01</string>
             <bool name="Anchored">true</bool>
@@ -10734,7 +13528,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="112">
+        <Item class="Part" referent="216">
           <Properties>
             <string name="Name">BikeDash02</string>
             <bool name="Anchored">true</bool>
@@ -10762,7 +13556,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="113">
+        <Item class="Part" referent="217">
           <Properties>
             <string name="Name">BikeDash03</string>
             <bool name="Anchored">true</bool>
@@ -10790,7 +13584,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="114">
+        <Item class="Part" referent="218">
           <Properties>
             <string name="Name">BikeDash04</string>
             <bool name="Anchored">true</bool>
@@ -10818,7 +13612,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="115">
+        <Item class="Part" referent="219">
           <Properties>
             <string name="Name">BikeDash05</string>
             <bool name="Anchored">true</bool>
@@ -10846,7 +13640,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="116">
+        <Item class="Part" referent="220">
           <Properties>
             <string name="Name">BikeDash06</string>
             <bool name="Anchored">true</bool>
@@ -10874,7 +13668,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="117">
+        <Item class="Part" referent="221">
           <Properties>
             <string name="Name">BikeDash07</string>
             <bool name="Anchored">true</bool>
@@ -10902,7 +13696,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="118">
+        <Item class="Part" referent="222">
           <Properties>
             <string name="Name">BikeDash08</string>
             <bool name="Anchored">true</bool>
@@ -10930,7 +13724,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="119">
+        <Item class="Part" referent="223">
           <Properties>
             <string name="Name">BikeDash09</string>
             <bool name="Anchored">true</bool>
@@ -10958,7 +13752,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="120">
+        <Item class="Part" referent="224">
           <Properties>
             <string name="Name">BikeDash10</string>
             <bool name="Anchored">true</bool>
@@ -10987,12 +13781,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="121">
+      <Item class="Model" referent="225">
         <Properties>
           <string name="Name">WestFishingPier</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="122">
+        <Item class="Part" referent="226">
           <Properties>
             <string name="Name">Walkway</string>
             <bool name="Anchored">true</bool>
@@ -11019,7 +13813,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="123">
+        <Item class="Part" referent="227">
           <Properties>
             <string name="Name">Platform</string>
             <bool name="Anchored">true</bool>
@@ -11046,7 +13840,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="124">
+        <Item class="Part" referent="228">
           <Properties>
             <string name="Name">RailLeft</string>
             <bool name="Anchored">true</bool>
@@ -11073,7 +13867,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="125">
+        <Item class="Part" referent="229">
           <Properties>
             <string name="Name">RailRight</string>
             <bool name="Anchored">true</bool>
@@ -11100,7 +13894,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="126">
+        <Item class="Part" referent="230">
           <Properties>
             <string name="Name">FishingSpot01</string>
             <bool name="Anchored">true</bool>
@@ -11128,7 +13922,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="127">
+        <Item class="Part" referent="231">
           <Properties>
             <string name="Name">FishingSpot02</string>
             <bool name="Anchored">true</bool>
@@ -11156,7 +13950,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="128">
+        <Item class="Part" referent="232">
           <Properties>
             <string name="Name">FishingSpot03</string>
             <bool name="Anchored">true</bool>
@@ -11185,12 +13979,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="129">
+      <Item class="Model" referent="233">
         <Properties>
           <string name="Name">CentralFishingPier</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="130">
+        <Item class="Part" referent="234">
           <Properties>
             <string name="Name">Walkway</string>
             <bool name="Anchored">true</bool>
@@ -11217,7 +14011,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="131">
+        <Item class="Part" referent="235">
           <Properties>
             <string name="Name">Platform</string>
             <bool name="Anchored">true</bool>
@@ -11244,7 +14038,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="132">
+        <Item class="Part" referent="236">
           <Properties>
             <string name="Name">FishingSpot01</string>
             <bool name="Anchored">true</bool>
@@ -11272,7 +14066,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="133">
+        <Item class="Part" referent="237">
           <Properties>
             <string name="Name">FishingSpot02</string>
             <bool name="Anchored">true</bool>
@@ -11300,7 +14094,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="134">
+        <Item class="Part" referent="238">
           <Properties>
             <string name="Name">FishingSpot03</string>
             <bool name="Anchored">true</bool>
@@ -11329,12 +14123,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="135">
+      <Item class="Model" referent="239">
         <Properties>
           <string name="Name">EastFishingPier</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="136">
+        <Item class="Part" referent="240">
           <Properties>
             <string name="Name">Walkway</string>
             <bool name="Anchored">true</bool>
@@ -11361,7 +14155,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="137">
+        <Item class="Part" referent="241">
           <Properties>
             <string name="Name">Platform</string>
             <bool name="Anchored">true</bool>
@@ -11388,7 +14182,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="138">
+        <Item class="Part" referent="242">
           <Properties>
             <string name="Name">FishingSpot01</string>
             <bool name="Anchored">true</bool>
@@ -11416,7 +14210,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="139">
+        <Item class="Part" referent="243">
           <Properties>
             <string name="Name">FishingSpot02</string>
             <bool name="Anchored">true</bool>
@@ -11444,7 +14238,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="140">
+        <Item class="Part" referent="244">
           <Properties>
             <string name="Name">FishingSpot03</string>
             <bool name="Anchored">true</bool>
@@ -11473,12 +14267,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="141">
+      <Item class="Model" referent="245">
         <Properties>
           <string name="Name">LakesidePlayground</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="142">
+        <Item class="Part" referent="246">
           <Properties>
             <string name="Name">PlaygroundSurface</string>
             <bool name="Anchored">true</bool>
@@ -11505,7 +14299,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="143">
+        <Item class="Part" referent="247">
           <Properties>
             <string name="Name">SlidePlatform</string>
             <bool name="Anchored">true</bool>
@@ -11532,7 +14326,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="144">
+        <Item class="Part" referent="248">
           <Properties>
             <string name="Name">SlideRamp</string>
             <bool name="Anchored">true</bool>
@@ -11559,7 +14353,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="145">
+        <Item class="Part" referent="249">
           <Properties>
             <string name="Name">SlideLadderLeft</string>
             <bool name="Anchored">true</bool>
@@ -11586,7 +14380,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="146">
+        <Item class="Part" referent="250">
           <Properties>
             <string name="Name">SlideLadderRight</string>
             <bool name="Anchored">true</bool>
@@ -11613,7 +14407,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="147">
+        <Item class="Part" referent="251">
           <Properties>
             <string name="Name">SwingTop</string>
             <bool name="Anchored">true</bool>
@@ -11640,7 +14434,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="148">
+        <Item class="Part" referent="252">
           <Properties>
             <string name="Name">SwingPostLeft</string>
             <bool name="Anchored">true</bool>
@@ -11667,7 +14461,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="149">
+        <Item class="Part" referent="253">
           <Properties>
             <string name="Name">SwingPostRight</string>
             <bool name="Anchored">true</bool>
@@ -11694,7 +14488,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="150">
+        <Item class="Part" referent="254">
           <Properties>
             <string name="Name">SwingRope01A</string>
             <bool name="Anchored">true</bool>
@@ -11721,7 +14515,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="151">
+        <Item class="Part" referent="255">
           <Properties>
             <string name="Name">SwingRope01B</string>
             <bool name="Anchored">true</bool>
@@ -11748,7 +14542,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="152">
+        <Item class="Part" referent="256">
           <Properties>
             <string name="Name">SwingSeat01</string>
             <bool name="Anchored">true</bool>
@@ -11775,7 +14569,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="153">
+        <Item class="Part" referent="257">
           <Properties>
             <string name="Name">SwingRope02A</string>
             <bool name="Anchored">true</bool>
@@ -11802,7 +14596,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="154">
+        <Item class="Part" referent="258">
           <Properties>
             <string name="Name">SwingRope02B</string>
             <bool name="Anchored">true</bool>
@@ -11829,7 +14623,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="155">
+        <Item class="Part" referent="259">
           <Properties>
             <string name="Name">SwingSeat02</string>
             <bool name="Anchored">true</bool>
@@ -11856,7 +14650,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="156">
+        <Item class="Part" referent="260">
           <Properties>
             <string name="Name">SeesawBase</string>
             <bool name="Anchored">true</bool>
@@ -11883,7 +14677,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="157">
+        <Item class="Part" referent="261">
           <Properties>
             <string name="Name">SeesawBoard</string>
             <bool name="Anchored">true</bool>
@@ -11911,12 +14705,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="158">
+      <Item class="Model" referent="262">
         <Properties>
           <string name="Name">LakesideRestArea</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="159">
+        <Item class="Part" referent="263">
           <Properties>
             <string name="Name">Floor</string>
             <bool name="Anchored">true</bool>
@@ -11943,7 +14737,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="160">
+        <Item class="Part" referent="264">
           <Properties>
             <string name="Name">Roof</string>
             <bool name="Anchored">true</bool>
@@ -11970,7 +14764,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="161">
+        <Item class="Part" referent="265">
           <Properties>
             <string name="Name">Post01</string>
             <bool name="Anchored">true</bool>
@@ -11997,7 +14791,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="162">
+        <Item class="Part" referent="266">
           <Properties>
             <string name="Name">Post02</string>
             <bool name="Anchored">true</bool>
@@ -12024,7 +14818,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="163">
+        <Item class="Part" referent="267">
           <Properties>
             <string name="Name">Post03</string>
             <bool name="Anchored">true</bool>
@@ -12051,7 +14845,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="164">
+        <Item class="Part" referent="268">
           <Properties>
             <string name="Name">Post04</string>
             <bool name="Anchored">true</bool>
@@ -12078,7 +14872,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="165">
+        <Item class="Part" referent="269">
           <Properties>
             <string name="Name">Table</string>
             <bool name="Anchored">true</bool>
@@ -12105,7 +14899,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="166">
+        <Item class="Part" referent="270">
           <Properties>
             <string name="Name">BenchNorth</string>
             <bool name="Anchored">true</bool>
@@ -12132,7 +14926,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="167">
+        <Item class="Part" referent="271">
           <Properties>
             <string name="Name">BenchSouth</string>
             <bool name="Anchored">true</bool>
@@ -12160,12 +14954,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="168">
+      <Item class="Model" referent="272">
         <Properties>
           <string name="Name">FootbathArea</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="169">
+        <Item class="Part" referent="273">
           <Properties>
             <string name="Name">StoneBase</string>
             <bool name="Anchored">true</bool>
@@ -12192,7 +14986,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="170">
+        <Item class="Part" referent="274">
           <Properties>
             <string name="Name">WarmWater</string>
             <bool name="Anchored">true</bool>
@@ -12221,7 +15015,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.22</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="171">
+        <Item class="Part" referent="275">
           <Properties>
             <string name="Name">BenchNorth</string>
             <bool name="Anchored">true</bool>
@@ -12248,7 +15042,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="172">
+        <Item class="Part" referent="276">
           <Properties>
             <string name="Name">BenchSouth</string>
             <bool name="Anchored">true</bool>
@@ -12275,7 +15069,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="173">
+        <Item class="Part" referent="277">
           <Properties>
             <string name="Name">FootbathSign</string>
             <bool name="Anchored">true</bool>
@@ -12301,14 +15095,14 @@ print('[Client] Suwa Life client runner ready.')
               <Z>1</Z>
             </Vector3>
           </Properties>
-          <Item class="SurfaceGui" referent="174">
+          <Item class="SurfaceGui" referent="278">
             <Properties>
               <string name="Name">JapaneseSignGui</string>
               <token name="Face">5</token>
               <float name="LightInfluence">0</float>
               <float name="PixelsPerStud">40</float>
             </Properties>
-            <Item class="TextLabel" referent="175">
+            <Item class="TextLabel" referent="279">
               <Properties>
                 <string name="Name">Text</string>
                 <float name="BackgroundTransparency">1</float>
@@ -12337,12 +15131,12 @@ print('[Client] Suwa Life client runner ready.')
           </Item>
         </Item>
       </Item>
-      <Item class="Model" referent="176">
+      <Item class="Model" referent="280">
         <Properties>
           <string name="Name">LakesideFoodStall</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="177">
+        <Item class="Part" referent="281">
           <Properties>
             <string name="Name">StallBody</string>
             <bool name="Anchored">true</bool>
@@ -12369,7 +15163,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="178">
+        <Item class="Part" referent="282">
           <Properties>
             <string name="Name">Counter</string>
             <bool name="Anchored">true</bool>
@@ -12396,7 +15190,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="179">
+        <Item class="Part" referent="283">
           <Properties>
             <string name="Name">Roof</string>
             <bool name="Anchored">true</bool>
@@ -12423,7 +15217,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="180">
+        <Item class="Part" referent="284">
           <Properties>
             <string name="Name">Awning</string>
             <bool name="Anchored">true</bool>
@@ -12450,7 +15244,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="181">
+        <Item class="Part" referent="285">
           <Properties>
             <string name="Name">FoodSign</string>
             <bool name="Anchored">true</bool>
@@ -12476,14 +15270,14 @@ print('[Client] Suwa Life client runner ready.')
               <Z>1</Z>
             </Vector3>
           </Properties>
-          <Item class="SurfaceGui" referent="182">
+          <Item class="SurfaceGui" referent="286">
             <Properties>
               <string name="Name">JapaneseSignGui</string>
               <token name="Face">5</token>
               <float name="LightInfluence">0</float>
               <float name="PixelsPerStud">40</float>
             </Properties>
-            <Item class="TextLabel" referent="183">
+            <Item class="TextLabel" referent="287">
               <Properties>
                 <string name="Name">Text</string>
                 <float name="BackgroundTransparency">1</float>
@@ -12512,12 +15306,12 @@ print('[Client] Suwa Life client runner ready.')
           </Item>
         </Item>
       </Item>
-      <Item class="Model" referent="184">
+      <Item class="Model" referent="288">
         <Properties>
           <string name="Name">FireworksLaunchBarge</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="185">
+        <Item class="Part" referent="289">
           <Properties>
             <string name="Name">Barge</string>
             <bool name="Anchored">true</bool>
@@ -12544,7 +15338,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="186">
+        <Item class="Part" referent="290">
           <Properties>
             <string name="Name">Launcher01</string>
             <bool name="Anchored">true</bool>
@@ -12571,7 +15365,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="187">
+        <Item class="Part" referent="291">
           <Properties>
             <string name="Name">Launcher02</string>
             <bool name="Anchored">true</bool>
@@ -12598,7 +15392,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="188">
+        <Item class="Part" referent="292">
           <Properties>
             <string name="Name">Launcher03</string>
             <bool name="Anchored">true</bool>
@@ -12625,7 +15419,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="189">
+        <Item class="Part" referent="293">
           <Properties>
             <string name="Name">Launcher04</string>
             <bool name="Anchored">true</bool>
@@ -12652,7 +15446,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="190">
+        <Item class="Part" referent="294">
           <Properties>
             <string name="Name">Launcher05</string>
             <bool name="Anchored">true</bool>
@@ -12680,7 +15474,7 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Part" referent="191">
+      <Item class="Part" referent="295">
         <Properties>
           <string name="Name">BikeRouteSign</string>
           <bool name="Anchored">true</bool>
@@ -12706,14 +15500,14 @@ print('[Client] Suwa Life client runner ready.')
             <Z>1</Z>
           </Vector3>
         </Properties>
-        <Item class="SurfaceGui" referent="192">
+        <Item class="SurfaceGui" referent="296">
           <Properties>
             <string name="Name">JapaneseSignGui</string>
             <token name="Face">5</token>
             <float name="LightInfluence">0</float>
             <float name="PixelsPerStud">40</float>
           </Properties>
-          <Item class="TextLabel" referent="193">
+          <Item class="TextLabel" referent="297">
             <Properties>
               <string name="Name">Text</string>
               <float name="BackgroundTransparency">1</float>
@@ -12741,7 +15535,7 @@ print('[Client] Suwa Life client runner ready.')
           </Item>
         </Item>
       </Item>
-      <Item class="Part" referent="194">
+      <Item class="Part" referent="298">
         <Properties>
           <string name="Name">FishingAreaSign</string>
           <bool name="Anchored">true</bool>
@@ -12767,14 +15561,14 @@ print('[Client] Suwa Life client runner ready.')
             <Z>1</Z>
           </Vector3>
         </Properties>
-        <Item class="SurfaceGui" referent="195">
+        <Item class="SurfaceGui" referent="299">
           <Properties>
             <string name="Name">JapaneseSignGui</string>
             <token name="Face">5</token>
             <float name="LightInfluence">0</float>
             <float name="PixelsPerStud">40</float>
           </Properties>
-          <Item class="TextLabel" referent="196">
+          <Item class="TextLabel" referent="300">
             <Properties>
               <string name="Name">Text</string>
               <float name="BackgroundTransparency">1</float>
@@ -12803,17 +15597,17 @@ print('[Client] Suwa Life client runner ready.')
         </Item>
       </Item>
     </Item>
-    <Item class="Model" referent="197">
+    <Item class="Model" referent="301">
       <Properties>
         <string name="Name">LakesideOpenMic</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Model" referent="198">
+      <Item class="Model" referent="302">
         <Properties>
           <string name="Name">OpenMicStage</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="199">
+        <Item class="Part" referent="303">
           <Properties>
             <string name="Name">StageFloor</string>
             <bool name="Anchored">true</bool>
@@ -12840,7 +15634,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="200">
+        <Item class="Part" referent="304">
           <Properties>
             <string name="Name">FrontStep</string>
             <bool name="Anchored">true</bool>
@@ -12867,7 +15661,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="201">
+        <Item class="Part" referent="305">
           <Properties>
             <string name="Name">BackWall</string>
             <bool name="Anchored">true</bool>
@@ -12894,7 +15688,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="202">
+        <Item class="Part" referent="306">
           <Properties>
             <string name="Name">Canopy</string>
             <bool name="Anchored">true</bool>
@@ -12921,7 +15715,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="203">
+        <Item class="Part" referent="307">
           <Properties>
             <string name="Name">PostLeft</string>
             <bool name="Anchored">true</bool>
@@ -12948,7 +15742,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="204">
+        <Item class="Part" referent="308">
           <Properties>
             <string name="Name">PostRight</string>
             <bool name="Anchored">true</bool>
@@ -12975,7 +15769,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="205">
+        <Item class="Part" referent="309">
           <Properties>
             <string name="Name">MicStand</string>
             <bool name="Anchored">true</bool>
@@ -13002,7 +15796,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="206">
+        <Item class="Part" referent="310">
           <Properties>
             <string name="Name">Microphone</string>
             <bool name="Anchored">true</bool>
@@ -13030,7 +15824,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="207">
+        <Item class="Part" referent="311">
           <Properties>
             <string name="Name">SpeakerLeft</string>
             <bool name="Anchored">true</bool>
@@ -13057,7 +15851,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="208">
+        <Item class="Part" referent="312">
           <Properties>
             <string name="Name">SpeakerRight</string>
             <bool name="Anchored">true</bool>
@@ -13084,7 +15878,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="209">
+        <Item class="Part" referent="313">
           <Properties>
             <string name="Name">OpenMicSign</string>
             <bool name="Anchored">true</bool>
@@ -13110,14 +15904,14 @@ print('[Client] Suwa Life client runner ready.')
               <Z>1</Z>
             </Vector3>
           </Properties>
-          <Item class="SurfaceGui" referent="210">
+          <Item class="SurfaceGui" referent="314">
             <Properties>
               <string name="Name">JapaneseSignGui</string>
               <token name="Face">5</token>
               <float name="LightInfluence">0</float>
               <float name="PixelsPerStud">40</float>
             </Properties>
-            <Item class="TextLabel" referent="211">
+            <Item class="TextLabel" referent="315">
               <Properties>
                 <string name="Name">Text</string>
                 <float name="BackgroundTransparency">1</float>
@@ -13146,12 +15940,12 @@ print('[Client] Suwa Life client runner ready.')
           </Item>
         </Item>
       </Item>
-      <Item class="Model" referent="212">
+      <Item class="Model" referent="316">
         <Properties>
           <string name="Name">AudienceSeating</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="213">
+        <Item class="Part" referent="317">
           <Properties>
             <string name="Name">Bench01Seat</string>
             <bool name="Anchored">true</bool>
@@ -13178,7 +15972,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="214">
+        <Item class="Part" referent="318">
           <Properties>
             <string name="Name">Bench01LegA</string>
             <bool name="Anchored">true</bool>
@@ -13205,7 +15999,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="215">
+        <Item class="Part" referent="319">
           <Properties>
             <string name="Name">Bench01LegB</string>
             <bool name="Anchored">true</bool>
@@ -13232,7 +16026,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="216">
+        <Item class="Part" referent="320">
           <Properties>
             <string name="Name">Bench02Seat</string>
             <bool name="Anchored">true</bool>
@@ -13259,7 +16053,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="217">
+        <Item class="Part" referent="321">
           <Properties>
             <string name="Name">Bench02LegA</string>
             <bool name="Anchored">true</bool>
@@ -13286,7 +16080,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="218">
+        <Item class="Part" referent="322">
           <Properties>
             <string name="Name">Bench02LegB</string>
             <bool name="Anchored">true</bool>
@@ -13313,7 +16107,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="219">
+        <Item class="Part" referent="323">
           <Properties>
             <string name="Name">Bench03Seat</string>
             <bool name="Anchored">true</bool>
@@ -13340,7 +16134,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="220">
+        <Item class="Part" referent="324">
           <Properties>
             <string name="Name">Bench03LegA</string>
             <bool name="Anchored">true</bool>
@@ -13367,7 +16161,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="221">
+        <Item class="Part" referent="325">
           <Properties>
             <string name="Name">Bench03LegB</string>
             <bool name="Anchored">true</bool>
@@ -13395,12 +16189,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="222">
+      <Item class="Model" referent="326">
         <Properties>
           <string name="Name">ConversationBoothA</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="223">
+        <Item class="Part" referent="327">
           <Properties>
             <string name="Name">Floor</string>
             <bool name="Anchored">true</bool>
@@ -13427,7 +16221,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="224">
+        <Item class="Part" referent="328">
           <Properties>
             <string name="Name">Roof</string>
             <bool name="Anchored">true</bool>
@@ -13454,7 +16248,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="225">
+        <Item class="Part" referent="329">
           <Properties>
             <string name="Name">Post01</string>
             <bool name="Anchored">true</bool>
@@ -13481,7 +16275,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="226">
+        <Item class="Part" referent="330">
           <Properties>
             <string name="Name">Post02</string>
             <bool name="Anchored">true</bool>
@@ -13508,7 +16302,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="227">
+        <Item class="Part" referent="331">
           <Properties>
             <string name="Name">Post03</string>
             <bool name="Anchored">true</bool>
@@ -13535,7 +16329,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="228">
+        <Item class="Part" referent="332">
           <Properties>
             <string name="Name">Post04</string>
             <bool name="Anchored">true</bool>
@@ -13562,7 +16356,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="229">
+        <Item class="Part" referent="333">
           <Properties>
             <string name="Name">Table</string>
             <bool name="Anchored">true</bool>
@@ -13589,7 +16383,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="230">
+        <Item class="Part" referent="334">
           <Properties>
             <string name="Name">SeatNorth</string>
             <bool name="Anchored">true</bool>
@@ -13616,7 +16410,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="231">
+        <Item class="Part" referent="335">
           <Properties>
             <string name="Name">SeatSouth</string>
             <bool name="Anchored">true</bool>
@@ -13644,12 +16438,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="232">
+      <Item class="Model" referent="336">
         <Properties>
           <string name="Name">ConversationBoothB</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="233">
+        <Item class="Part" referent="337">
           <Properties>
             <string name="Name">Floor</string>
             <bool name="Anchored">true</bool>
@@ -13676,7 +16470,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="234">
+        <Item class="Part" referent="338">
           <Properties>
             <string name="Name">Roof</string>
             <bool name="Anchored">true</bool>
@@ -13703,7 +16497,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="235">
+        <Item class="Part" referent="339">
           <Properties>
             <string name="Name">Post01</string>
             <bool name="Anchored">true</bool>
@@ -13730,7 +16524,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="236">
+        <Item class="Part" referent="340">
           <Properties>
             <string name="Name">Post02</string>
             <bool name="Anchored">true</bool>
@@ -13757,7 +16551,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="237">
+        <Item class="Part" referent="341">
           <Properties>
             <string name="Name">Post03</string>
             <bool name="Anchored">true</bool>
@@ -13784,7 +16578,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="238">
+        <Item class="Part" referent="342">
           <Properties>
             <string name="Name">Post04</string>
             <bool name="Anchored">true</bool>
@@ -13811,7 +16605,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="239">
+        <Item class="Part" referent="343">
           <Properties>
             <string name="Name">Table</string>
             <bool name="Anchored">true</bool>
@@ -13838,7 +16632,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="240">
+        <Item class="Part" referent="344">
           <Properties>
             <string name="Name">SeatNorth</string>
             <bool name="Anchored">true</bool>
@@ -13865,7 +16659,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="241">
+        <Item class="Part" referent="345">
           <Properties>
             <string name="Name">SeatSouth</string>
             <bool name="Anchored">true</bool>
@@ -13893,7 +16687,7 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Part" referent="242">
+      <Item class="Part" referent="346">
         <Properties>
           <string name="Name">ParkJapaneseSign</string>
           <bool name="Anchored">true</bool>
@@ -13919,14 +16713,14 @@ print('[Client] Suwa Life client runner ready.')
             <Z>1</Z>
           </Vector3>
         </Properties>
-        <Item class="SurfaceGui" referent="243">
+        <Item class="SurfaceGui" referent="347">
           <Properties>
             <string name="Name">JapaneseSignGui</string>
             <token name="Face">5</token>
             <float name="LightInfluence">0</float>
             <float name="PixelsPerStud">40</float>
           </Properties>
-          <Item class="TextLabel" referent="244">
+          <Item class="TextLabel" referent="348">
             <Properties>
               <string name="Name">Text</string>
               <float name="BackgroundTransparency">1</float>
@@ -13955,12 +16749,12 @@ print('[Client] Suwa Life client runner ready.')
         </Item>
       </Item>
     </Item>
-    <Item class="Model" referent="245">
+    <Item class="Model" referent="349">
       <Properties>
         <string name="Name">LanguageAcademy</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Part" referent="246">
+      <Item class="Part" referent="350">
         <Properties>
           <string name="Name">Foundation</string>
           <bool name="Anchored">true</bool>
@@ -13987,7 +16781,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="247">
+      <Item class="Part" referent="351">
         <Properties>
           <string name="Name">MainBuilding</string>
           <bool name="Anchored">true</bool>
@@ -14014,7 +16808,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="248">
+      <Item class="Part" referent="352">
         <Properties>
           <string name="Name">EntranceWing</string>
           <bool name="Anchored">true</bool>
@@ -14041,7 +16835,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="249">
+      <Item class="Part" referent="353">
         <Properties>
           <string name="Name">MainRoof</string>
           <bool name="Anchored">true</bool>
@@ -14068,7 +16862,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="250">
+      <Item class="Part" referent="354">
         <Properties>
           <string name="Name">WingRoof</string>
           <bool name="Anchored">true</bool>
@@ -14095,7 +16889,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="251">
+      <Item class="Part" referent="355">
         <Properties>
           <string name="Name">EntranceGlass</string>
           <bool name="Anchored">true</bool>
@@ -14124,7 +16918,7 @@ print('[Client] Suwa Life client runner ready.')
           <float name="Transparency">0.18</float>
         </Properties>
       </Item>
-      <Item class="Part" referent="252">
+      <Item class="Part" referent="356">
         <Properties>
           <string name="Name">EntranceAwning</string>
           <bool name="Anchored">true</bool>
@@ -14151,12 +16945,12 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Model" referent="253">
+      <Item class="Model" referent="357">
         <Properties>
           <string name="Name">FrontWindows</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="254">
+        <Item class="Part" referent="358">
           <Properties>
             <string name="Name">Window01</string>
             <bool name="Anchored">true</bool>
@@ -14185,7 +16979,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="255">
+        <Item class="Part" referent="359">
           <Properties>
             <string name="Name">Window02</string>
             <bool name="Anchored">true</bool>
@@ -14214,7 +17008,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="256">
+        <Item class="Part" referent="360">
           <Properties>
             <string name="Name">Window03</string>
             <bool name="Anchored">true</bool>
@@ -14243,7 +17037,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="257">
+        <Item class="Part" referent="361">
           <Properties>
             <string name="Name">Window04</string>
             <bool name="Anchored">true</bool>
@@ -14272,7 +17066,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="258">
+        <Item class="Part" referent="362">
           <Properties>
             <string name="Name">Window05</string>
             <bool name="Anchored">true</bool>
@@ -14301,7 +17095,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="259">
+        <Item class="Part" referent="363">
           <Properties>
             <string name="Name">Window06</string>
             <bool name="Anchored">true</bool>
@@ -14330,7 +17124,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="260">
+        <Item class="Part" referent="364">
           <Properties>
             <string name="Name">Window07</string>
             <bool name="Anchored">true</bool>
@@ -14359,7 +17153,7 @@ print('[Client] Suwa Life client runner ready.')
             <float name="Transparency">0.14</float>
           </Properties>
         </Item>
-        <Item class="Part" referent="261">
+        <Item class="Part" referent="365">
           <Properties>
             <string name="Name">Window08</string>
             <bool name="Anchored">true</bool>
@@ -14389,12 +17183,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="262">
+      <Item class="Model" referent="366">
         <Properties>
           <string name="Name">SchoolYard</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="263">
+        <Item class="Part" referent="367">
           <Properties>
             <string name="Name">Yard</string>
             <bool name="Anchored">true</bool>
@@ -14421,7 +17215,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="264">
+        <Item class="Part" referent="368">
           <Properties>
             <string name="Name">Path</string>
             <bool name="Anchored">true</bool>
@@ -14448,7 +17242,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="265">
+        <Item class="Part" referent="369">
           <Properties>
             <string name="Name">BikeRack01</string>
             <bool name="Anchored">true</bool>
@@ -14475,7 +17269,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="266">
+        <Item class="Part" referent="370">
           <Properties>
             <string name="Name">BikeRack02</string>
             <bool name="Anchored">true</bool>
@@ -14503,12 +17297,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="267">
+      <Item class="Model" referent="371">
         <Properties>
           <string name="Name">Crosswalk</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="268">
+        <Item class="Part" referent="372">
           <Properties>
             <string name="Name">Stripe01</string>
             <bool name="Anchored">true</bool>
@@ -14536,7 +17330,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="269">
+        <Item class="Part" referent="373">
           <Properties>
             <string name="Name">Stripe02</string>
             <bool name="Anchored">true</bool>
@@ -14564,7 +17358,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="270">
+        <Item class="Part" referent="374">
           <Properties>
             <string name="Name">Stripe03</string>
             <bool name="Anchored">true</bool>
@@ -14592,7 +17386,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="271">
+        <Item class="Part" referent="375">
           <Properties>
             <string name="Name">Stripe04</string>
             <bool name="Anchored">true</bool>
@@ -14621,7 +17415,7 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Part" referent="272">
+      <Item class="Part" referent="376">
         <Properties>
           <string name="Name">AcademySign</string>
           <bool name="Anchored">true</bool>
@@ -14647,14 +17441,14 @@ print('[Client] Suwa Life client runner ready.')
             <Z>1</Z>
           </Vector3>
         </Properties>
-        <Item class="SurfaceGui" referent="273">
+        <Item class="SurfaceGui" referent="377">
           <Properties>
             <string name="Name">JapaneseSignGui</string>
             <token name="Face">5</token>
             <float name="LightInfluence">0</float>
             <float name="PixelsPerStud">40</float>
           </Properties>
-          <Item class="TextLabel" referent="274">
+          <Item class="TextLabel" referent="378">
             <Properties>
               <string name="Name">Text</string>
               <float name="BackgroundTransparency">1</float>
@@ -14683,12 +17477,12 @@ print('[Client] Suwa Life client runner ready.')
         </Item>
       </Item>
     </Item>
-    <Item class="Model" referent="275">
+    <Item class="Model" referent="379">
       <Properties>
         <string name="Name">SuwaCentral</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Part" referent="276">
+      <Item class="Part" referent="380">
         <Properties>
           <string name="Name">CityGround</string>
           <bool name="Anchored">true</bool>
@@ -14715,7 +17509,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="277">
+      <Item class="Part" referent="381">
         <Properties>
           <string name="Name">LakesidePromenade</string>
           <bool name="Anchored">true</bool>
@@ -14742,7 +17536,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="278">
+      <Item class="Part" referent="382">
         <Properties>
           <string name="Name">Route50</string>
           <bool name="Anchored">true</bool>
@@ -14769,7 +17563,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="279">
+      <Item class="Part" referent="383">
         <Properties>
           <string name="Name">Route50NorthSidewalk</string>
           <bool name="Anchored">true</bool>
@@ -14796,7 +17590,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="280">
+      <Item class="Part" referent="384">
         <Properties>
           <string name="Name">Route50SouthSidewalk</string>
           <bool name="Anchored">true</bool>
@@ -14823,7 +17617,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="281">
+      <Item class="Part" referent="385">
         <Properties>
           <string name="Name">RouteCenterLine</string>
           <bool name="Anchored">true</bool>
@@ -14851,7 +17645,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="282">
+      <Item class="Part" referent="386">
         <Properties>
           <string name="Name">DormAccessRoad</string>
           <bool name="Anchored">true</bool>
@@ -14878,7 +17672,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="283">
+      <Item class="Part" referent="387">
         <Properties>
           <string name="Name">SchoolAccessRoad</string>
           <bool name="Anchored">true</bool>
@@ -14905,7 +17699,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="284">
+      <Item class="Part" referent="388">
         <Properties>
           <string name="Name">MainRiver</string>
           <bool name="Anchored">true</bool>
@@ -14934,7 +17728,7 @@ print('[Client] Suwa Life client runner ready.')
           <float name="Transparency">0.08</float>
         </Properties>
       </Item>
-      <Item class="Part" referent="285">
+      <Item class="Part" referent="389">
         <Properties>
           <string name="Name">RiverBankWest</string>
           <bool name="Anchored">true</bool>
@@ -14961,7 +17755,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="286">
+      <Item class="Part" referent="390">
         <Properties>
           <string name="Name">RiverBankEast</string>
           <bool name="Anchored">true</bool>
@@ -14988,7 +17782,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="287">
+      <Item class="Part" referent="391">
         <Properties>
           <string name="Name">SouthCanal</string>
           <bool name="Anchored">true</bool>
@@ -15017,7 +17811,7 @@ print('[Client] Suwa Life client runner ready.')
           <float name="Transparency">0.08</float>
         </Properties>
       </Item>
-      <Item class="Part" referent="288">
+      <Item class="Part" referent="392">
         <Properties>
           <string name="Name">ShibusakiBridgeDeck</string>
           <bool name="Anchored">true</bool>
@@ -15044,7 +17838,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="289">
+      <Item class="Part" referent="393">
         <Properties>
           <string name="Name">BridgeRailNorth</string>
           <bool name="Anchored">true</bool>
@@ -15071,7 +17865,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="290">
+      <Item class="Part" referent="394">
         <Properties>
           <string name="Name">BridgeRailSouth</string>
           <bool name="Anchored">true</bool>
@@ -15098,7 +17892,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="291">
+      <Item class="Part" referent="395">
         <Properties>
           <string name="Name">SchoolCampusPad</string>
           <bool name="Anchored">true</bool>
@@ -15125,7 +17919,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="292">
+      <Item class="Part" referent="396">
         <Properties>
           <string name="Name">DormCampusPad</string>
           <bool name="Anchored">true</bool>
@@ -15152,7 +17946,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="293">
+      <Item class="Part" referent="397">
         <Properties>
           <string name="Name">WestLakesideParkLawn</string>
           <bool name="Anchored">true</bool>
@@ -15179,7 +17973,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="294">
+      <Item class="Part" referent="398">
         <Properties>
           <string name="Name">SekichoInspiredLawn</string>
           <bool name="Anchored">true</bool>
@@ -15206,7 +18000,7 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Part" referent="295">
+      <Item class="Part" referent="399">
         <Properties>
           <string name="Name">ParkToDormPath</string>
           <bool name="Anchored">true</bool>
@@ -15233,12 +18027,12 @@ print('[Client] Suwa Life client runner ready.')
           </Vector3>
         </Properties>
       </Item>
-      <Item class="Model" referent="296">
+      <Item class="Model" referent="400">
         <Properties>
           <string name="Name">SekichoSpawnPlaza</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="297">
+        <Item class="Part" referent="401">
           <Properties>
             <string name="Name">Plaza</string>
             <bool name="Anchored">true</bool>
@@ -15265,7 +18059,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="298">
+        <Item class="Part" referent="402">
           <Properties>
             <string name="Name">SculptureBase01</string>
             <bool name="Anchored">true</bool>
@@ -15292,7 +18086,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="299">
+        <Item class="Part" referent="403">
           <Properties>
             <string name="Name">Sculpture01</string>
             <bool name="Anchored">true</bool>
@@ -15319,7 +18113,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="300">
+        <Item class="Part" referent="404">
           <Properties>
             <string name="Name">Sculpture01Top</string>
             <bool name="Anchored">true</bool>
@@ -15347,7 +18141,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="301">
+        <Item class="Part" referent="405">
           <Properties>
             <string name="Name">SculptureBase02</string>
             <bool name="Anchored">true</bool>
@@ -15374,7 +18168,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="302">
+        <Item class="Part" referent="406">
           <Properties>
             <string name="Name">Sculpture02A</string>
             <bool name="Anchored">true</bool>
@@ -15401,7 +18195,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="303">
+        <Item class="Part" referent="407">
           <Properties>
             <string name="Name">Sculpture02B</string>
             <bool name="Anchored">true</bool>
@@ -15428,7 +18222,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="SpawnLocation" referent="304">
+        <Item class="SpawnLocation" referent="408">
           <Properties>
             <string name="Name">PlayerSpawn</string>
             <bool name="Anchored">true</bool>
@@ -15458,12 +18252,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="305">
+      <Item class="Model" referent="409">
         <Properties>
           <string name="Name">ParkCrosswalk</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="306">
+        <Item class="Part" referent="410">
           <Properties>
             <string name="Name">Stripe01</string>
             <bool name="Anchored">true</bool>
@@ -15491,7 +18285,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="307">
+        <Item class="Part" referent="411">
           <Properties>
             <string name="Name">Stripe02</string>
             <bool name="Anchored">true</bool>
@@ -15519,7 +18313,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="308">
+        <Item class="Part" referent="412">
           <Properties>
             <string name="Name">Stripe03</string>
             <bool name="Anchored">true</bool>
@@ -15547,7 +18341,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="309">
+        <Item class="Part" referent="413">
           <Properties>
             <string name="Name">Stripe04</string>
             <bool name="Anchored">true</bool>
@@ -15576,12 +18370,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="310">
+      <Item class="Model" referent="414">
         <Properties>
           <string name="Name">LakesideTrees</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="311">
+        <Item class="Part" referent="415">
           <Properties>
             <string name="Name">Tree01Trunk</string>
             <bool name="Anchored">true</bool>
@@ -15608,7 +18402,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="312">
+        <Item class="Part" referent="416">
           <Properties>
             <string name="Name">Tree01Lower</string>
             <bool name="Anchored">true</bool>
@@ -15635,7 +18429,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="313">
+        <Item class="Part" referent="417">
           <Properties>
             <string name="Name">Tree01Upper</string>
             <bool name="Anchored">true</bool>
@@ -15662,7 +18456,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="314">
+        <Item class="Part" referent="418">
           <Properties>
             <string name="Name">Tree02Trunk</string>
             <bool name="Anchored">true</bool>
@@ -15689,7 +18483,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="315">
+        <Item class="Part" referent="419">
           <Properties>
             <string name="Name">Tree02Lower</string>
             <bool name="Anchored">true</bool>
@@ -15716,7 +18510,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="316">
+        <Item class="Part" referent="420">
           <Properties>
             <string name="Name">Tree02Upper</string>
             <bool name="Anchored">true</bool>
@@ -15743,7 +18537,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="317">
+        <Item class="Part" referent="421">
           <Properties>
             <string name="Name">Tree03Trunk</string>
             <bool name="Anchored">true</bool>
@@ -15770,7 +18564,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="318">
+        <Item class="Part" referent="422">
           <Properties>
             <string name="Name">Tree03Lower</string>
             <bool name="Anchored">true</bool>
@@ -15797,7 +18591,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="319">
+        <Item class="Part" referent="423">
           <Properties>
             <string name="Name">Tree03Upper</string>
             <bool name="Anchored">true</bool>
@@ -15824,7 +18618,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="320">
+        <Item class="Part" referent="424">
           <Properties>
             <string name="Name">Tree04Trunk</string>
             <bool name="Anchored">true</bool>
@@ -15851,7 +18645,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="321">
+        <Item class="Part" referent="425">
           <Properties>
             <string name="Name">Tree04Lower</string>
             <bool name="Anchored">true</bool>
@@ -15878,7 +18672,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="322">
+        <Item class="Part" referent="426">
           <Properties>
             <string name="Name">Tree04Upper</string>
             <bool name="Anchored">true</bool>
@@ -15905,7 +18699,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="323">
+        <Item class="Part" referent="427">
           <Properties>
             <string name="Name">Tree05Trunk</string>
             <bool name="Anchored">true</bool>
@@ -15932,7 +18726,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="324">
+        <Item class="Part" referent="428">
           <Properties>
             <string name="Name">Tree05Lower</string>
             <bool name="Anchored">true</bool>
@@ -15959,7 +18753,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="325">
+        <Item class="Part" referent="429">
           <Properties>
             <string name="Name">Tree05Upper</string>
             <bool name="Anchored">true</bool>
@@ -15986,7 +18780,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="326">
+        <Item class="Part" referent="430">
           <Properties>
             <string name="Name">Tree06Trunk</string>
             <bool name="Anchored">true</bool>
@@ -16013,7 +18807,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="327">
+        <Item class="Part" referent="431">
           <Properties>
             <string name="Name">Tree06Lower</string>
             <bool name="Anchored">true</bool>
@@ -16040,7 +18834,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="328">
+        <Item class="Part" referent="432">
           <Properties>
             <string name="Name">Tree06Upper</string>
             <bool name="Anchored">true</bool>
@@ -16068,12 +18862,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="329">
+      <Item class="Model" referent="433">
         <Properties>
           <string name="Name">LakesideFurniture</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="330">
+        <Item class="Part" referent="434">
           <Properties>
             <string name="Name">Bench01Seat</string>
             <bool name="Anchored">true</bool>
@@ -16100,7 +18894,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="331">
+        <Item class="Part" referent="435">
           <Properties>
             <string name="Name">Bench01LegA</string>
             <bool name="Anchored">true</bool>
@@ -16127,7 +18921,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="332">
+        <Item class="Part" referent="436">
           <Properties>
             <string name="Name">Bench01LegB</string>
             <bool name="Anchored">true</bool>
@@ -16154,7 +18948,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="333">
+        <Item class="Part" referent="437">
           <Properties>
             <string name="Name">Bench02Seat</string>
             <bool name="Anchored">true</bool>
@@ -16181,7 +18975,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="334">
+        <Item class="Part" referent="438">
           <Properties>
             <string name="Name">Bench02LegA</string>
             <bool name="Anchored">true</bool>
@@ -16208,7 +19002,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="335">
+        <Item class="Part" referent="439">
           <Properties>
             <string name="Name">Bench02LegB</string>
             <bool name="Anchored">true</bool>
@@ -16236,12 +19030,12 @@ print('[Client] Suwa Life client runner ready.')
           </Properties>
         </Item>
       </Item>
-      <Item class="Model" referent="336">
+      <Item class="Model" referent="440">
         <Properties>
           <string name="Name">PromenadeLights</string>
           <bool name="NeedsPivotMigration">false</bool>
         </Properties>
-        <Item class="Part" referent="337">
+        <Item class="Part" referent="441">
           <Properties>
             <string name="Name">Lamp01Post</string>
             <bool name="Anchored">true</bool>
@@ -16268,7 +19062,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="338">
+        <Item class="Part" referent="442">
           <Properties>
             <string name="Name">Lamp01Glow</string>
             <bool name="Anchored">true</bool>
@@ -16296,7 +19090,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="339">
+        <Item class="Part" referent="443">
           <Properties>
             <string name="Name">Lamp02Post</string>
             <bool name="Anchored">true</bool>
@@ -16323,7 +19117,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="340">
+        <Item class="Part" referent="444">
           <Properties>
             <string name="Name">Lamp02Glow</string>
             <bool name="Anchored">true</bool>
@@ -16351,7 +19145,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="341">
+        <Item class="Part" referent="445">
           <Properties>
             <string name="Name">Lamp03Post</string>
             <bool name="Anchored">true</bool>
@@ -16378,7 +19172,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="342">
+        <Item class="Part" referent="446">
           <Properties>
             <string name="Name">Lamp03Glow</string>
             <bool name="Anchored">true</bool>
@@ -16406,7 +19200,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="343">
+        <Item class="Part" referent="447">
           <Properties>
             <string name="Name">Lamp04Post</string>
             <bool name="Anchored">true</bool>
@@ -16433,7 +19227,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="344">
+        <Item class="Part" referent="448">
           <Properties>
             <string name="Name">Lamp04Glow</string>
             <bool name="Anchored">true</bool>
@@ -16461,7 +19255,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="345">
+        <Item class="Part" referent="449">
           <Properties>
             <string name="Name">Lamp05Post</string>
             <bool name="Anchored">true</bool>
@@ -16488,7 +19282,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="346">
+        <Item class="Part" referent="450">
           <Properties>
             <string name="Name">Lamp05Glow</string>
             <bool name="Anchored">true</bool>
@@ -16516,7 +19310,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="347">
+        <Item class="Part" referent="451">
           <Properties>
             <string name="Name">Lamp06Post</string>
             <bool name="Anchored">true</bool>
@@ -16543,7 +19337,7 @@ print('[Client] Suwa Life client runner ready.')
             </Vector3>
           </Properties>
         </Item>
-        <Item class="Part" referent="348">
+        <Item class="Part" referent="452">
           <Properties>
             <string name="Name">Lamp06Glow</string>
             <bool name="Anchored">true</bool>

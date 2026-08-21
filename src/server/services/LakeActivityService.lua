@@ -483,6 +483,9 @@ local function configureCreatorStoreBoat(model: Model)
 						pcall(function()
 							charPart.CollisionGroup = "SeatedAvatars"
 							charPart.CanCollide = false
+							-- Disable fluid forces on character to prevent buoyancy
+							-- from flinging the boat assembly upward
+							charPart.EnableFluidForces = false
 						end)
 					end
 				end
@@ -492,6 +495,8 @@ local function configureCreatorStoreBoat(model: Model)
 						pcall(function()
 							charPart.CollisionGroup = "Default"
 							charPart.CanCollide = true
+							-- Restore fluid forces when exiting boat
+							charPart.EnableFluidForces = true
 						end)
 					end
 				end
@@ -550,6 +555,7 @@ local function configureCreatorStoreBoat(model: Model)
 					if charPart:IsA("BasePart") then
 						pcall(function()
 							charPart.CollisionGroup = "SeatedAvatars"
+							charPart.EnableFluidForces = false
 						end)
 					end
 				end

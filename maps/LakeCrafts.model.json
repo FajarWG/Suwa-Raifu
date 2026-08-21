@@ -3,561 +3,542 @@
   "children": [
     {
       "className": "Model",
-      "name": "DuckPedalBoat01",
+      "name": "Wooden Boat",
       "children": [
         {
-          "className": "MeshPart",
-          "name": "MoldedPedalBoatHull",
+          "className": "VehicleSeat",
+          "name": "DriverSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 2],
+            "CFrame": [225, 0.62, -250, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+            "Transparency": 1
+          }
+        },
+        {
+          "className": "Part",
+          "name": "WoodenHull",
           "properties": {
             "Anchored": true,
             "CanCollide": true,
-            "Size": [
-              2.843396,
-              1.965396,
-              5.122349
-            ],
-            "MeshId": "rbxassetid://132931513179998",
-            "TextureID": "rbxassetid://106201807645897",
-            "CFrame": [
-              230.0127,
-              1.732698,
-              -245.486092,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
-          }
-        },
-        {
-          "className": "MeshPart",
-          "name": "PedalAssembly",
-          "properties": {
-            "Anchored": true,
-            "CanCollide": false,
-            "Size": [
-              1.117873,
-              1.205047,
-              1.421689
-            ],
-            "MeshId": "rbxassetid://101015782922583",
-            "TextureID": "rbxassetid://137544487284153",
-            "CFrame": [
-              230.011942,
-              2.770759,
-              -247.301285,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [3.4, 1.8, 8.5],
+            "Color": [0.45, 0.28, 0.16],
+            "Material": "WoodPlanks",
+            "CFrame": [225, 0.4, -250, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
           "className": "Part",
-          "name": "DuckHead",
+          "name": "DeckFloor",
           "properties": {
             "Anchored": true,
-            "CanCollide": false,
-            "Shape": "Ball",
-            "Size": [
-              2.448394,
-              2.448394,
-              2.448394
-            ],
-            "Color": [
-              0.973,
-              0.773,
-              0.196
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              230.005297,
-              2.8863,
-              -247.005671,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CanCollide": true,
+            "Size": [2.8, 0.3, 7.5],
+            "Color": [0.62, 0.42, 0.24],
+            "Material": "WoodPlanks",
+            "CFrame": [225, 0.6, -250, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
           "className": "Part",
-          "name": "Beak",
+          "name": "RailingLeft",
           "properties": {
             "Anchored": true,
-            "CanCollide": false,
-            "Size": [
-              1.807148,
-              0.641246,
-              1.457378
-            ],
-            "Color": [
-              0.933,
-              0.463,
-              0.137
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              230.005297,
-              2.76971,
-              -248.696229,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CanCollide": true,
+            "Size": [0.3, 0.8, 8.0],
+            "Color": [0.35, 0.22, 0.12],
+            "Material": "Wood",
+            "CFrame": [223.4, 1.2, -250, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
           "className": "Part",
-          "name": "EyeLeft",
+          "name": "RailingRight",
           "properties": {
             "Anchored": true,
-            "CanCollide": false,
-            "Shape": "Ball",
-            "Size": [
-              0.262328,
-              0.262328,
-              0.262328
-            ],
-            "Color": [
-              0.098,
-              0.106,
-              0.11
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              229.276608,
-              3.440103,
-              -247.96754,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CanCollide": true,
+            "Size": [0.3, 0.8, 8.0],
+            "Color": [0.35, 0.22, 0.12],
+            "Material": "Wood",
+            "CFrame": [226.6, 1.2, -250, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
-          "className": "Part",
-          "name": "EyeRight",
+          "className": "Seat",
+          "name": "PassengerSeatFront",
           "properties": {
             "Anchored": true,
             "CanCollide": false,
-            "Shape": "Ball",
-            "Size": [
-              0.262328,
-              0.262328,
-              0.262328
-            ],
-            "Color": [
-              0.098,
-              0.106,
-              0.11
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              230.733985,
-              3.440103,
-              -247.96754,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [2, 0.4, 1],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [225, 0.9, -252.8, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
-          "className": "Part",
-          "name": "WaterproofCockpitFloor",
+          "className": "Seat",
+          "name": "PassengerSeatRear",
           "properties": {
             "Anchored": true,
             "CanCollide": false,
-            "Size": [
-              1.9,
-              0.25,
-              2.4
-            ],
-            "Color": [
-              0.922,
-              0.867,
-              0.71
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              230.0127,
-              1.4,
-              -245.47491775000003,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [2, 0.4, 1],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [225, 0.9, -247.2, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         }
       ]
     },
     {
       "className": "Model",
-      "name": "DuckPedalBoat02",
+      "name": "Fune 1",
       "children": [
         {
-          "className": "MeshPart",
-          "name": "MoldedPedalBoatHull",
+          "className": "VehicleSeat",
+          "name": "DriverSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 2],
+            "CFrame": [240, 4.42, -255, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+            "Transparency": 1
+          }
+        },
+        {
+          "className": "Part",
+          "name": "PontoonHullLeft",
           "properties": {
             "Anchored": true,
             "CanCollide": true,
-            "Size": [
-              2.843396,
-              1.965396,
-              5.122349
-            ],
-            "MeshId": "rbxassetid://132931513179998",
-            "TextureID": "rbxassetid://106201807645897",
-            "CFrame": [
-              244.0127,
-              1.732698,
-              -255.486092,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
-          }
-        },
-        {
-          "className": "MeshPart",
-          "name": "PedalAssembly",
-          "properties": {
-            "Anchored": true,
-            "CanCollide": false,
-            "Size": [
-              1.117873,
-              1.205047,
-              1.421689
-            ],
-            "MeshId": "rbxassetid://101015782922583",
-            "TextureID": "rbxassetid://137544487284153",
-            "CFrame": [
-              244.011942,
-              2.770759,
-              -257.301285,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [1.4, 1.8, 14],
+            "Color": [0.25, 0.25, 0.28],
+            "Material": "Metal",
+            "CFrame": [237.2, 3.2, -255, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
           "className": "Part",
-          "name": "DuckHead",
+          "name": "PontoonHullRight",
           "properties": {
             "Anchored": true,
-            "CanCollide": false,
-            "Shape": "Ball",
-            "Size": [
-              2.448394,
-              2.448394,
-              2.448394
-            ],
-            "Color": [
-              0.973,
-              0.773,
-              0.196
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              244.005297,
-              2.8863,
-              -257.005671,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CanCollide": true,
+            "Size": [1.4, 1.8, 14],
+            "Color": [0.25, 0.25, 0.28],
+            "Material": "Metal",
+            "CFrame": [242.8, 3.2, -255, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
           "className": "Part",
-          "name": "Beak",
+          "name": "MainDeck",
           "properties": {
             "Anchored": true,
-            "CanCollide": false,
-            "Size": [
-              1.807148,
-              0.641246,
-              1.457378
-            ],
-            "Color": [
-              0.933,
-              0.463,
-              0.137
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              244.005297,
-              2.76971,
-              -258.696229,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CanCollide": true,
+            "Size": [7.0, 0.4, 14],
+            "Color": [0.72, 0.52, 0.32],
+            "Material": "WoodPlanks",
+            "CFrame": [240, 4.2, -255, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
           "className": "Part",
-          "name": "EyeLeft",
+          "name": "CanopyRoof",
           "properties": {
             "Anchored": true,
-            "CanCollide": false,
-            "Shape": "Ball",
-            "Size": [
-              0.262328,
-              0.262328,
-              0.262328
-            ],
-            "Color": [
-              0.098,
-              0.106,
-              0.11
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              243.276608,
-              3.440103,
-              -257.96754,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CanCollide": true,
+            "Size": [6.8, 0.3, 10],
+            "Color": [0.18, 0.22, 0.3],
+            "Material": "Fabric",
+            "CFrame": [240, 7.5, -255, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
-          "className": "Part",
-          "name": "EyeRight",
+          "className": "Seat",
+          "name": "PassengerBench01",
           "properties": {
             "Anchored": true,
             "CanCollide": false,
-            "Shape": "Ball",
-            "Size": [
-              0.262328,
-              0.262328,
-              0.262328
-            ],
-            "Color": [
-              0.098,
-              0.106,
-              0.11
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              244.733985,
-              3.440103,
-              -257.96754,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [2.2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [238, 4.7, -257, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         },
         {
-          "className": "Part",
-          "name": "WaterproofCockpitFloor",
+          "className": "Seat",
+          "name": "PassengerBench02",
           "properties": {
             "Anchored": true,
             "CanCollide": false,
-            "Size": [
-              1.9,
-              0.25,
-              2.4
-            ],
-            "Color": [
-              0.922,
-              0.867,
-              0.71
-            ],
-            "Material": "SmoothPlastic",
-            "CFrame": [
-              244.0127,
-              1.4,
-              -255.47491775000003,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [2.2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [242, 4.7, -257, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerBench03",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2.2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [238, 4.7, -253, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerBench04",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2.2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [242, 4.7, -253, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         }
       ]
     },
     {
       "className": "Model",
-      "name": "LakeLeisureBoat",
+      "name": "Fune 2",
       "children": [
         {
-          "className": "MeshPart",
-          "name": "LeisureBoatHull",
-          "properties": {
-            "Anchored": true,
-            "CanCollide": true,
-            "Size": [
-              2.6047,
-              2.396385,
-              6
-            ],
-            "MeshId": "rbxassetid://106412283654846",
-            "TextureID": "rbxassetid://113245942241308",
-            "CFrame": [
-              270.0128,
-              1.948192,
-              -274.9883,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
-          }
-        },
-        {
-          "className": "MeshPart",
-          "name": "OutboardMotor",
+          "className": "VehicleSeat",
+          "name": "DriverSeat",
           "properties": {
             "Anchored": true,
             "CanCollide": false,
-            "Size": [
-              0.558975,
-              2.161,
-              0.807344
-            ],
-            "MeshId": "rbxassetid://125253636736713",
-            "TextureID": "rbxassetid://136093503777861",
-            "CFrame": [
-              270.011357,
-              2.162603,
-              -272.415119,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "Size": [2, 0.5, 2],
+            "CFrame": [255, 4.42, -260, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+            "Transparency": 1
           }
         },
         {
           "className": "Part",
-          "name": "WaterproofCockpitFloor",
+          "name": "PontoonHullLeft",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [1.4, 1.8, 14],
+            "Color": [0.25, 0.25, 0.28],
+            "Material": "Metal",
+            "CFrame": [252.2, 3.2, -260, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "PontoonHullRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [1.4, 1.8, 14],
+            "Color": [0.25, 0.25, 0.28],
+            "Material": "Metal",
+            "CFrame": [257.8, 3.2, -260, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "MainDeck",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [7.0, 0.4, 14],
+            "Color": [0.68, 0.48, 0.3],
+            "Material": "WoodPlanks",
+            "CFrame": [255, 4.2, -260, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "TraditionalRoof",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [6.8, 0.3, 10],
+            "Color": [0.6, 0.2, 0.15],
+            "Material": "Wood",
+            "CFrame": [255, 7.5, -260, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerBench01",
           "properties": {
             "Anchored": true,
             "CanCollide": false,
-            "Size": [
-              1.7,
-              0.25,
-              2.8
-            ],
-            "Color": [
-              0.871,
-              0.918,
-              0.937
-            ],
+            "Size": [2.2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [253, 4.7, -262, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerBench02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2.2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [257, 4.7, -262, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "Fune 3",
+      "children": [
+        {
+          "className": "VehicleSeat",
+          "name": "DriverSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 2],
+            "CFrame": [275, 4.42, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+            "Transparency": 1
+          }
+        },
+        {
+          "className": "Part",
+          "name": "DoublePontoonHullLeft",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [1.8, 2.0, 18],
+            "Color": [0.22, 0.22, 0.25],
+            "Material": "Metal",
+            "CFrame": [271.5, 3.2, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "DoublePontoonHullRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [1.8, 2.0, 18],
+            "Color": [0.22, 0.22, 0.25],
+            "Material": "Metal",
+            "CFrame": [278.5, 3.2, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "LowerDeck",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [8.8, 0.5, 18],
+            "Color": [0.7, 0.5, 0.3],
+            "Material": "WoodPlanks",
+            "CFrame": [275, 4.2, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "UpperDeckTingkat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [8.0, 0.4, 12],
+            "Color": [0.65, 0.45, 0.28],
+            "Material": "WoodPlanks",
+            "CFrame": [275, 8.2, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "UpperDeckRailingLeft",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [0.3, 1.2, 12],
+            "Color": [0.4, 0.25, 0.15],
+            "Material": "Wood",
+            "CFrame": [271.1, 9.0, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "UpperDeckRailingRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [0.3, 1.2, 12],
+            "Color": [0.4, 0.25, 0.15],
+            "Material": "Wood",
+            "CFrame": [278.9, 9.0, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "UpperRoofCanopy",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [8.4, 0.3, 11],
+            "Color": [0.15, 0.2, 0.25],
+            "Material": "WoodPlanks",
+            "CFrame": [275, 12.0, -265, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "UpperSeat01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [273, 8.7, -267, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "UpperSeat02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [277, 8.7, -267, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "LowerSeat01",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [273, 4.7, -262, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "LowerSeat02",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 1.2],
+            "Color": [0.55, 0.35, 0.2],
+            "Material": "WoodPlanks",
+            "CFrame": [277, 4.7, -262, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        }
+      ]
+    },
+    {
+      "className": "Model",
+      "name": "Speedboat",
+      "children": [
+        {
+          "className": "VehicleSeat",
+          "name": "DriverSeat",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [2, 0.5, 2],
+            "CFrame": [295, 2.52, -270, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+            "Transparency": 1
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SpeedboatHull",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [3.6, 2.2, 10.5],
+            "Color": [0.95, 0.95, 0.98],
             "Material": "SmoothPlastic",
-            "CFrame": [
-              270.0128,
-              1.4,
-              -275.43829999999997,
-              1,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              1
-            ]
+            "CFrame": [295, 2.2, -270, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "SpeedboatStripe",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [3.7, 0.4, 10.2],
+            "Color": [0.15, 0.4, 0.85],
+            "Material": "SmoothPlastic",
+            "CFrame": [295, 2.4, -270, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "CockpitFloor",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": true,
+            "Size": [2.8, 0.3, 6.5],
+            "Color": [0.85, 0.88, 0.9],
+            "Material": "SmoothPlastic",
+            "CFrame": [295, 2.4, -270, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Part",
+          "name": "Windshield",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [3.2, 1.2, 0.3],
+            "Color": [0.6, 0.85, 0.95],
+            "Material": "Glass",
+            "Transparency": 0.4,
+            "CFrame": [295, 3.8, -272.5, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeatFrontRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [1.2, 0.5, 1.2],
+            "Color": [0.2, 0.2, 0.25],
+            "Material": "Fabric",
+            "CFrame": [296.2, 2.7, -270, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeatRearLeft",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [1.2, 0.5, 1.2],
+            "Color": [0.2, 0.2, 0.25],
+            "Material": "Fabric",
+            "CFrame": [293.8, 2.7, -267.5, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+          }
+        },
+        {
+          "className": "Seat",
+          "name": "PassengerSeatRearRight",
+          "properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Size": [1.2, 0.5, 1.2],
+            "Color": [0.2, 0.2, 0.25],
+            "Material": "Fabric",
+            "CFrame": [296.2, 2.7, -267.5, 1, 0, 0, 0, 1, 0, 0, 0, 1]
           }
         }
       ]

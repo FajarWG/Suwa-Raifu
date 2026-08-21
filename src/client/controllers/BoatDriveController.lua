@@ -88,6 +88,9 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 						pcall(function()
 							p.CollisionGroup = "SeatedAvatars"
 							p.CanCollide = false
+							-- Disable fluid forces on character to prevent buoyancy
+							-- from flinging the boat assembly upward
+							p.EnableFluidForces = false
 						end)
 					end
 				end
@@ -129,6 +132,8 @@ local function onSeated(active: boolean, currentSeatPart: Instance?)
 						p.CollisionGroup = "Default"
 						-- Note: CanCollide sengaja TIDAK di-set di sini.
 						-- Server yang handle via LakeActivityService Occupant changed.
+						-- Restore fluid forces when exiting boat
+						p.EnableFluidForces = true
 					end)
 				end
 			end
