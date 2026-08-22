@@ -234,6 +234,17 @@ end
 -- 5. Green Grass Buffer Strip (Z = -46.0, width = 4)
 -- 6. 2-Lane Route 50 Car Road (Z = -33.0, width = 22)
 -- 7. City Buildings & Shops (Z > 0)
+-- =========================================================================
+-- 1. SEAMLESS TERRAIN-FOLLOWING DUAL TRACK (DIRECTLY ATTACHED TO GRASS BUFFER)
+-- =========================================================================
+-- Layered order from Lake Suwa (North) to City (South):
+-- 1. Lake Suwa (Z < -180)
+-- 2. Lakeside Lawn & Facilities (Playground, Onsen, D51, Docks) (Z = -50 to -175)
+-- 3. Red Tartan Running Track (Z = -44.5, width = 7, covers Z = -41 to -48)
+-- 4. Black Asphalt Bicycle Track (Z = -37.5, width = 7, covers Z = -34 to -41) -- ATTACHED ZERO GAP
+-- 5. Green Grass Buffer Strip (Z = -28 to -34)
+-- 6. 2-Lane Route 50 Car Road (Z = -10 to -28)
+-- 7. City Buildings & Shops (Z > 0)
 local function buildDualTrack(root: Model)
 	local tracks = Instance.new("Model")
 	tracks.Name = "CurvingDualLakesideTrack"
@@ -243,10 +254,10 @@ local function buildDualTrack(root: Model)
 	local endX = 640
 	local step = 8.0 -- Fine-grained 8-stud segments to hug ground slopes smoothly
 
-	local bikeCenterZ = -51.5
-	local runCenterZ = -58.5
-	local dividerZ = -55.0
-	local grassDividerZ = -46.0
+	local bikeCenterZ = -37.5
+	local runCenterZ = -44.5
+	local dividerZ = -41.0
+	local roadBorderZ = -34.0
 
 	for x = startX, endX - step, step do
 		local x1 = x
@@ -269,32 +280,30 @@ local function buildDualTrack(root: Model)
 		local pitch_run = math.atan2(y2_run - y1_run, segLength)
 		local avgPitch = (pitch_bike + pitch_run) / 2
 
-		local segCFrame = CFrame.new(midX, yMid_avg, 0) * CFrame.Angles(0, 0, avgPitch)
-
-		-- A. Black Asphalt Bicycle Track (7 studs wide, Z = -48 to -55)
+		-- A. Black Asphalt Bicycle Track (7 studs wide, Z = -34 to -41)
 		local bikePart = makePart("Part", `BikeTrack_{math.floor(x)}`,
 			Vector3.new(segLength + 0.15, 0.35, 7.0),
 			CFrame.new(midX, yMid_avg, bikeCenterZ) * CFrame.Angles(0, 0, avgPitch),
 			asphaltColor, Enum.Material.Asphalt, tracks)
 		bikePart.CanCollide = true
 
-		-- B. Red Tartan Running Track (7 studs wide, Z = -55 to -62, directly attached)
+		-- B. Red Tartan Running Track (7 studs wide, Z = -41 to -48, directly attached zero gap)
 		local runPart = makePart("Part", `RunningTrack_{math.floor(x)}`,
 			Vector3.new(segLength + 0.15, 0.35, 7.0),
 			CFrame.new(midX, yMid_avg, runCenterZ) * CFrame.Angles(0, 0, avgPitch),
 			tartanColor, Enum.Material.Fabric, tracks)
 		runPart.CanCollide = true
 
-		-- C. Crisp White Divider Line between Bike and Running Track (Z = -55)
+		-- C. Crisp White Divider Line between Bike and Running Track (Z = -41)
 		makePart("Part", `CenterDivider_{math.floor(x)}`,
 			Vector3.new(segLength + 0.15, 0.38, 0.35),
 			CFrame.new(midX, yMid_avg + 0.02, dividerZ) * CFrame.Angles(0, 0, avgPitch),
 			markingColor, Enum.Material.SmoothPlastic, tracks)
 
-		-- D. Outer White Border Line along the road buffer
+		-- D. Outer White Border Line along the green grass buffer (Z = -34)
 		makePart("Part", `RoadBorderLine_{math.floor(x)}`,
 			Vector3.new(segLength + 0.15, 0.38, 0.3),
-			CFrame.new(midX, yMid_avg + 0.02, -48.0) * CFrame.Angles(0, 0, avgPitch),
+			CFrame.new(midX, yMid_avg + 0.02, roadBorderZ) * CFrame.Angles(0, 0, avgPitch),
 			markingColor, Enum.Material.SmoothPlastic, tracks)
 
 		-- E. Dashed center markings
