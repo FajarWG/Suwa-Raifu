@@ -1400,6 +1400,299 @@ local function applyGoldenHour()
 	bloom.Parent = Lighting
 end
 
+
+-- =========================================================================
+-- GRAND CREATOR STORE LAKESIDE PLAYGROUND & AMUSEMENT PARK
+-- =========================================================================
+local function buildLakesideAmusementPlayground(root: Model)
+	local oldPg = root:FindFirstChild("SuwaLakesidePlayground")
+	if oldPg then oldPg:Destroy() end
+
+	local playground = Instance.new("Model")
+	playground.Name = "SuwaLakesidePlayground"
+	playground.Parent = root
+
+	local ss = game:GetService("ServerStorage")
+	local csa = ss:FindFirstChild("CreatorStoreAssets")
+	local darkMetal = Color3.fromRGB(45, 48, 52)
+	local brightRed = Color3.fromRGB(225, 65, 55)
+	local brightCyan = Color3.fromRGB(40, 180, 220)
+	local baseY = 2.0
+
+	-- -------------------------------------------------------------------------
+	-- A. COBBLESTONE PATHWAYS
+	-- -------------------------------------------------------------------------
+	local px = -310
+	makePart("Part", "PlaygroundPathwayMain", Vector3.new(125, 0.3, 12),
+		CFrame.new(px, baseY + 0.15, -100),
+		Color3.fromRGB(175, 172, 162), Enum.Material.Cobblestone, playground)
+	makePart("Part", "PlaygroundPathwayCross1", Vector3.new(12, 0.3, 65),
+		CFrame.new(px - 35, baseY + 0.15, -95),
+		Color3.fromRGB(175, 172, 162), Enum.Material.Cobblestone, playground)
+	makePart("Part", "PlaygroundPathwayCross2", Vector3.new(12, 0.3, 65),
+		CFrame.new(px + 35, baseY + 0.15, -95),
+		Color3.fromRGB(175, 172, 162), Enum.Material.Cobblestone, playground)
+
+	-- -------------------------------------------------------------------------
+	-- B. TORII ENTRANCE GATE
+	-- -------------------------------------------------------------------------
+	local archX = px
+	local archZ = -65
+	makePart("Part", "ArchPostL", Vector3.new(1.4, 14, 1.4), CFrame.new(archX - 8, baseY + 7, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
+	makePart("Part", "ArchPostR", Vector3.new(1.4, 14, 1.4), CFrame.new(archX + 8, baseY + 7, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
+	makePart("Part", "ArchBeamTop", Vector3.new(20, 1.4, 1.4), CFrame.new(archX, baseY + 14.5, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
+	makePart("Part", "ArchBeamMid", Vector3.new(18, 1.0, 1.0), CFrame.new(archX, baseY + 12.5, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
+
+	-- -------------------------------------------------------------------------
+	-- C. BIANGLALA (FERRIS WHEEL)
+	-- -------------------------------------------------------------------------
+	local fwTemplate = csa and csa:FindFirstChild("CreatorStoreFerrisWheel")
+	if fwTemplate then
+		local fw = fwTemplate:Clone()
+		fw.Name = "SuwaFerrisWheel"
+		fw.Parent = playground
+		local fs = fw:FindFirstChild("FerrisScript", true)
+		if fs then fs:Destroy() end
+		local _, sz = fw:GetBoundingBox()
+		fw:PivotTo(CFrame.new(-250, baseY + sz.Y / 2, -100) * CFrame.Angles(0, math.rad(90), 0))
+		for _, d in ipairs(fw:GetDescendants()) do
+			if d:IsA("BasePart") then
+				local isWheel = d:FindFirstAncestor("Wheel") ~= nil
+				local isBasket = d:FindFirstAncestor("Baskets") ~= nil
+				d.Anchored = not (isWheel or isBasket)
+				if d.Name == "Roof" or d.Name == "Rails" or d.Name == "Seats" then d.CanCollide = false end
+			end
+		end
+		local motor = fw:FindFirstChild("FerrisMotor", true) :: HingeConstraint?
+		if motor then
+			motor.ActuatorType = Enum.ActuatorType.Motor
+			motor.MotorMaxTorque = 100000000
+			motor.AngularVelocity = 0.35
+		end
+	end
+
+	-- -------------------------------------------------------------------------
+	-- D. PEROSOTAN BARU (PASTEL PLAYGROUND SLIDE SET WITH RAMP & SMOOTH STEPS)
+	-- -------------------------------------------------------------------------
+	local slideTemplate = csa and (csa:FindFirstChild("CreatorStorePastelSlide") or csa:FindFirstChild("CreatorStoreSlideModel"))
+	if slideTemplate then
+		local slide = slideTemplate:Clone()
+		slide.Name = "SuwaPlaygroundSlideSet"
+		slide.Parent = playground
+		for _, d in ipairs(slide:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				if d.Name:lower():find("stairs") or d.Name:lower():find("floor") or d.Name:lower():find("ramp") then
+					d.CanCollide = true
+				end
+			end
+		end
+		local _, sz = slide:GetBoundingBox()
+		slide:PivotTo(CFrame.new(-365, baseY + sz.Y / 2, -100) * CFrame.Angles(0, math.rad(90), 0))
+
+		-- Add smooth invisible stair walking ramps so player can effortlessly walk up
+		local ramp1 = Instance.new("Part")
+		ramp1.Name = "SmoothWalkRamp1"
+		ramp1.Size = Vector3.new(4.5, 0.4, 8.5)
+		ramp1.CFrame = CFrame.new(-365 + 6.5, baseY + 3.8, -100 - 8.5) * CFrame.Angles(math.rad(28), 0, 0)
+		ramp1.Transparency = 1
+		ramp1.CanCollide = true
+		ramp1.Anchored = true
+		ramp1.Parent = slide
+
+		local ramp2 = Instance.new("Part")
+		ramp2.Name = "SmoothWalkRamp2"
+		ramp2.Size = Vector3.new(4.5, 0.4, 8.5)
+		ramp2.CFrame = CFrame.new(-365 - 1.5, baseY + 8.5, -100 - 1.5) * CFrame.Angles(math.rad(-28), 0, 0)
+		ramp2.Transparency = 1
+		ramp2.CanCollide = true
+		ramp2.Anchored = true
+		ramp2.Parent = slide
+	end
+
+	-- -------------------------------------------------------------------------
+	-- E. AYUNAN (SWING SET)
+	-- -------------------------------------------------------------------------
+	local swingTemplate = csa and csa:FindFirstChild("CreatorStoreSwingSet")
+	if swingTemplate then
+		local swing = swingTemplate:Clone()
+		swing.Name = "SuwaSwingSet"
+		swing.Parent = playground
+		for _, d in ipairs(swing:GetDescendants()) do
+			if d:IsA("BasePart") and d.Name == "Frame" then d.Anchored = true end
+		end
+		local _, sz = swing:GetBoundingBox()
+		swing:PivotTo(CFrame.new(-310, baseY + sz.Y / 2, -130))
+	end
+
+	-- -------------------------------------------------------------------------
+	-- F. KOTAK PASIR (SANDBOX)
+	-- -------------------------------------------------------------------------
+	local sandTemplate = csa and csa:FindFirstChild("CreatorStoreSandbox")
+	if sandTemplate then
+		local sand = sandTemplate:Clone()
+		sand.Name = "SuwaSandbox"
+		sand.Parent = playground
+		for _, d in ipairs(sand:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = true end
+		end
+		local _, sz = sand:GetBoundingBox()
+		sand:PivotTo(CFrame.new(-260, baseY + sz.Y / 2, -130))
+	end
+
+	-- -------------------------------------------------------------------------
+	-- G. SUPER TRAMPOLIN (CIRCULAR HIGH JUMP TRAMPOLINE)
+	-- -------------------------------------------------------------------------
+	local tramTemplate = csa and (csa:FindFirstChild("CreatorStoreHighJumpTrampoline") or csa:FindFirstChild("CreatorStoreRoundTrampoline"))
+	if tramTemplate then
+		local tram = tramTemplate:Clone()
+		tram.Name = "SuwaTrampoline"
+		tram.Parent = playground
+		for _, d in ipairs(tram:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = true end
+		end
+		local _, sz = tram:GetBoundingBox()
+		local scaleF = 18 / math.max(sz.X, sz.Z)
+		tram:ScaleTo(math.clamp(scaleF, 0.5, 1.2))
+		local _, sz2 = tram:GetBoundingBox()
+		tram:PivotTo(CFrame.new(-280, baseY + sz2.Y / 2, -95))
+
+		local pad = Instance.new("Part")
+		pad.Name = "TrampolineBouncePad"
+		pad.Size = Vector3.new(18.0, 2.5, 18.0)
+		pad.CFrame = CFrame.new(-280, baseY + sz2.Y + 0.8, -95)
+		pad.Transparency = 1
+		pad.CanCollide = false
+		pad.CanTouch = true
+		pad.Anchored = true
+		pad.Parent = tram
+	end
+
+	-- -------------------------------------------------------------------------
+	-- H. KOMIDI PUTAR (MERRY-GO-ROUND / ROUNDABOUT)
+	-- -------------------------------------------------------------------------
+	local mgrTemplate = csa and csa:FindFirstChild("CreatorStoreMerryGoRound")
+	if mgrTemplate then
+		local mgr = mgrTemplate:Clone()
+		mgr.Name = "SuwaMerryGoRound"
+		mgr.Parent = playground
+		for _, d in ipairs(mgr:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = true end
+		end
+		local _, sz = mgr:GetBoundingBox()
+		mgr:PivotTo(CFrame.new(-335, baseY + sz.Y / 2, -100))
+
+		local seatRadius = 2.8
+		local seatAngles = { 0, 90, 180, 270 }
+		local seatColors = {
+			Color3.fromRGB(235, 65, 55),
+			Color3.fromRGB(45, 175, 235),
+			Color3.fromRGB(245, 205, 55),
+			Color3.fromRGB(85, 205, 115),
+		}
+		for i, ang in ipairs(seatAngles) do
+			local rad = math.rad(ang)
+			local sx = -335 + math.cos(rad) * seatRadius
+			local szZ = -100 + math.sin(rad) * seatRadius
+			local seat = Instance.new("Seat")
+			seat.Name = `CarouselSeat_{i}`
+			seat.Size = Vector3.new(1.6, 0.4, 1.6)
+			seat.CFrame = CFrame.new(sx, baseY + 1.8, szZ) * CFrame.Angles(0, -rad + math.rad(90), 0)
+			seat.Color = seatColors[i]
+			seat.Material = Enum.Material.SmoothPlastic
+			seat.Anchored = true
+			seat.Parent = mgr
+		end
+	end
+
+	-- -------------------------------------------------------------------------
+	-- I. TANGGA MONYET (MONKEY BARS)
+	-- -------------------------------------------------------------------------
+	local mbTemplate = csa and csa:FindFirstChild("CreatorStoreMonkeyBars")
+	if mbTemplate then
+		local mb = mbTemplate:Clone()
+		mb.Name = "SuwaMonkeyBars"
+		mb.Parent = playground
+		for _, d in ipairs(mb:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = true end
+		end
+		local _, sz = mb:GetBoundingBox()
+		mb:PivotTo(CFrame.new(-355, baseY + sz.Y / 2, -130))
+	end
+
+	-- -------------------------------------------------------------------------
+	-- J. SPOT FOTO ESTETIK: 5 KUDA PEGAS DI DEKAT AYUNAN MENGHADAP KE DANAU SUWA
+	-- -------------------------------------------------------------------------
+	local sakuraSpot = Vector3.new(-345, baseY, -130)
+
+	-- Aesthetic Sakura Tree placed behind the spring riders at Z = -112
+	local treeTemplate = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
+	if treeTemplate then
+		local tree = treeTemplate:Clone()
+		tree.Name = "PhotoSpotSakuraTree"
+		tree.Parent = playground
+		for _, d in ipairs(tree:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = true end
+		end
+		local _, sz = tree:GetBoundingBox()
+		tree:PivotTo(CFrame.new(sakuraSpot.X, baseY + sz.Y / 2, sakuraSpot.Z + 18))
+	end
+
+	-- Photo spot cobblestone pad
+	makePart("Part", "PhotoSpotPad", Vector3.new(24, 0.25, 12),
+		CFrame.new(sakuraSpot.X, baseY + 0.12, sakuraSpot.Z),
+		Color3.fromRGB(180, 176, 168), Enum.Material.Cobblestone, playground)
+
+	-- 5 Spring Riders oriented facing directly towards Lake Suwa (-Z direction)
+	local springTemplate = csa and csa:FindFirstChild("CreatorStoreSpringRiders")
+	if springTemplate then
+		local sp = springTemplate:Clone()
+		sp.Name = "SuwaSpringRiders"
+		sp.Parent = playground
+		local _, sz = sp:GetBoundingBox()
+		sp:PivotTo(CFrame.new(sakuraSpot + Vector3.new(0, sz.Y / 2, 0)) * CFrame.Angles(0, math.rad(0), 0))
+
+		-- Weld each animal parts to its seat so the WHOLE body rocks together
+		for _, rider in ipairs(sp:GetDescendants()) do
+			if rider:IsA("Model") and (rider.Name:find("Happy") or rider.Name:find("Rider")) then
+				local base = rider:FindFirstChild("Base") :: BasePart?
+				local seat = (rider:FindFirstChildWhichIsA("VehicleSeat") or rider:FindFirstChildWhichIsA("Seat")) :: BasePart?
+				if base and seat then
+					base.Anchored = true
+					seat.Anchored = true
+					for _, d in ipairs(rider:GetDescendants()) do
+						if d:IsA("BasePart") and d ~= base and d ~= seat then
+							d.Anchored = false
+							local w = Instance.new("WeldConstraint")
+							w.Part0 = seat
+							w.Part1 = d
+							w.Parent = seat
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- -------------------------------------------------------------------------
+	-- K. MEJA PANCO (ARM WRESTLING TABLE)
+	-- -------------------------------------------------------------------------
+	local armCenter = Vector3.new(-310, baseY, -78)
+	local armModel = Instance.new("Model")
+	armModel.Name = "SuwaArmWrestlingArena"
+	armModel.Parent = playground
+	makePart("Part", "TableLegCenter", Vector3.new(2, 3.6, 2), CFrame.new(armCenter + Vector3.new(0, 1.8, 0)), darkMetal, Enum.Material.Metal, armModel)
+	makePart("Part", "TableTop", Vector3.new(6.4, 0.6, 4.4), CFrame.new(armCenter + Vector3.new(0, 3.8, 0)), Color3.fromRGB(30, 32, 36), Enum.Material.SmoothPlastic, armModel)
+	makePart("Part", "ElbowPadRed", Vector3.new(1.4, 0.3, 1.4), CFrame.new(armCenter + Vector3.new(-1.6, 4.2, 0)), brightRed, Enum.Material.Fabric, armModel)
+	makePart("Part", "ElbowPadBlue", Vector3.new(1.4, 0.3, 1.4), CFrame.new(armCenter + Vector3.new(1.6, 4.2, 0)), brightCyan, Enum.Material.Fabric, armModel)
+	makePart("Part", "GripPegL", Vector3.new(0.3, 1.4, 0.3), CFrame.new(armCenter + Vector3.new(-2.6, 4.6, 1.5)), Color3.fromRGB(220, 220, 220), Enum.Material.Metal, armModel)
+	makePart("Part", "GripPegR", Vector3.new(0.3, 1.4, 0.3), CFrame.new(armCenter + Vector3.new(2.6, 4.6, -1.5)), Color3.fromRGB(220, 220, 220), Enum.Material.Metal, armModel)
+	makeSeat("ArmSeat_Red", Vector3.new(2, 0.4, 2), CFrame.new(armCenter + Vector3.new(-3.4, 2.2, 0)) * CFrame.Angles(0, math.rad(-90), 0), brightRed, Enum.Material.SmoothPlastic, armModel)
+	makeSeat("ArmSeat_Blue", Vector3.new(2, 0.4, 2), CFrame.new(armCenter + Vector3.new(3.4, 2.2, 0)) * CFrame.Angles(0, math.rad(90), 0), brightCyan, Enum.Material.SmoothPlastic, armModel)
+	makePart("Part", "StoolLegRed", Vector3.new(0.5, 2.2, 0.5), CFrame.new(armCenter + Vector3.new(-3.4, 1.1, 0)), darkMetal, Enum.Material.Metal, armModel)
+	makePart("Part", "StoolLegBlue", Vector3.new(0.5, 2.2, 0.5), CFrame.new(armCenter + Vector3.new(3.4, 1.1, 0)), darkMetal, Enum.Material.Metal, armModel)
+end
+
 local function buildPark()
 	local previous = workspace:FindFirstChild('SuwaLakesidePark')
 	if previous then
@@ -1428,6 +1721,7 @@ local function buildPark()
 	buildPublicToilet(root)
 	buildBicycleParking(root)
 	buildD51Locomotive(root)
+	buildLakesideAmusementPlayground(root)
 	buildParkDetails(root)
 	repositionFishingPiers()
 	repositionLegacyVenues()
