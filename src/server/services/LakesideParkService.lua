@@ -1530,8 +1530,9 @@ local function buildLakesideAmusementPlayground(root: Model)
 
 	
 	
+	
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING - PHOTO SPOT FACING FRONT)
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING - ELEVATED)
 	-- -------------------------------------------------------------------------
 	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
@@ -1547,7 +1548,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 		tree:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz.Y / 2, -156))
 	end
 
-	makePart("Part", "RomanticDeck", Vector3.new(18, 0.25, 14),
+	makePart("Part", "RomanticDeck", Vector3.new(20, 0.25, 16),
 		CFrame.new(coupleSwingPos.X, baseY + 0.12, coupleSwingPos.Z),
 		Color3.fromRGB(185, 180, 172), Enum.Material.Cobblestone, playground)
 
@@ -1560,11 +1561,11 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = cs:GetBoundingBox()
-		local scaleF = 9.0 / math.max(sz.X, sz.Z)
-		cs:ScaleTo(math.clamp(scaleF, 0.8, 1.3))
+		local scaleF = 12.0 / math.max(sz.X, sz.Z)
+		cs:ScaleTo(math.clamp(scaleF, 1.1, 1.6))
 		local _, sz2 = cs:GetBoundingBox()
-		-- Rotated 90 degrees so bench faces FRONT (towards +Z / cobblestone path) with Sakura tree behind it!
-		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
+		-- Elevated by +2.2 studs so seat hangs nicely above ground and avatar legs dangle naturally
+		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2 + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
 	end
 	-- -------------------------------------------------------------------------
 	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES ON LAWN)
