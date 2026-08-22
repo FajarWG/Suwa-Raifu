@@ -223,89 +223,92 @@ local function removeGreybox()
 	end
 end
 
+-- =========================================================================
+-- 1. SEAMLESS TERRAIN-FOLLOWING DUAL TRACK (BEHIND PARK FACILITIES, BESIDE ROUTE 50)
+-- =========================================================================
+-- Layered order from Lake Suwa (North) to City (South):
+-- 1. Lake Suwa (Z < -180)
+-- 2. Lakeside Lawn & Facilities (Playground, Onsen, D51, Docks) (Z = -65 to -175)
+-- 3. Red Tartan Running Track (Z = -58.5, width = 7)
+-- 4. Black Asphalt Bicycle Track (Z = -51.5, width = 7) -- ATTACHED SIDE-BY-SIDE ZERO GAP
+-- 5. Green Grass Buffer Strip (Z = -46.0, width = 4)
+-- 6. 2-Lane Route 50 Car Road (Z = -33.0, width = 22)
+-- 7. City Buildings & Shops (Z > 0)
 local function buildDualTrack(root: Model)
-	local tracks = Instance.new('Model')
-	tracks.Name = 'CurvingDualLakesideTrack'
+	local tracks = Instance.new("Model")
+	tracks.Name = "CurvingDualLakesideTrack"
 	tracks.Parent = root
 
-	local asphaltPoints = {
-		Vector3.new(-640, 0.7, -170),
-		Vector3.new(-560, 1.2, -181),
-		Vector3.new(-470, 2.6, -171),
-		Vector3.new(-380, 3.2, -153),
-		Vector3.new(-285, 2.1, -159),
-		Vector3.new(-190, 0.8, -176),
-		Vector3.new(-90, 1.4, -169),
-		Vector3.new(15, 3.1, -149),
-		Vector3.new(120, 4.1, -140),
-		Vector3.new(220, 3.0, -148),
-		Vector3.new(315, 1.3, -164),
-		Vector3.new(410, 2.4, -180),
-		Vector3.new(510, 1.1, -174),
-		Vector3.new(610, 0.7, -190),
-		Vector3.new(670, 0.6, -184),
-	}
-	local tartanPoints = {
-		Vector3.new(-640, 0.65, -190),
-		Vector3.new(-560, 1.0, -201),
-		Vector3.new(-470, 2.0, -192),
-		Vector3.new(-380, 2.7, -175),
-		Vector3.new(-285, 1.7, -181),
-		Vector3.new(-190, 0.65, -198),
-		Vector3.new(-90, 1.0, -191),
-		Vector3.new(15, 2.6, -171),
-		Vector3.new(120, 3.5, -162),
-		Vector3.new(220, 2.5, -170),
-		Vector3.new(315, 1.0, -186),
-		Vector3.new(410, 2.0, -202),
-		Vector3.new(510, 0.8, -196),
-		Vector3.new(610, 0.6, -212),
-		Vector3.new(670, 0.55, -205),
-	}
+	local startX = -640
+	local endX = 640
+	local step = 8.0 -- Fine-grained 8-stud segments to hug ground slopes smoothly
 
-	makePolyline(tracks, 'AsphaltBikeWalk', asphaltPoints, 13, 0.72, asphaltColor, Enum.Material.Asphalt, true)
-	makePolyline(tracks, 'RedTartanJogging', tartanPoints, 9, 0.7, tartanColor, Enum.Material.Fabric, false)
+	local bikeCenterZ = -51.5
+	local runCenterZ = -58.5
+	local dividerZ = -55.0
+	local grassDividerZ = -46.0
 
-	local inlandBranches = Instance.new('Model')
-	inlandBranches.Name = 'BranchingParkPaths'
-	inlandBranches.Parent = tracks
-	makePolyline(inlandBranches, 'WestLocomotiveApproach', {
-		Vector3.new(-505, 2.2, -166),
-		Vector3.new(-515, 3.0, -138),
-		Vector3.new(-500, 3.8, -112),
-		Vector3.new(-470, 3.5, -91),
-	}, 9, 0.55, Color3.fromRGB(72, 76, 73), Enum.Material.Asphalt, false)
-	makePolyline(inlandBranches, 'CentralTerraceRamp', {
-		Vector3.new(-90, 1.4, -165),
-		Vector3.new(-72, 2.4, -139),
-		Vector3.new(-48, 4.0, -116),
-		Vector3.new(-20, 5.3, -93),
-	}, 10, 0.6, Color3.fromRGB(78, 80, 76), Enum.Material.Asphalt, false)
-	makePolyline(inlandBranches, 'EastFacilityApproach', {
-		Vector3.new(410, 2.4, -176),
-		Vector3.new(430, 2.8, -145),
-		Vector3.new(455, 3.2, -116),
-		Vector3.new(480, 2.6, -84),
-	}, 11, 0.6, Color3.fromRGB(76, 78, 74), Enum.Material.Asphalt, false)
+	for x = startX, endX - step, step do
+		local x1 = x
+		local x2 = x + step
+		local midX = (x1 + x2) / 2
+		local segLength = x2 - x1
 
-	local loopPoints = {}
-	for index = 0, 16 do
-		local angle = (index / 16) * math.pi * 2
-		table.insert(
-			loopPoints,
-			Vector3.new(-305 + math.cos(angle) * 62, 2.2 + math.sin(angle * 2) * 0.8, -99 + math.sin(angle) * 42)
-		)
+		local y1_bike = terrainHeight(x1, bikeCenterZ, 2.0)
+		local y2_bike = terrainHeight(x2, bikeCenterZ, 2.0)
+		local yMid_bike = (y1_bike + y2_bike) / 2
+
+		local y1_run = terrainHeight(x1, runCenterZ, 2.0)
+		local y2_run = terrainHeight(x2, runCenterZ, 2.0)
+		local yMid_run = (y1_run + y2_run) / 2
+
+		local yMid_avg = math.max(yMid_bike, yMid_run) + 0.15
+
+		-- Pitch angle along the slope
+		local pitch_bike = math.atan2(y2_bike - y1_bike, segLength)
+		local pitch_run = math.atan2(y2_run - y1_run, segLength)
+		local avgPitch = (pitch_bike + pitch_run) / 2
+
+		local segCFrame = CFrame.new(midX, yMid_avg, 0) * CFrame.Angles(0, 0, avgPitch)
+
+		-- A. Black Asphalt Bicycle Track (7 studs wide, Z = -48 to -55)
+		local bikePart = makePart("Part", `BikeTrack_{math.floor(x)}`,
+			Vector3.new(segLength + 0.15, 0.35, 7.0),
+			CFrame.new(midX, yMid_avg, bikeCenterZ) * CFrame.Angles(0, 0, avgPitch),
+			asphaltColor, Enum.Material.Asphalt, tracks)
+		bikePart.CanCollide = true
+
+		-- B. Red Tartan Running Track (7 studs wide, Z = -55 to -62, directly attached)
+		local runPart = makePart("Part", `RunningTrack_{math.floor(x)}`,
+			Vector3.new(segLength + 0.15, 0.35, 7.0),
+			CFrame.new(midX, yMid_avg, runCenterZ) * CFrame.Angles(0, 0, avgPitch),
+			tartanColor, Enum.Material.Fabric, tracks)
+		runPart.CanCollide = true
+
+		-- C. Crisp White Divider Line between Bike and Running Track (Z = -55)
+		makePart("Part", `CenterDivider_{math.floor(x)}`,
+			Vector3.new(segLength + 0.15, 0.38, 0.35),
+			CFrame.new(midX, yMid_avg + 0.02, dividerZ) * CFrame.Angles(0, 0, avgPitch),
+			markingColor, Enum.Material.SmoothPlastic, tracks)
+
+		-- D. Outer White Border Line along the road buffer
+		makePart("Part", `RoadBorderLine_{math.floor(x)}`,
+			Vector3.new(segLength + 0.15, 0.38, 0.3),
+			CFrame.new(midX, yMid_avg + 0.02, -48.0) * CFrame.Angles(0, 0, avgPitch),
+			markingColor, Enum.Material.SmoothPlastic, tracks)
+
+		-- E. Dashed center markings
+		if math.floor(x / 16) % 2 == 0 then
+			makePart("Part", `BikeDash_{math.floor(x)}`,
+				Vector3.new(segLength * 0.6, 0.39, 0.3),
+				CFrame.new(midX, yMid_avg + 0.03, bikeCenterZ) * CFrame.Angles(0, 0, avgPitch),
+				markingColor, Enum.Material.SmoothPlastic, tracks)
+			makePart("Part", `RunDash_{math.floor(x)}`,
+				Vector3.new(segLength * 0.5, 0.39, 0.25),
+				CFrame.new(midX, yMid_avg + 0.03, runCenterZ) * CFrame.Angles(0, 0, avgPitch),
+				markingColor, Enum.Material.SmoothPlastic, tracks)
+		end
 	end
-	makePolyline(
-		inlandBranches,
-		'WestGardenLoop',
-		loopPoints,
-		7,
-		0.5,
-		Color3.fromRGB(96, 91, 82),
-		Enum.Material.Pavement,
-		false
-	)
 end
 
 local function makeBench(parent: Instance, index: number, position: Vector3, yaw: number)
@@ -1706,27 +1709,23 @@ local function buildLakesideAmusementPlayground(root: Model)
 end
 
 local function buildPark()
-	local previous = workspace:FindFirstChild('SuwaLakesidePark')
+	local previous = workspace:FindFirstChild("SuwaLakesidePark")
 	if previous then
 		previous:Destroy()
 	end
 	removeGreybox()
 
-	local root = Instance.new('Model')
-	root.Name = 'SuwaLakesidePark'
-	root:SetAttribute('ReferenceBasis', 'Suwa Lakeside Park photo set')
-	root:SetAttribute('NoSkyscrapers', true)
-	root:SetAttribute('ParkWidthStuds', 1340)
-	root:SetAttribute('ParkDepthStuds', 260)
+	local root = Instance.new("Model")
+	root.Name = "SuwaLakesidePark"
+	root:SetAttribute("ReferenceBasis", "Suwa Lakeside Park photo set")
+	root:SetAttribute("NoSkyscrapers", true)
+	root:SetAttribute("ParkWidthStuds", 1340)
+	root:SetAttribute("ParkDepthStuds", 260)
 	root.Parent = workspace
 
 	buildDualTrack(root)
 	buildBenches(root)
 	buildNaturalShore(root)
-	buildRainPuddleDetails(root)
-	buildTerracedLawn(root)
-	buildCurvedGravelPlaza(root)
-	buildFitnessCorner(root)
 	buildTraditionalShelter(root)
 	buildFootbathCanopy(root)
 	buildDuckBoatDock(root)
