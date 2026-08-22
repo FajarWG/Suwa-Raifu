@@ -149,16 +149,19 @@ local function configureRomanticCoupleSwing(playground: Model)
 	local cs = playground:FindFirstChild("SuwaRomanticCoupleSwing")
 	if not cs then return end
 
-	local seatL = cs:FindFirstChild("CoupleSeat_L") :: Seat?
-	local seatR = cs:FindFirstChild("CoupleSeat_R") :: Seat?
-
-	if seatL then addSitPrompt(seatL, "Ayunan Pacaran (Kiri) 🌸") end
-	if seatR then addSitPrompt(seatR, "Ayunan Pacaran (Kanan) 🌸") end
-
+	local seats = {}
 	for _, d in ipairs(cs:GetDescendants()) do
-		if d:IsA("Seat") and d ~= seatL and d ~= seatR then
-			addSitPrompt(d, "Ayunan Pasangan 🌸")
+		if d:IsA("Seat") then
+			table.insert(seats, d)
 		end
+	end
+	table.sort(seats, function(a, b) return a.Position.X < b.Position.X end)
+
+	if #seats >= 2 then
+		addSitPrompt(seats[1], "Ayunan Pacaran (Kiri) 🌸")
+		addSitPrompt(seats[2], "Ayunan Pacaran (Kanan) 🌸")
+	elseif #seats == 1 then
+		addSitPrompt(seats[1], "Ayunan Pacaran 🌸")
 	end
 end
 

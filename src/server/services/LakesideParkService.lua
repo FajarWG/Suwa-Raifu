@@ -1522,8 +1522,9 @@ local function buildLakesideAmusementPlayground(root: Model)
 		swing:PivotTo(CFrame.new(-310, baseY + sz.Y / 2, -135))
 	end
 
+	
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING - PROPER LAKE-FACING)
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING)
 	-- -------------------------------------------------------------------------
 	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
@@ -1556,23 +1557,9 @@ local function buildLakesideAmusementPlayground(root: Model)
 		local scaleF = 9.0 / math.max(sz.X, sz.Z)
 		cs:ScaleTo(math.clamp(scaleF, 0.8, 1.3))
 		local _, sz2 = cs:GetBoundingBox()
-		-- Flipped 270 degrees so the wooden bench faces forward (towards -Z / Lake Suwa)
-		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
-
-		-- Invisible helper seats with CFrame facing towards the camera / Lake Suwa
-		local seatL = Instance.new("Seat")
-		seatL.Name = "CoupleSeat_L"
-		seatL.Size = Vector3.new(1.8, 0.3, 1.6)
-		seatL.CFrame = CFrame.new(coupleSwingPos.X - 1.4, baseY + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, 0, 0)
-		seatL.Transparency = 1 ; seatL.CanCollide = false ; seatL.Anchored = true ; seatL.Parent = cs
-
-		local seatR = Instance.new("Seat")
-		seatR.Name = "CoupleSeat_R"
-		seatR.Size = Vector3.new(1.8, 0.3, 1.6)
-		seatR.CFrame = CFrame.new(coupleSwingPos.X + 1.4, baseY + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, 0, 0)
-		seatR.Transparency = 1 ; seatR.CanCollide = false ; seatR.Anchored = true ; seatR.Parent = cs
+		-- Flipped 270 degrees so native bench seats face forward (towards -Z / Lake Suwa)
+		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(270), 0))
 	end
-
 	-- -------------------------------------------------------------------------
 	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES ON LAWN)
 	-- -------------------------------------------------------------------------
