@@ -163,51 +163,25 @@ local function configureRomanticCoupleSwing(playground: Model)
 end
 
 -- -----------------------------------------------------------------------------
--- 4. PEROSOTAN LAKESIDE (SMOOTH PLAYGROUND SLIDE WITH INSTANT SLIDE ACTION)
+-- 4. PEROSOTAN LURUS (CLEAN STRAIGHT SLIDE GLIDE)
 -- -----------------------------------------------------------------------------
 local function configureSlides(playground: Model)
 	local slide = playground:FindFirstChild("SuwaPlaygroundSlideSet")
 	if not slide then return end
 
-	local climbPart = Instance.new("Part")
-	climbPart.Name = "SlideClimbTrigger"
-	climbPart.Size = Vector3.new(6, 4, 6)
-	climbPart.CFrame = CFrame.new(-365 + 10.5, 3.5, -100 - 9.5)
-	climbPart.Transparency = 1 ; climbPart.CanCollide = false ; climbPart.Anchored = true ; climbPart.Parent = slide
+	local topPart = slide:FindFirstChild("SitPart") or slide:FindFirstChildWhichIsA("BasePart")
+	if not topPart then return end
 
-	local climbPrompt = Instance.new("ProximityPrompt")
-	climbPrompt.Name = "ClimbSlidePrompt"
-	climbPrompt.ActionText = "Naik ke Atas 🪜"
-	climbPrompt.ObjectText = "Perosotan Pastel"
-	climbPrompt.HoldDuration = 0
-	climbPrompt.MaxActivationDistance = 10
-	climbPrompt.RequiresLineOfSight = false
-	climbPrompt.Parent = climbPart
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "StraightSlidePrompt"
+	prompt.ActionText = "Meluncur! 🛝"
+	prompt.ObjectText = "Perosotan Danau Suwa"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = topPart
 
-	climbPrompt.Triggered:Connect(function(player)
-		local char = player.Character
-		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if hrp then
-			hrp.CFrame = CFrame.new(-365 - 0.5, 14.8, -100 + 4.5) * CFrame.Angles(0, math.rad(180), 0)
-		end
-	end)
-
-	local slidePart = Instance.new("Part")
-	slidePart.Name = "SlideChuteTrigger"
-	slidePart.Size = Vector3.new(6, 4, 6)
-	slidePart.CFrame = CFrame.new(-365 - 0.5, 14.5, -100 + 3.2)
-	slidePart.Transparency = 1 ; slidePart.CanCollide = false ; slidePart.Anchored = true ; slidePart.Parent = slide
-
-	local slidePrompt = Instance.new("ProximityPrompt")
-	slidePrompt.Name = "SlideDownPrompt"
-	slidePrompt.ActionText = "Meluncur! 🛝"
-	slidePrompt.ObjectText = "Corong Perosotan"
-	slidePrompt.HoldDuration = 0
-	slidePrompt.MaxActivationDistance = 10
-	slidePrompt.RequiresLineOfSight = false
-	slidePrompt.Parent = slidePart
-
-	slidePrompt.Triggered:Connect(function(player)
+	prompt.Triggered:Connect(function(player)
 		if slideBusy[player] then return end
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -218,27 +192,30 @@ local function configureSlides(playground: Model)
 		hum.PlatformStand = true
 		hrp.Anchored = true
 
-		local waypoints = {
-			CFrame.new(-365 - 0.5, 14.2, -100 + 2.5) * CFrame.Angles(math.rad(-15), math.rad(0), 0),
-			CFrame.new(-365 - 2.8, 11.5, -100 + 0.8) * CFrame.Angles(math.rad(-20), math.rad(90), 0),
-			CFrame.new(-365 - 1.2, 8.2, -100 - 1.8) * CFrame.Angles(math.rad(-20), math.rad(180), 0),
-			CFrame.new(-365 + 1.8, 5.2, -100 - 0.2) * CFrame.Angles(math.rad(-18), math.rad(270), 0),
-			CFrame.new(-365 + 0.5, 3.2, -100 + 2.5) * CFrame.Angles(0, math.rad(0), 0),
-		}
+		local cf, sz = slide:GetBoundingBox()
+		local startPos = cf.Position + Vector3.new(0, sz.Y / 2 - 2, 6)
+		local midPos = cf.Position + Vector3.new(0, 0, 0)
+		local endPos = cf.Position + Vector3.new(0, -sz.Y / 2 + 3, -6)
+
+		hrp.CFrame = CFrame.new(startPos) * CFrame.Angles(math.rad(-25), 0, 0)
 
 		task.spawn(function()
-			for _, wp in ipairs(waypoints) do
-				local tw = TweenService:Create(hrp, TweenInfo.new(0.24, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-					CFrame = wp
-				})
-				tw:Play()
-				tw.Completed:Wait()
-			end
+			local tw1 = TweenService:Create(hrp, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				CFrame = CFrame.new(midPos) * CFrame.Angles(math.rad(-20), 0, 0)
+			})
+			tw1:Play()
+			tw1.Completed:Wait()
+
+			local tw2 = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				CFrame = CFrame.new(endPos) * CFrame.Angles(0, 0, 0)
+			})
+			tw2:Play()
+			tw2.Completed:Wait()
 
 			if hrp.Parent then
 				hrp.Anchored = false
 				hum.PlatformStand = false
-				hrp.AssemblyLinearVelocity = Vector3.new(0, 4, 16)
+				hrp.AssemblyLinearVelocity = Vector3.new(0, 5, -18)
 			end
 			slideBusy[player] = nil
 		end)
