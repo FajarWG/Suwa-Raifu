@@ -194,7 +194,7 @@ local function configureSlides(playground: Model)
 		local char = player.Character
 		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if hrp then
-			hrp.CFrame = CFrame.new(-373.5, 14.8, -95.0) * CFrame.Angles(0, math.rad(-90), 0)
+			hrp.CFrame = CFrame.new(-373.5, 14.8, -95.0) * CFrame.Angles(0, math.rad(90), 0)
 		end
 	end)
 
@@ -235,22 +235,22 @@ local function configureSlides(playground: Model)
 		local pEnd = Vector3.new(-389.0, 4.0, -95.0)
 		local pGrass = Vector3.new(-392.0, 3.2, -95.0)
 
-		hrp.CFrame = CFrame.new(pStart) * CFrame.Angles(0, math.rad(-90), 0)
+		hrp.CFrame = CFrame.new(pStart) * CFrame.Angles(0, math.rad(90), 0)
 
 		local tw1 = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			CFrame = CFrame.new(pMid) * CFrame.Angles(0, math.rad(-90), 0)
+			CFrame = CFrame.new(pMid) * CFrame.Angles(0, math.rad(90), 0)
 		})
 		tw1:Play()
 		tw1.Completed:Wait()
 
 		local tw2 = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Linear), {
-			CFrame = CFrame.new(pEnd) * CFrame.Angles(0, math.rad(-90), 0)
+			CFrame = CFrame.new(pEnd) * CFrame.Angles(0, math.rad(90), 0)
 		})
 		tw2:Play()
 		tw2.Completed:Wait()
 
 		local tw3 = TweenService:Create(hrp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = CFrame.new(pGrass) * CFrame.Angles(0, math.rad(-90), 0)
+			CFrame = CFrame.new(pGrass) * CFrame.Angles(0, math.rad(90), 0)
 		})
 		tw3:Play()
 		tw3.Completed:Wait()

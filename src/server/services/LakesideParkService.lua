@@ -1531,8 +1531,9 @@ local function buildLakesideAmusementPlayground(root: Model)
 	
 	
 	
+	
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING - ELEVATED)
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING WITH WOODEN SUPPORT LEGS)
 	-- -------------------------------------------------------------------------
 	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
@@ -1564,17 +1565,32 @@ local function buildLakesideAmusementPlayground(root: Model)
 		local scaleF = 12.0 / math.max(sz.X, sz.Z)
 		cs:ScaleTo(math.clamp(scaleF, 1.1, 1.6))
 		local _, sz2 = cs:GetBoundingBox()
-		-- Elevated by +2.2 studs so seat hangs nicely above ground and avatar legs dangle naturally
 		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2 + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
+
+		-- 4 Sturdy Wooden Support Leg Beams grounding the swing frame to the floor
+		local woodColor = Color3.fromRGB(130, 85, 55)
+		local legOffsets = {
+			Vector3.new(-5.4, 1.0, -3.8),
+			Vector3.new(5.4, 1.0, -3.8),
+			Vector3.new(-5.4, 1.0, 3.8),
+			Vector3.new(5.4, 1.0, 3.8),
+		}
+		for idx, offset in ipairs(legOffsets) do
+			local leg = makePart("Part", `SwingSupportLeg_{idx}`, Vector3.new(0.65, 2.4, 0.65),
+				CFrame.new(coupleSwingPos + offset),
+				woodColor, Enum.Material.Wood, cs)
+			leg.CanCollide = true
+		end
 	end
+	
 	-- -------------------------------------------------------------------------
-	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES ON LAWN)
+	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES CLOSE TOGETHER ON LAWN)
 	-- -------------------------------------------------------------------------
 	local tramTemplate = csa and (csa:FindFirstChild("CreatorStoreHighJumpTrampoline") or csa:FindFirstChild("CreatorStoreRoundTrampoline"))
 	if tramTemplate then
 		local tramPositions = {
-			Vector3.new(-265, baseY, -70),
-			Vector3.new(-295, baseY, -70),
+			Vector3.new(-280, baseY, -72),
+			Vector3.new(-298, baseY, -72),
 		}
 		for idx, pos in ipairs(tramPositions) do
 			local tram = tramTemplate:Clone()
@@ -1584,19 +1600,18 @@ local function buildLakesideAmusementPlayground(root: Model)
 				if d:IsA("BasePart") then d.Anchored = true end
 			end
 			local _, sz = tram:GetBoundingBox()
-			local scaleF = 17 / math.max(sz.X, sz.Z)
+			local scaleF = 16 / math.max(sz.X, sz.Z)
 			tram:ScaleTo(math.clamp(scaleF, 0.5, 1.2))
 			local _, sz2 = tram:GetBoundingBox()
 			tram:PivotTo(CFrame.new(pos.X, baseY + sz2.Y / 2, pos.Z))
 
 			local pad = Instance.new("Part")
 			pad.Name = "TrampolineBouncePad"
-			pad.Size = Vector3.new(17.0, 2.5, 17.0)
+			pad.Size = Vector3.new(16.0, 2.5, 16.0)
 			pad.CFrame = CFrame.new(pos.X, baseY + sz2.Y + 0.8, pos.Z)
 			pad.Transparency = 1 ; pad.CanCollide = false ; pad.CanTouch = true ; pad.Anchored = true ; pad.Parent = tram
 		end
 	end
-
 	-- -------------------------------------------------------------------------
 	-- H. TANGGA MONYET MERAH (MONKEY BARS - SHIFTED TO THE LEFT)
 	-- -------------------------------------------------------------------------
@@ -1662,13 +1677,15 @@ local function buildLakesideAmusementPlayground(root: Model)
 		end
 	end
 
+	
 	-- -------------------------------------------------------------------------
-	-- J. MEJA PANCO (ARM WRESTLING TABLE)
+	-- J. MEJA PANCO (ARM WRESTLING TABLE AT END OF WALKWAY)
 	-- -------------------------------------------------------------------------
-	local armCenter = Vector3.new(-310, baseY, -75)
+	local armCenter = Vector3.new(-245, baseY, -70)
 	local armModel = Instance.new("Model")
 	armModel.Name = "SuwaArmWrestlingArena"
 	armModel.Parent = playground
+	makePart("Part", "ArmArenaPad", Vector3.new(14, 0.25, 10), CFrame.new(armCenter + Vector3.new(0, 0.12, 0)), Color3.fromRGB(180, 176, 168), Enum.Material.Cobblestone, armModel)
 	makePart("Part", "TableLegCenter", Vector3.new(2, 3.6, 2), CFrame.new(armCenter + Vector3.new(0, 1.8, 0)), darkMetal, Enum.Material.Metal, armModel)
 	makePart("Part", "TableTop", Vector3.new(6.4, 0.6, 4.4), CFrame.new(armCenter + Vector3.new(0, 3.8, 0)), Color3.fromRGB(30, 32, 36), Enum.Material.SmoothPlastic, armModel)
 	makePart("Part", "ElbowPadRed", Vector3.new(1.4, 0.3, 1.4), CFrame.new(armCenter + Vector3.new(-1.6, 4.2, 0)), brightRed, Enum.Material.Fabric, armModel)
@@ -1679,6 +1696,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 	makeSeat("ArmSeat_Blue", Vector3.new(2, 0.4, 2), CFrame.new(armCenter + Vector3.new(3.4, 2.2, 0)) * CFrame.Angles(0, math.rad(90), 0), brightCyan, Enum.Material.SmoothPlastic, armModel)
 	makePart("Part", "StoolLegRed", Vector3.new(0.5, 2.2, 0.5), CFrame.new(armCenter + Vector3.new(-3.4, 1.1, 0)), darkMetal, Enum.Material.Metal, armModel)
 	makePart("Part", "StoolLegBlue", Vector3.new(0.5, 2.2, 0.5), CFrame.new(armCenter + Vector3.new(3.4, 1.1, 0)), darkMetal, Enum.Material.Metal, armModel)
+
 end
 
 local function buildPark()
@@ -1697,10 +1715,6 @@ local function buildPark()
 	root.Parent = workspace
 
 	buildBenches(root)
-	buildNaturalShore(root)
-	buildTerracedLawn(root)
-	buildCurvedGravelPlaza(root)
-	buildFitnessCorner(root)
 	buildTraditionalShelter(root)
 	buildFootbathCanopy(root)
 	buildDuckBoatDock(root)
