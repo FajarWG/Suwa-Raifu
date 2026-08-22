@@ -1699,6 +1699,44 @@ local function buildLakesideAmusementPlayground(root: Model)
 
 end
 
+
+-- =========================================================================
+-- ROADSIDE JOGGING & CYCLING TRACK (PARALLEL TO ROUTE 50 - NEXT TO CAR ROAD)
+-- =========================================================================
+local function buildRoadsideBikingAndJoggingTrack(root: Model)
+	local trackModel = Instance.new("Model")
+	trackModel.Name = "RoadsideBikingAndJoggingTrack"
+	trackModel.Parent = root
+
+	local trackStartX = -620
+	local trackEndX = 620
+	local trackLength = trackEndX - trackStartX
+	local trackCenterX = (trackStartX + trackEndX) / 2
+	local roadZ = -49 -- Directly bordering Route 50 sidewalk
+
+	-- A. Smooth Asphalt Cycling Lane (6 studs wide)
+	makePart("Part", "RoadsideBicycleLane", Vector3.new(trackLength, 0.4, 7),
+		CFrame.new(trackCenterX, 2.2, roadZ - 3.5),
+		asphaltColor, Enum.Material.Asphalt, trackModel)
+
+	-- B. Red Tartan Running / Jogging Track (6 studs wide)
+	makePart("Part", "RoadsideRunningTrack", Vector3.new(trackLength, 0.4, 7),
+		CFrame.new(trackCenterX, 2.2, roadZ - 10.5),
+		tartanColor, Enum.Material.Fabric, trackModel)
+
+	-- C. White Separator Line
+	makePart("Part", "TrackDividerLine", Vector3.new(trackLength, 0.45, 0.4),
+		CFrame.new(trackCenterX, 2.25, roadZ - 7.0),
+		markingColor, Enum.Material.SmoothPlastic, trackModel)
+
+	-- D. Dashed lane markings on running track
+	for x = trackStartX + 20, trackEndX - 20, 30 do
+		makePart("Part", "RunnerDash", Vector3.new(6, 0.46, 0.35),
+			CFrame.new(x, 2.26, roadZ - 10.5),
+			markingColor, Enum.Material.SmoothPlastic, trackModel)
+	end
+end
+
 local function buildPark()
 	local previous = workspace:FindFirstChild("SuwaLakesidePark")
 	if previous then
@@ -1722,6 +1760,7 @@ local function buildPark()
 	buildBicycleParking(root)
 	buildD51Locomotive(root)
 	buildParkDetails(root)
+	buildRoadsideBikingAndJoggingTrack(root)
 	buildLakesideAmusementPlayground(root)
 	repositionFishingPiers()
 	repositionLegacyVenues()
