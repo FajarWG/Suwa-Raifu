@@ -1486,7 +1486,6 @@ local function buildLakesideAmusementPlayground(root: Model)
 		end
 	end
 
-	
 	-- -------------------------------------------------------------------------
 	-- D. PEROSOTAN LURUS BERSIH (CLEAN STRAIGHT SLIDE)
 	-- -------------------------------------------------------------------------
@@ -1498,21 +1497,16 @@ local function buildLakesideAmusementPlayground(root: Model)
 		for _, d in ipairs(slide:GetDescendants()) do
 			if d:IsA("BasePart") then
 				d.Anchored = true
-				if d.Name == "SitPart" then
-					d.CanCollide = false
-					d.CanTouch = false
-					d.Transparency = 1
-				else
-					d.CanCollide = true
-				end
+				d.CanCollide = true
 			end
 		end
 		local _, sz = slide:GetBoundingBox()
 		local scaleF = 18.0 / math.max(sz.X, sz.Z)
 		slide:ScaleTo(math.clamp(scaleF, 0.4, 1.5))
 		local _, sz2 = slide:GetBoundingBox()
-		slide:PivotTo(CFrame.new(-380, baseY + sz2.Y / 2, -95) * CFrame.Angles(0, math.rad(180), 0))
+		slide:PivotTo(CFrame.new(-380, baseY + sz2.Y / 2, -95) * CFrame.Angles(0, 0, 0))
 	end
+
 	-- -------------------------------------------------------------------------
 	-- E. AYUNAN BIASA (CLASSIC SWING SET)
 	-- -------------------------------------------------------------------------
@@ -1528,15 +1522,12 @@ local function buildLakesideAmusementPlayground(root: Model)
 		swing:PivotTo(CFrame.new(-310, baseY + sz.Y / 2, -135))
 	end
 
-	
-	
-	
-	
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING WITH WOODEN SUPPORT LEGS)
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING - PROPER LAKE-FACING)
 	-- -------------------------------------------------------------------------
 	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
+	-- Sakura tree placed directly behind the romantic swing facing the lake (Z = -156)
 	local treeTemplate = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
 	if treeTemplate then
 		local tree = treeTemplate:Clone()
@@ -1549,7 +1540,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 		tree:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz.Y / 2, -156))
 	end
 
-	makePart("Part", "RomanticDeck", Vector3.new(20, 0.25, 16),
+	makePart("Part", "RomanticDeck", Vector3.new(18, 0.25, 14),
 		CFrame.new(coupleSwingPos.X, baseY + 0.12, coupleSwingPos.Z),
 		Color3.fromRGB(185, 180, 172), Enum.Material.Cobblestone, playground)
 
@@ -1562,35 +1553,34 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = cs:GetBoundingBox()
-		local scaleF = 12.0 / math.max(sz.X, sz.Z)
-		cs:ScaleTo(math.clamp(scaleF, 1.1, 1.6))
+		local scaleF = 9.0 / math.max(sz.X, sz.Z)
+		cs:ScaleTo(math.clamp(scaleF, 0.8, 1.3))
 		local _, sz2 = cs:GetBoundingBox()
-		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2 + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
+		-- Flipped 270 degrees so the wooden bench faces forward (towards -Z / Lake Suwa)
+		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
 
-		-- 4 Sturdy Wooden Support Leg Beams grounding the swing frame to the floor
-		local woodColor = Color3.fromRGB(130, 85, 55)
-		local legOffsets = {
-			Vector3.new(-5.4, 1.0, -3.8),
-			Vector3.new(5.4, 1.0, -3.8),
-			Vector3.new(-5.4, 1.0, 3.8),
-			Vector3.new(5.4, 1.0, 3.8),
-		}
-		for idx, offset in ipairs(legOffsets) do
-			local leg = makePart("Part", `SwingSupportLeg_{idx}`, Vector3.new(0.65, 2.4, 0.65),
-				CFrame.new(coupleSwingPos + offset),
-				woodColor, Enum.Material.Wood, cs)
-			leg.CanCollide = true
-		end
+		-- Invisible helper seats with CFrame facing towards the camera / Lake Suwa
+		local seatL = Instance.new("Seat")
+		seatL.Name = "CoupleSeat_L"
+		seatL.Size = Vector3.new(1.8, 0.3, 1.6)
+		seatL.CFrame = CFrame.new(coupleSwingPos.X - 1.4, baseY + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, 0, 0)
+		seatL.Transparency = 1 ; seatL.CanCollide = false ; seatL.Anchored = true ; seatL.Parent = cs
+
+		local seatR = Instance.new("Seat")
+		seatR.Name = "CoupleSeat_R"
+		seatR.Size = Vector3.new(1.8, 0.3, 1.6)
+		seatR.CFrame = CFrame.new(coupleSwingPos.X + 1.4, baseY + 1.8, coupleSwingPos.Z) * CFrame.Angles(0, 0, 0)
+		seatR.Transparency = 1 ; seatR.CanCollide = false ; seatR.Anchored = true ; seatR.Parent = cs
 	end
-	
+
 	-- -------------------------------------------------------------------------
-	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES CLOSE TOGETHER ON LAWN)
+	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES ON LAWN)
 	-- -------------------------------------------------------------------------
 	local tramTemplate = csa and (csa:FindFirstChild("CreatorStoreHighJumpTrampoline") or csa:FindFirstChild("CreatorStoreRoundTrampoline"))
 	if tramTemplate then
 		local tramPositions = {
-			Vector3.new(-280, baseY, -72),
-			Vector3.new(-298, baseY, -72),
+			Vector3.new(-265, baseY, -70),
+			Vector3.new(-295, baseY, -70),
 		}
 		for idx, pos in ipairs(tramPositions) do
 			local tram = tramTemplate:Clone()
@@ -1600,18 +1590,19 @@ local function buildLakesideAmusementPlayground(root: Model)
 				if d:IsA("BasePart") then d.Anchored = true end
 			end
 			local _, sz = tram:GetBoundingBox()
-			local scaleF = 16 / math.max(sz.X, sz.Z)
+			local scaleF = 17 / math.max(sz.X, sz.Z)
 			tram:ScaleTo(math.clamp(scaleF, 0.5, 1.2))
 			local _, sz2 = tram:GetBoundingBox()
 			tram:PivotTo(CFrame.new(pos.X, baseY + sz2.Y / 2, pos.Z))
 
 			local pad = Instance.new("Part")
 			pad.Name = "TrampolineBouncePad"
-			pad.Size = Vector3.new(16.0, 2.5, 16.0)
+			pad.Size = Vector3.new(17.0, 2.5, 17.0)
 			pad.CFrame = CFrame.new(pos.X, baseY + sz2.Y + 0.8, pos.Z)
 			pad.Transparency = 1 ; pad.CanCollide = false ; pad.CanTouch = true ; pad.Anchored = true ; pad.Parent = tram
 		end
 	end
+
 	-- -------------------------------------------------------------------------
 	-- H. TANGGA MONYET MERAH (MONKEY BARS - SHIFTED TO THE LEFT)
 	-- -------------------------------------------------------------------------
@@ -1677,15 +1668,13 @@ local function buildLakesideAmusementPlayground(root: Model)
 		end
 	end
 
-	
 	-- -------------------------------------------------------------------------
-	-- J. MEJA PANCO (ARM WRESTLING TABLE AT END OF WALKWAY)
+	-- J. MEJA PANCO (ARM WRESTLING TABLE)
 	-- -------------------------------------------------------------------------
-	local armCenter = Vector3.new(-245, baseY, -70)
+	local armCenter = Vector3.new(-310, baseY, -75)
 	local armModel = Instance.new("Model")
 	armModel.Name = "SuwaArmWrestlingArena"
 	armModel.Parent = playground
-	makePart("Part", "ArmArenaPad", Vector3.new(14, 0.25, 10), CFrame.new(armCenter + Vector3.new(0, 0.12, 0)), Color3.fromRGB(180, 176, 168), Enum.Material.Cobblestone, armModel)
 	makePart("Part", "TableLegCenter", Vector3.new(2, 3.6, 2), CFrame.new(armCenter + Vector3.new(0, 1.8, 0)), darkMetal, Enum.Material.Metal, armModel)
 	makePart("Part", "TableTop", Vector3.new(6.4, 0.6, 4.4), CFrame.new(armCenter + Vector3.new(0, 3.8, 0)), Color3.fromRGB(30, 32, 36), Enum.Material.SmoothPlastic, armModel)
 	makePart("Part", "ElbowPadRed", Vector3.new(1.4, 0.3, 1.4), CFrame.new(armCenter + Vector3.new(-1.6, 4.2, 0)), brightRed, Enum.Material.Fabric, armModel)
@@ -1696,45 +1685,6 @@ local function buildLakesideAmusementPlayground(root: Model)
 	makeSeat("ArmSeat_Blue", Vector3.new(2, 0.4, 2), CFrame.new(armCenter + Vector3.new(3.4, 2.2, 0)) * CFrame.Angles(0, math.rad(90), 0), brightCyan, Enum.Material.SmoothPlastic, armModel)
 	makePart("Part", "StoolLegRed", Vector3.new(0.5, 2.2, 0.5), CFrame.new(armCenter + Vector3.new(-3.4, 1.1, 0)), darkMetal, Enum.Material.Metal, armModel)
 	makePart("Part", "StoolLegBlue", Vector3.new(0.5, 2.2, 0.5), CFrame.new(armCenter + Vector3.new(3.4, 1.1, 0)), darkMetal, Enum.Material.Metal, armModel)
-
-end
-
-
--- =========================================================================
--- ROADSIDE JOGGING & CYCLING TRACK (PARALLEL TO ROUTE 50 - NEXT TO CAR ROAD)
--- =========================================================================
-local function buildRoadsideBikingAndJoggingTrack(root: Model)
-	local trackModel = Instance.new("Model")
-	trackModel.Name = "RoadsideBikingAndJoggingTrack"
-	trackModel.Parent = root
-
-	local trackStartX = -620
-	local trackEndX = 620
-	local trackLength = trackEndX - trackStartX
-	local trackCenterX = (trackStartX + trackEndX) / 2
-	local roadZ = -49 -- Directly bordering Route 50 sidewalk
-
-	-- A. Smooth Asphalt Cycling Lane (6 studs wide)
-	makePart("Part", "RoadsideBicycleLane", Vector3.new(trackLength, 0.4, 7),
-		CFrame.new(trackCenterX, 2.2, roadZ - 3.5),
-		asphaltColor, Enum.Material.Asphalt, trackModel)
-
-	-- B. Red Tartan Running / Jogging Track (6 studs wide)
-	makePart("Part", "RoadsideRunningTrack", Vector3.new(trackLength, 0.4, 7),
-		CFrame.new(trackCenterX, 2.2, roadZ - 10.5),
-		tartanColor, Enum.Material.Fabric, trackModel)
-
-	-- C. White Separator Line
-	makePart("Part", "TrackDividerLine", Vector3.new(trackLength, 0.45, 0.4),
-		CFrame.new(trackCenterX, 2.25, roadZ - 7.0),
-		markingColor, Enum.Material.SmoothPlastic, trackModel)
-
-	-- D. Dashed lane markings on running track
-	for x = trackStartX + 20, trackEndX - 20, 30 do
-		makePart("Part", "RunnerDash", Vector3.new(6, 0.46, 0.35),
-			CFrame.new(x, 2.26, roadZ - 10.5),
-			markingColor, Enum.Material.SmoothPlastic, trackModel)
-	end
 end
 
 local function buildPark()
@@ -1752,7 +1702,13 @@ local function buildPark()
 	root:SetAttribute("ParkDepthStuds", 260)
 	root.Parent = workspace
 
+	buildDualTrack(root)
 	buildBenches(root)
+	buildNaturalShore(root)
+	buildRainPuddleDetails(root)
+	buildTerracedLawn(root)
+	buildCurvedGravelPlaza(root)
+	buildFitnessCorner(root)
 	buildTraditionalShelter(root)
 	buildFootbathCanopy(root)
 	buildDuckBoatDock(root)
@@ -1760,7 +1716,6 @@ local function buildPark()
 	buildBicycleParking(root)
 	buildD51Locomotive(root)
 	buildParkDetails(root)
-	buildRoadsideBikingAndJoggingTrack(root)
 	buildLakesideAmusementPlayground(root)
 	repositionFishingPiers()
 	repositionLegacyVenues()
