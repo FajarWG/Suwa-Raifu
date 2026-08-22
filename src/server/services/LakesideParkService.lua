@@ -1702,10 +1702,8 @@ local function buildPark()
 	root:SetAttribute("ParkDepthStuds", 260)
 	root.Parent = workspace
 
-	buildDualTrack(root)
 	buildBenches(root)
 	buildNaturalShore(root)
-	buildRainPuddleDetails(root)
 	buildTerracedLawn(root)
 	buildCurvedGravelPlaza(root)
 	buildFitnessCorner(root)
