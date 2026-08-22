@@ -233,59 +233,66 @@ end
 -- Lake Suwa -> Lawn & Park Facilities (Playground, Onsen, D51) ->
 -- Tartan Running Track (Z = -61) -> Asphalt Bike Track (Z = -53) ->
 -- Curb Divider (Z = -48) -> 2-Lane Route 50 Car Road (Z = -35) -> City Buildings
+-- =========================================================================
+-- 1. SEAMLESS TERRAIN-CONFORMING DUAL TRACK (JOGGING & CYCLING BESIDE ROUTE 50)
+-- =========================================================================
+-- Order from Lake to City:
+-- Lake Suwa -> Lawn & Park Facilities -> Red Tartan Running Track ->
+-- Asphalt Bike Track -> Divider Curb -> Route 50 Car Road (2 Lanes) -> City Buildings
 local function buildDualTrack(root: Model)
 	local tracks = Instance.new("Model")
 	tracks.Name = "CurvingDualLakesideTrack"
 	tracks.Parent = root
 
+	local stepX = 12.0
 	local startX = -640
 	local endX = 640
-	local totalLength = endX - startX
-	local midX = (startX + endX) / 2
-	local trackY = 2.25
 
-	-- A. Smooth Asphalt Bicycle Track (8 studs wide, Z = -49 to -57)
-	local bikeTrack = makePart("Part", "AsphaltBicycleTrack",
-		Vector3.new(totalLength, 0.4, 8),
-		CFrame.new(midX, trackY, -53),
-		asphaltColor, Enum.Material.Asphalt, tracks)
-	bikeTrack.CanCollide = true
+	for x = startX, endX, stepX do
+		local nextX = math.min(x + stepX, endX)
+		local segMidX = (x + nextX) / 2
+		local segLen = nextX - x
 
-	-- B. Red Tartan Running Track (8 studs wide, Z = -57 to -65, zero gap side-by-side)
-	local runningTrack = makePart("Part", "RedTartanJoggingTrack",
-		Vector3.new(totalLength, 0.4, 8),
-		CFrame.new(midX, trackY, -61),
-		tartanColor, Enum.Material.Fabric, tracks)
-	runningTrack.CanCollide = true
+		-- Sample terrain height at the road border
+		local roadZ = -28.0
+		local bikeZ = -34.0
+		local runZ = -41.0
 
-	-- C. Crisp White Divider Line between Bike Track and Running Track (Z = -57)
-	makePart("Part", "CenterTrackDivider",
-		Vector3.new(totalLength, 0.45, 0.4),
-		CFrame.new(midX, trackY + 0.03, -57),
-		markingColor, Enum.Material.SmoothPlastic, tracks)
+		local bikeH = terrainHeight(segMidX, bikeZ, 2.0)
+		local runH = terrainHeight(segMidX, runZ, 2.0)
+		local avgH = math.max(bikeH, runH)
 
-	-- D. Outer Border Lines
-	makePart("Part", "BikeRoadBorderLine",
-		Vector3.new(totalLength, 0.45, 0.35),
-		CFrame.new(midX, trackY + 0.03, -49),
-		markingColor, Enum.Material.SmoothPlastic, tracks)
-	makePart("Part", "RunningParkBorderLine",
-		Vector3.new(totalLength, 0.45, 0.35),
-		CFrame.new(midX, trackY + 0.03, -65),
-		markingColor, Enum.Material.SmoothPlastic, tracks)
+		-- A. Asphalt Bicycle Track (6.5 studs wide)
+		local bike = makePart("Part", `BikeTrack_{math.floor(x)}`,
+			Vector3.new(segLen + 0.1, 0.4, 6.5),
+			CFrame.new(segMidX, avgH + 0.2, bikeZ),
+			asphaltColor, Enum.Material.Asphalt, tracks)
+		bike.CanCollide = true
 
-	-- E. Dashed Center Lines for Bike Lane and Running Lane
-	for x = startX + 15, endX - 15, 25 do
-		-- Bike lane center dash
-		makePart("Part", "BikeDash",
-			Vector3.new(5.0, 0.46, 0.3),
-			CFrame.new(x, trackY + 0.04, -53),
+		-- B. Red Tartan Running Track (6.5 studs wide, zero gap directly attached)
+		local run = makePart("Part", `RunningTrack_{math.floor(x)}`,
+			Vector3.new(segLen + 0.1, 0.4, 6.5),
+			CFrame.new(segMidX, avgH + 0.2, runZ),
+			tartanColor, Enum.Material.Fabric, tracks)
+		run.CanCollide = true
+
+		-- C. White Separator Line between Bike & Running Track
+		makePart("Part", `Divider_{math.floor(x)}`,
+			Vector3.new(segLen + 0.1, 0.45, 0.35),
+			CFrame.new(segMidX, avgH + 0.23, (bikeZ + runZ) / 2),
 			markingColor, Enum.Material.SmoothPlastic, tracks)
-		-- Running lane center dash
-		makePart("Part", "RunnerDash",
-			Vector3.new(4.0, 0.46, 0.25),
-			CFrame.new(x, trackY + 0.04, -61),
-			markingColor, Enum.Material.SmoothPlastic, tracks)
+
+		-- D. Dashed markings every 24 studs
+		if math.floor(x / 24) % 2 == 0 then
+			makePart("Part", `BikeDash_{math.floor(x)}`,
+				Vector3.new(segLen * 0.6, 0.46, 0.3),
+				CFrame.new(segMidX, avgH + 0.24, bikeZ),
+				markingColor, Enum.Material.SmoothPlastic, tracks)
+			makePart("Part", `RunDash_{math.floor(x)}`,
+				Vector3.new(segLen * 0.5, 0.46, 0.25),
+				CFrame.new(segMidX, avgH + 0.24, runZ),
+				markingColor, Enum.Material.SmoothPlastic, tracks)
+		end
 	end
 end
 
