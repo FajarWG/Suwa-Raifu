@@ -13,15 +13,6 @@ local darkMetal = Color3.fromRGB(53, 57, 56)
 
 local LakesideParkService = {}
 
-local function terrainHeight(x: number, z: number, fallback: number): number
-	local parameters = RaycastParams.new()
-	parameters.FilterType = Enum.RaycastFilterType.Include
-	parameters.FilterDescendantsInstances = { workspace.Terrain }
-	parameters.IgnoreWater = true
-	local result = workspace:Raycast(Vector3.new(x, 100, z), Vector3.new(0, -220, 0), parameters)
-	return if result then result.Position.Y else fallback
-end
-
 local function makePart(
 	className: string,
 	name: string,
@@ -80,28 +71,28 @@ local function buildLakesideAmusementPlayground(root: Model)
 	-- A. COBBLESTONE PATHWAYS
 	-- -------------------------------------------------------------------------
 	local px = -310
-	makePart("Part", "PlaygroundPathwayMain", Vector3.new(125, 0.3, 12),
+	makePart("Part", "PlaygroundPathwayMain", Vector3.new(140, 0.3, 12),
 		CFrame.new(px, baseY + 0.15, -100),
 		Color3.fromRGB(175, 172, 162), Enum.Material.Cobblestone, playground)
-	makePart("Part", "PlaygroundPathwayCross1", Vector3.new(12, 0.3, 75),
-		CFrame.new(px - 35, baseY + 0.15, -100),
+	makePart("Part", "PlaygroundPathwayCross1", Vector3.new(12, 0.3, 85),
+		CFrame.new(px - 40, baseY + 0.15, -105),
 		Color3.fromRGB(175, 172, 162), Enum.Material.Cobblestone, playground)
-	makePart("Part", "PlaygroundPathwayCross2", Vector3.new(12, 0.3, 75),
-		CFrame.new(px + 35, baseY + 0.15, -100),
+	makePart("Part", "PlaygroundPathwayCross2", Vector3.new(12, 0.3, 85),
+		CFrame.new(px + 40, baseY + 0.15, -105),
 		Color3.fromRGB(175, 172, 162), Enum.Material.Cobblestone, playground)
 
 	-- -------------------------------------------------------------------------
 	-- B. TORII ENTRANCE GATE
 	-- -------------------------------------------------------------------------
 	local archX = px
-	local archZ = -65
+	local archZ = -60
 	makePart("Part", "ArchPostL", Vector3.new(1.4, 14, 1.4), CFrame.new(archX - 8, baseY + 7, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
 	makePart("Part", "ArchPostR", Vector3.new(1.4, 14, 1.4), CFrame.new(archX + 8, baseY + 7, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
 	makePart("Part", "ArchBeamTop", Vector3.new(20, 1.4, 1.4), CFrame.new(archX, baseY + 14.5, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
 	makePart("Part", "ArchBeamMid", Vector3.new(18, 1.0, 1.0), CFrame.new(archX, baseY + 12.5, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
 
 	-- -------------------------------------------------------------------------
-	-- C. BIANGLALA (FERRIS WHEEL)
+	-- C. BIANGLALA (FERRIS WHEEL - Shifted for spacious breathing room)
 	-- -------------------------------------------------------------------------
 	local fwTemplate = csa and csa:FindFirstChild("CreatorStoreFerrisWheel")
 	if fwTemplate then
@@ -111,7 +102,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 		local fs = fw:FindFirstChild("FerrisScript", true)
 		if fs then fs:Destroy() end
 		local _, sz = fw:GetBoundingBox()
-		fw:PivotTo(CFrame.new(-245, baseY + sz.Y / 2, -100) * CFrame.Angles(0, math.rad(90), 0))
+		fw:PivotTo(CFrame.new(-230, baseY + sz.Y / 2, -90) * CFrame.Angles(0, math.rad(90), 0))
 		for _, d in ipairs(fw:GetDescendants()) do
 			if d:IsA("BasePart") then
 				local isWheel = d:FindFirstAncestor("Wheel") ~= nil
@@ -129,9 +120,9 @@ local function buildLakesideAmusementPlayground(root: Model)
 	end
 
 	-- -------------------------------------------------------------------------
-	-- D. PEROSOTAN LAKESIDE (SMOOTH PLAYGROUND SLIDE WITH INSTANT SLIDE ACTION)
+	-- D. PEROSOTAN LAKESIDE (PASTEL SLIDE SET)
 	-- -------------------------------------------------------------------------
-	local slideTemplate = csa and (csa:FindFirstChild("CreatorStorePastelSlide") or csa:FindFirstChild("CreatorStoreBigSlide") or csa:FindFirstChild("CreatorStoreSlideModel"))
+	local slideTemplate = csa and (csa:FindFirstChild("CreatorStorePastelSlide") or csa:FindFirstChild("CreatorStoreSlideModel"))
 	if slideTemplate then
 		local slide = slideTemplate:Clone()
 		slide.Name = "SuwaPlaygroundSlideSet"
@@ -145,18 +136,18 @@ local function buildLakesideAmusementPlayground(root: Model)
 			end
 		end
 		local _, sz = slide:GetBoundingBox()
-		slide:PivotTo(CFrame.new(-365, baseY + sz.Y / 2, -100) * CFrame.Angles(0, math.rad(90), 0))
+		slide:PivotTo(CFrame.new(-380, baseY + sz.Y / 2, -95) * CFrame.Angles(0, math.rad(90), 0))
 
 		local ramp1 = Instance.new("Part")
 		ramp1.Name = "SmoothWalkRamp1"
 		ramp1.Size = Vector3.new(4.5, 0.4, 8.5)
-		ramp1.CFrame = CFrame.new(-365 + 6.5, baseY + 3.8, -100 - 8.5) * CFrame.Angles(math.rad(28), 0, 0)
+		ramp1.CFrame = CFrame.new(-380 + 6.5, baseY + 3.8, -95 - 8.5) * CFrame.Angles(math.rad(28), 0, 0)
 		ramp1.Transparency = 1 ; ramp1.CanCollide = true ; ramp1.Anchored = true ; ramp1.Parent = slide
 
 		local ramp2 = Instance.new("Part")
 		ramp2.Name = "SmoothWalkRamp2"
 		ramp2.Size = Vector3.new(4.5, 0.4, 8.5)
-		ramp2.CFrame = CFrame.new(-365 - 1.5, baseY + 8.5, -100 - 1.5) * CFrame.Angles(math.rad(-28), 0, 0)
+		ramp2.CFrame = CFrame.new(-380 - 1.5, baseY + 8.5, -95 - 1.5) * CFrame.Angles(math.rad(-28), 0, 0)
 		ramp2.Transparency = 1 ; ramp2.CanCollide = true ; ramp2.Anchored = true ; ramp2.Parent = slide
 	end
 
@@ -172,15 +163,15 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") and d.Name == "Frame" then d.Anchored = true end
 		end
 		local _, sz = swing:GetBoundingBox()
-		swing:PivotTo(CFrame.new(-310, baseY + sz.Y / 2, -130))
+		swing:PivotTo(CFrame.new(-310, baseY + sz.Y / 2, -135))
 	end
 
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN + POHON SAKURA (ROMANTIC SAKURA COUPLE SWING)
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN + POHON SAKURA MEKAR DI BELAKANG
 	-- -------------------------------------------------------------------------
-	local coupleSwingPos = Vector3.new(-265, baseY, -130)
+	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
-	-- Sakura tree placed right behind the romantic couple swing
+	-- Sakura tree placed BEHIND the couple swing (Z = -105, 30 studs behind)
 	local treeTemplate = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
 	if treeTemplate then
 		local tree = treeTemplate:Clone()
@@ -190,16 +181,17 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = tree:GetBoundingBox()
-		tree:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz.Y / 2, coupleSwingPos.Z + 16))
+		-- Placed at Z = -105 so trunk is strictly behind the swing bench and canopy spreads overhead
+		tree:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz.Y / 2, -105) * CFrame.Angles(0, math.rad(180), 0))
 	end
 
-	-- Romantic garden cobblestone deck
+	-- Romantic garden cobblestone pad
 	makePart("Part", "RomanticDeck", Vector3.new(16, 0.25, 14),
 		CFrame.new(coupleSwingPos.X, baseY + 0.12, coupleSwingPos.Z),
 		Color3.fromRGB(185, 180, 172), Enum.Material.Cobblestone, playground)
 
-	-- 2-Seater Romantic Hanging Swing Chair
-	local coupleSwingTemplate = csa and (csa:FindFirstChild("CreatorStoreRomanticSwing") or csa:FindFirstChild("CreatorStoreValentineGarden"))
+	-- Romantic 2-Seater Wooden Swing Chair (CLEAN - NO OVERLAPPING VISIBLE BLOCKS)
+	local coupleSwingTemplate = csa and csa:FindFirstChild("CreatorStoreRomanticSwing")
 	if coupleSwingTemplate then
 		local cs = coupleSwingTemplate:Clone()
 		cs.Name = "SuwaRomanticCoupleSwing"
@@ -213,23 +205,34 @@ local function buildLakesideAmusementPlayground(root: Model)
 		local _, sz2 = cs:GetBoundingBox()
 		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(0), 0))
 
-		-- Add 2 dedicated couple seats
-		local seatL = makeSeat("CoupleSeat_L", Vector3.new(2.0, 0.4, 1.8),
-			CFrame.new(coupleSwingPos.X - 1.4, baseY + 1.8, coupleSwingPos.Z),
-			Color3.fromRGB(245, 160, 190), Enum.Material.Fabric, cs)
-		local seatR = makeSeat("CoupleSeat_R", Vector3.new(2.0, 0.4, 1.8),
-			CFrame.new(coupleSwingPos.X + 1.4, baseY + 1.8, coupleSwingPos.Z),
-			Color3.fromRGB(245, 160, 190), Enum.Material.Fabric, cs)
+		-- Invisible helper seats perfectly matched to left and right side of swing bench
+		local seatL = Instance.new("Seat")
+		seatL.Name = "CoupleSeat_L"
+		seatL.Size = Vector3.new(1.8, 0.3, 1.6)
+		seatL.CFrame = CFrame.new(coupleSwingPos.X - 1.3, baseY + 2.0, coupleSwingPos.Z)
+		seatL.Transparency = 1
+		seatL.CanCollide = false
+		seatL.Anchored = true
+		seatL.Parent = cs
+
+		local seatR = Instance.new("Seat")
+		seatR.Name = "CoupleSeat_R"
+		seatR.Size = Vector3.new(1.8, 0.3, 1.6)
+		seatR.CFrame = CFrame.new(coupleSwingPos.X + 1.3, baseY + 2.0, coupleSwingPos.Z)
+		seatR.Transparency = 1
+		seatR.CanCollide = false
+		seatR.Anchored = true
+		seatR.Parent = cs
 	end
 
 	-- -------------------------------------------------------------------------
-	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES SIDE-BY-SIDE)
+	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES ON LAWN)
 	-- -------------------------------------------------------------------------
 	local tramTemplate = csa and (csa:FindFirstChild("CreatorStoreHighJumpTrampoline") or csa:FindFirstChild("CreatorStoreRoundTrampoline"))
 	if tramTemplate then
 		local tramPositions = {
-			Vector3.new(-265, baseY, -75),
-			Vector3.new(-295, baseY, -75),
+			Vector3.new(-265, baseY, -70),
+			Vector3.new(-295, baseY, -70),
 		}
 		for idx, pos in ipairs(tramPositions) do
 			local tram = tramTemplate:Clone()
@@ -268,14 +271,15 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = mb:GetBoundingBox()
-		mb:PivotTo(CFrame.new(-355, baseY + sz.Y / 2, -130))
+		mb:PivotTo(CFrame.new(-355, baseY + sz.Y / 2, -135))
 	end
 
 	-- -------------------------------------------------------------------------
-	-- I. SPOT FOTO ESTETIK: 5 KUDA PEGAS DI DEKAT AYUNAN MENGHADAP KE DANAU SUWA
+	-- I. SPOT FOTO ESTETIK: 5 KUDA PEGAS DENGAN POHON SAKURA MEKAR DI BELAKANG
 	-- -------------------------------------------------------------------------
-	local sakuraSpot = Vector3.new(-345, baseY, -130)
+	local sakuraSpot = Vector3.new(-345, baseY, -135)
 
+	-- Sakura tree placed BEHIND the 5 animals at Z = -105 (30 studs behind)
 	local treeSpot = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
 	if treeSpot then
 		local tree = treeSpot:Clone()
@@ -285,7 +289,8 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = tree:GetBoundingBox()
-		tree:PivotTo(CFrame.new(sakuraSpot.X, baseY + sz.Y / 2, sakuraSpot.Z + 18))
+		-- Placed at Z = -105 so trunk is strictly behind animals and canopy arches gracefully overhead
+		tree:PivotTo(CFrame.new(sakuraSpot.X, baseY + sz.Y / 2, -105) * CFrame.Angles(0, math.rad(180), 0))
 	end
 
 	makePart("Part", "PhotoSpotPad", Vector3.new(24, 0.25, 12),
@@ -324,7 +329,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 	-- -------------------------------------------------------------------------
 	-- J. MEJA PANCO (ARM WRESTLING TABLE)
 	-- -------------------------------------------------------------------------
-	local armCenter = Vector3.new(-310, baseY, -78)
+	local armCenter = Vector3.new(-310, baseY, -75)
 	local armModel = Instance.new("Model")
 	armModel.Name = "SuwaArmWrestlingArena"
 	armModel.Parent = playground
