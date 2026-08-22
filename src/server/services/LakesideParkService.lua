@@ -1486,6 +1486,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 		end
 	end
 
+	
 	-- -------------------------------------------------------------------------
 	-- D. PEROSOTAN LURUS BERSIH (CLEAN STRAIGHT SLIDE)
 	-- -------------------------------------------------------------------------
@@ -1497,16 +1498,21 @@ local function buildLakesideAmusementPlayground(root: Model)
 		for _, d in ipairs(slide:GetDescendants()) do
 			if d:IsA("BasePart") then
 				d.Anchored = true
-				d.CanCollide = true
+				if d.Name == "SitPart" then
+					d.CanCollide = false
+					d.CanTouch = false
+					d.Transparency = 1
+				else
+					d.CanCollide = true
+				end
 			end
 		end
 		local _, sz = slide:GetBoundingBox()
 		local scaleF = 18.0 / math.max(sz.X, sz.Z)
 		slide:ScaleTo(math.clamp(scaleF, 0.4, 1.5))
 		local _, sz2 = slide:GetBoundingBox()
-		slide:PivotTo(CFrame.new(-380, baseY + sz2.Y / 2, -95) * CFrame.Angles(0, 0, 0))
+		slide:PivotTo(CFrame.new(-380, baseY + sz2.Y / 2, -95) * CFrame.Angles(0, math.rad(180), 0))
 	end
-
 	-- -------------------------------------------------------------------------
 	-- E. AYUNAN BIASA (CLASSIC SWING SET)
 	-- -------------------------------------------------------------------------
@@ -1523,12 +1529,12 @@ local function buildLakesideAmusementPlayground(root: Model)
 	end
 
 	
+	
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING)
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN (ROMANTIC SAKURA COUPLE SWING - PHOTO SPOT FACING FRONT)
 	-- -------------------------------------------------------------------------
 	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
-	-- Sakura tree placed directly behind the romantic swing facing the lake (Z = -156)
 	local treeTemplate = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
 	if treeTemplate then
 		local tree = treeTemplate:Clone()
@@ -1557,8 +1563,8 @@ local function buildLakesideAmusementPlayground(root: Model)
 		local scaleF = 9.0 / math.max(sz.X, sz.Z)
 		cs:ScaleTo(math.clamp(scaleF, 0.8, 1.3))
 		local _, sz2 = cs:GetBoundingBox()
-		-- Flipped 270 degrees so native bench seats face forward (towards -Z / Lake Suwa)
-		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(270), 0))
+		-- Rotated 90 degrees so bench faces FRONT (towards +Z / cobblestone path) with Sakura tree behind it!
+		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(90), 0))
 	end
 	-- -------------------------------------------------------------------------
 	-- G. DUA SUPER TRAMPOLIN (TWIN HIGH JUMP TRAMPOLINES ON LAWN)

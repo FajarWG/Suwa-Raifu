@@ -6,7 +6,6 @@ local Players = game:GetService("Players")
 
 local ParkInteractionService = {}
 local slideBusy: { [Player]: boolean } = {}
-local armMatchActive = false
 local bounceDebounce: { [Player]: number } = {}
 local activeRockers: { [BasePart]: RBXScriptConnection } = {}
 
@@ -166,62 +165,109 @@ local function configureRomanticCoupleSwing(playground: Model)
 end
 
 -- -----------------------------------------------------------------------------
--- 4. PEROSOTAN LURUS (CLEAN STRAIGHT SLIDE GLIDE)
+-- 4. PEROSOTAN LURUS (SMOOTH REAL SLIDING PHYSICS)
 -- -----------------------------------------------------------------------------
 local function configureSlides(playground: Model)
 	local slide = playground:FindFirstChild("SuwaPlaygroundSlideSet")
 	if not slide then return end
 
-	local topPart = slide:FindFirstChild("SitPart") or slide:FindFirstChildWhichIsA("BasePart")
-	if not topPart then return end
+	-- A. Ladder climb helper at base of ladder
+	local climbPromptPart = Instance.new("Part")
+	climbPromptPart.Name = "SlideClimbPromptPart"
+	climbPromptPart.Size = Vector3.new(3.5, 3.0, 3.5)
+	climbPromptPart.CFrame = CFrame.new(-371.0, 4.0, -95.0)
+	climbPromptPart.Transparency = 1
+	climbPromptPart.Anchored = true
+	climbPromptPart.CanCollide = false
+	climbPromptPart.Parent = slide
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "StraightSlidePrompt"
-	prompt.ActionText = "Meluncur! 🛝"
-	prompt.ObjectText = "Perosotan Danau Suwa"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = topPart
+	local climbPrompt = Instance.new("ProximityPrompt")
+	climbPrompt.Name = "ClimbPrompt"
+	climbPrompt.ActionText = "Naik ke Atas 🪜"
+	climbPrompt.ObjectText = "Tangga Perosotan"
+	climbPrompt.HoldDuration = 0
+	climbPrompt.MaxActivationDistance = 9
+	climbPrompt.RequiresLineOfSight = false
+	climbPrompt.Parent = climbPromptPart
 
-	prompt.Triggered:Connect(function(player)
+	climbPrompt.Triggered:Connect(function(player)
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if hrp then
+			hrp.CFrame = CFrame.new(-373.5, 14.8, -95.0) * CFrame.Angles(0, math.rad(-90), 0)
+		end
+	end)
+
+	-- B. Slide trigger at top platform
+	local slideTriggerPart = Instance.new("Part")
+	slideTriggerPart.Name = "SlideTriggerPart"
+	slideTriggerPart.Size = Vector3.new(3.5, 3.5, 3.5)
+	slideTriggerPart.CFrame = CFrame.new(-374.0, 14.5, -95.0)
+	slideTriggerPart.Transparency = 1
+	slideTriggerPart.Anchored = true
+	slideTriggerPart.CanCollide = false
+	slideTriggerPart.CanTouch = true
+	slideTriggerPart.Parent = slide
+
+	local slidePrompt = Instance.new("ProximityPrompt")
+	slidePrompt.Name = "SlidePrompt"
+	slidePrompt.ActionText = "Meluncur! 🛝"
+	slidePrompt.ObjectText = "Perosotan Danau Suwa"
+	slidePrompt.HoldDuration = 0
+	slidePrompt.MaxActivationDistance = 9
+	slidePrompt.RequiresLineOfSight = false
+	slidePrompt.Parent = slideTriggerPart
+
+	local function doSlide(player: Player)
 		if slideBusy[player] then return end
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if not (hum and hrp) then return end
+		if not (hum and hrp and hum.Health > 0) then return end
 
 		slideBusy[player] = true
-		hum.PlatformStand = true
+		hum.Sit = true
 		hrp.Anchored = true
 
-		local cf, sz = slide:GetBoundingBox()
-		local startPos = cf.Position + Vector3.new(0, sz.Y / 2 - 2, 6)
-		local midPos = cf.Position + Vector3.new(0, 0, 0)
-		local endPos = cf.Position + Vector3.new(0, -sz.Y / 2 + 3, -6)
+		-- Move smoothly down along the slide chute (-X direction)
+		local pStart = Vector3.new(-375.0, 14.0, -95.0)
+		local pMid = Vector3.new(-382.0, 8.5, -95.0)
+		local pEnd = Vector3.new(-389.0, 4.0, -95.0)
+		local pGrass = Vector3.new(-392.0, 3.2, -95.0)
 
-		hrp.CFrame = CFrame.new(startPos) * CFrame.Angles(math.rad(-25), 0, 0)
+		hrp.CFrame = CFrame.new(pStart) * CFrame.Angles(0, math.rad(-90), 0)
 
-		task.spawn(function()
-			local tw1 = TweenService:Create(hrp, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				CFrame = CFrame.new(midPos) * CFrame.Angles(math.rad(-20), 0, 0)
-			})
-			tw1:Play()
-			tw1.Completed:Wait()
+		local tw1 = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			CFrame = CFrame.new(pMid) * CFrame.Angles(0, math.rad(-90), 0)
+		})
+		tw1:Play()
+		tw1.Completed:Wait()
 
-			local tw2 = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				CFrame = CFrame.new(endPos) * CFrame.Angles(0, 0, 0)
-			})
-			tw2:Play()
-			tw2.Completed:Wait()
+		local tw2 = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Linear), {
+			CFrame = CFrame.new(pEnd) * CFrame.Angles(0, math.rad(-90), 0)
+		})
+		tw2:Play()
+		tw2.Completed:Wait()
 
-			if hrp.Parent then
-				hrp.Anchored = false
-				hum.PlatformStand = false
-				hrp.AssemblyLinearVelocity = Vector3.new(0, 5, -18)
-			end
-			slideBusy[player] = nil
-		end)
+		local tw3 = TweenService:Create(hrp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(pGrass) * CFrame.Angles(0, math.rad(-90), 0)
+		})
+		tw3:Play()
+		tw3.Completed:Wait()
+
+		if hrp.Parent then
+			hrp.Anchored = false
+			hum.Sit = false
+			hrp.AssemblyLinearVelocity = Vector3.new(-16, 4, 0)
+		end
+		slideBusy[player] = nil
+	end
+
+	slidePrompt.Triggered:Connect(doSlide)
+	slideTriggerPart.Touched:Connect(function(hit)
+		local char = hit:FindFirstAncestorOfClass("Model")
+		local p = char and Players:GetPlayerFromCharacter(char)
+		if p then doSlide(p) end
 	end)
 end
 
