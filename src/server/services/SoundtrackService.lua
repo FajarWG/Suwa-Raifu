@@ -6,36 +6,31 @@ local Players = game:GetService("Players")
 
 local SoundtrackService = {}
 
--- Curated Peaceful Japanese Anime Piano & Orchestral Playlist (Kimi no Na wa / Makoto Shinkai Vibe)
+-- Main Track: Sparkle - Your Name (Kimi no Na wa) Piano Version & Shinkai Suite
 local PLAYLIST = {
 	{
 		id = "rbxassetid://9044561897",
-		title = "When Stars Collide (Kimi no Na wa Vibe)",
-		artist = "APM / Radwimps Style",
-		volume = 0.28,
-	},
-	{
-		id = "rbxassetid://9044748817",
-		title = "Dignity & Memories of Suwa",
-		artist = "Lake Suwa Piano Suite",
-		volume = 0.26,
+		title = "Sparkle (Piano Ver.) - Kimi no Na wa OST",
+		artist = "RADWIMPS / Your Name",
+		volume = 0.32,
 	},
 	{
 		id = "rbxassetid://1836972679",
-		title = "Thoughtful Moments by the Lake",
-		artist = "Shinkai Piano Acoustic",
-		volume = 0.28,
+		title = "Katawaredoki / Memories of Lake Suwa",
+		artist = "Makoto Shinkai Piano Suite",
+		volume = 0.30,
 	},
 	{
-		id = "rbxassetid://9043254399",
-		title = "Majestic Lake Suwa Sunrise",
-		artist = "Panoramic Orchestral",
-		volume = 0.24,
+		id = "rbxassetid://9044748817",
+		title = "Nandemonaiya - Lake Breeze Piano",
+		artist = "Your Name Relaxing Piano",
+		volume = 0.28,
 	},
 }
 
 local currentTrackIndex = 1
 local activeSound: Sound? = nil
+local isMuted = false
 
 local function showMusicHUD(player: Player, trackTitle: string)
 	local pGui = player:FindFirstChild("PlayerGui")
@@ -46,77 +41,80 @@ local function showMusicHUD(player: Player, trackTitle: string)
 		local newSg = Instance.new("ScreenGui")
 		newSg.Name = "SuwaMusicHUD"
 		newSg.ResetOnSpawn = false
+		newSg.DisplayOrder = 10
 		newSg.Parent = pGui
 		sg = newSg
 
-		-- Mute/Unmute toggle button
+		-- Mute/Unmute HUD Button (Top Right)
 		local btn = Instance.new("TextButton")
 		btn.Name = "MuteToggleBtn"
 		btn.AnchorPoint = Vector2.new(1, 0)
-		btn.Position = UDim2.new(1, -16, 0, 16)
-		btn.Size = UDim2.new(0, 38, 0, 38)
-		btn.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
-		btn.BackgroundTransparency = 0.25
+		btn.Position = UDim2.new(1, -20, 0, 20)
+		btn.Size = UDim2.new(0, 44, 0, 44)
+		btn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+		btn.BackgroundTransparency = 0.2
 		btn.Font = Enum.Font.GothamBold
 		btn.Text = "🔊"
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn.TextSize = 18
+		btn.TextSize = 22
 		btn.Parent = sg
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-		local stroke = Instance.new("UIStroke", btn)
-		stroke.Color = Color3.fromRGB(245, 165, 195)
-		stroke.Thickness = 1.2
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
 
-		local isMuted = false
+		local stroke = Instance.new("UIStroke", btn)
+		stroke.Color = Color3.fromRGB(255, 180, 210)
+		stroke.Thickness = 1.6
+
 		btn.MouseButton1Click:Connect(function()
 			isMuted = not isMuted
 			btn.Text = if isMuted then "🔇" else "🔊"
+			btn.BackgroundColor3 = if isMuted then Color3.fromRGB(55, 25, 30) else Color3.fromRGB(24, 28, 38)
 			if activeSound then
-				activeSound.Volume = if isMuted then 0 else (PLAYLIST[currentTrackIndex].volume or 0.25)
+				local targetVol = if isMuted then 0 else (PLAYLIST[currentTrackIndex].volume or 0.30)
+				TweenService:Create(activeSound, TweenInfo.new(0.35), { Volume = targetVol }):Play()
 			end
 		end)
 	end
 
-	-- Show small track notification banner
+	-- Track Title Banner Notification
 	local banner = Instance.new("Frame")
 	banner.Name = "TrackBanner"
 	banner.AnchorPoint = Vector2.new(1, 0)
-	banner.Position = UDim2.new(1, -62, 0, 16)
-	banner.Size = UDim2.new(0, 260, 0, 38)
-	banner.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
+	banner.Position = UDim2.new(1, -72, 0, 20)
+	banner.Size = UDim2.new(0, 310, 0, 44)
+	banner.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	banner.BackgroundTransparency = 1
 	banner.BorderSizePixel = 0
 	banner.Parent = sg
-	Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 10)
+	Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 12)
 
 	local stroke = Instance.new("UIStroke", banner)
-	stroke.Color = Color3.fromRGB(245, 165, 195)
-	stroke.Thickness = 1
+	stroke.Color = Color3.fromRGB(255, 180, 210)
+	stroke.Thickness = 1.2
 	stroke.Transparency = 1
 
 	local label = Instance.new("TextLabel", banner)
-	label.Position = UDim2.new(0, 12, 0, 0)
-	label.Size = UDim2.new(1, -24, 1, 0)
+	label.Position = UDim2.new(0, 14, 0, 0)
+	label.Size = UDim2.new(1, -28, 1, 0)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.GothamMedium
-	label.Text = string.format("🎵 %s", trackTitle)
-	label.TextColor3 = Color3.fromRGB(245, 220, 235)
-	label.TextSize = 12
+	label.Text = string.format("🎹 %s", trackTitle)
+	label.TextColor3 = Color3.fromRGB(255, 230, 245)
+	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextTruncate = Enum.TextTruncate.AtEnd
 	label.TextTransparency = 1
 
-	local tIn = TweenInfo.new(0.4)
+	local tIn = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	TweenService:Create(banner, tIn, { BackgroundTransparency = 0.2 }):Play()
 	TweenService:Create(stroke, tIn, { Transparency = 0.3 }):Play()
 	TweenService:Create(label, tIn, { TextTransparency = 0 }):Play()
 
-	task.delay(6.0, function()
-		local tOut = TweenInfo.new(0.5)
+	task.delay(7.0, function()
+		local tOut = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		TweenService:Create(banner, tOut, { BackgroundTransparency = 1 }):Play()
 		TweenService:Create(stroke, tOut, { Transparency = 1 }):Play()
 		TweenService:Create(label, tOut, { TextTransparency = 1 }):Play()
-		task.delay(0.6, function() if banner.Parent then banner:Destroy() end end)
+		task.delay(0.7, function() if banner.Parent then banner:Destroy() end end)
 	end)
 end
 
@@ -140,12 +138,23 @@ local function playTrack(index: number)
 	sound:Play()
 	activeSound = sound
 
-	local fadeIn = TweenService:Create(sound, TweenInfo.new(2.5), { Volume = track.volume })
+	local targetVol = if isMuted then 0 else track.volume
+	local fadeIn = TweenService:Create(sound, TweenInfo.new(2.5), { Volume = targetVol })
 	fadeIn:Play()
 
 	for _, p in ipairs(Players:GetPlayers()) do
 		showMusicHUD(p, track.title)
 	end
+end
+
+function SoundtrackService.setCustomAudioId(audioId: string, trackTitle: string?)
+	table.insert(PLAYLIST, 1, {
+		id = if audioId:find("rbxassetid://") then audioId else ("rbxassetid://" .. audioId),
+		title = trackTitle or "Sparkle - Your Name (Custom Upload)",
+		artist = "RADWIMPS",
+		volume = 0.35,
+	})
+	playTrack(1)
 end
 
 function SoundtrackService.init()
