@@ -92,7 +92,7 @@ local function buildLakesideAmusementPlayground(root: Model)
 	makePart("Part", "ArchBeamMid", Vector3.new(18, 1.0, 1.0), CFrame.new(archX, baseY + 12.5, archZ), Color3.fromRGB(185, 45, 35), Enum.Material.Wood, playground)
 
 	-- -------------------------------------------------------------------------
-	-- C. BIANGLALA (FERRIS WHEEL - Shifted for spacious breathing room)
+	-- C. BIANGLALA (FERRIS WHEEL)
 	-- -------------------------------------------------------------------------
 	local fwTemplate = csa and csa:FindFirstChild("CreatorStoreFerrisWheel")
 	if fwTemplate then
@@ -167,11 +167,11 @@ local function buildLakesideAmusementPlayground(root: Model)
 	end
 
 	-- -------------------------------------------------------------------------
-	-- F. AYUNAN ESTETIK TEMPAT PACARAN + POHON SAKURA MEKAR DI BELAKANG
+	-- F. AYUNAN ESTETIK TEMPAT PACARAN + POHON SAKURA (ROMANTIC SAKURA COUPLE SWING)
 	-- -------------------------------------------------------------------------
 	local coupleSwingPos = Vector3.new(-270, baseY, -135)
 
-	-- Sakura tree placed BEHIND the couple swing (Z = -105, 30 studs behind)
+	-- Sakura tree placed behind the romantic swing towards the lake backdrop (Z = -156)
 	local treeTemplate = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
 	if treeTemplate then
 		local tree = treeTemplate:Clone()
@@ -181,16 +181,13 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = tree:GetBoundingBox()
-		-- Placed at Z = -105 so trunk is strictly behind the swing bench and canopy spreads overhead
-		tree:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz.Y / 2, -105) * CFrame.Angles(0, math.rad(180), 0))
+		tree:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz.Y / 2, -156))
 	end
 
-	-- Romantic garden cobblestone pad
 	makePart("Part", "RomanticDeck", Vector3.new(16, 0.25, 14),
 		CFrame.new(coupleSwingPos.X, baseY + 0.12, coupleSwingPos.Z),
 		Color3.fromRGB(185, 180, 172), Enum.Material.Cobblestone, playground)
 
-	-- Romantic 2-Seater Wooden Swing Chair (CLEAN - NO OVERLAPPING VISIBLE BLOCKS)
 	local coupleSwingTemplate = csa and csa:FindFirstChild("CreatorStoreRomanticSwing")
 	if coupleSwingTemplate then
 		local cs = coupleSwingTemplate:Clone()
@@ -205,24 +202,17 @@ local function buildLakesideAmusementPlayground(root: Model)
 		local _, sz2 = cs:GetBoundingBox()
 		cs:PivotTo(CFrame.new(coupleSwingPos.X, baseY + sz2.Y / 2, coupleSwingPos.Z) * CFrame.Angles(0, math.rad(0), 0))
 
-		-- Invisible helper seats perfectly matched to left and right side of swing bench
 		local seatL = Instance.new("Seat")
 		seatL.Name = "CoupleSeat_L"
 		seatL.Size = Vector3.new(1.8, 0.3, 1.6)
 		seatL.CFrame = CFrame.new(coupleSwingPos.X - 1.3, baseY + 2.0, coupleSwingPos.Z)
-		seatL.Transparency = 1
-		seatL.CanCollide = false
-		seatL.Anchored = true
-		seatL.Parent = cs
+		seatL.Transparency = 1 ; seatL.CanCollide = false ; seatL.Anchored = true ; seatL.Parent = cs
 
 		local seatR = Instance.new("Seat")
 		seatR.Name = "CoupleSeat_R"
 		seatR.Size = Vector3.new(1.8, 0.3, 1.6)
 		seatR.CFrame = CFrame.new(coupleSwingPos.X + 1.3, baseY + 2.0, coupleSwingPos.Z)
-		seatR.Transparency = 1
-		seatR.CanCollide = false
-		seatR.Anchored = true
-		seatR.Parent = cs
+		seatR.Transparency = 1 ; seatR.CanCollide = false ; seatR.Anchored = true ; seatR.Parent = cs
 	end
 
 	-- -------------------------------------------------------------------------
@@ -251,16 +241,12 @@ local function buildLakesideAmusementPlayground(root: Model)
 			pad.Name = "TrampolineBouncePad"
 			pad.Size = Vector3.new(17.0, 2.5, 17.0)
 			pad.CFrame = CFrame.new(pos.X, baseY + sz2.Y + 0.8, pos.Z)
-			pad.Transparency = 1
-			pad.CanCollide = false
-			pad.CanTouch = true
-			pad.Anchored = true
-			pad.Parent = tram
+			pad.Transparency = 1 ; pad.CanCollide = false ; pad.CanTouch = true ; pad.Anchored = true ; pad.Parent = tram
 		end
 	end
 
 	-- -------------------------------------------------------------------------
-	-- H. TANGGA MONYET (MONKEY BARS)
+	-- H. TANGGA MONYET MERAH (MONKEY BARS - SHIFTED TO THE LEFT)
 	-- -------------------------------------------------------------------------
 	local mbTemplate = csa and csa:FindFirstChild("CreatorStoreMonkeyBars")
 	if mbTemplate then
@@ -271,15 +257,16 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = mb:GetBoundingBox()
-		mb:PivotTo(CFrame.new(-355, baseY + sz.Y / 2, -135))
+		-- Shifted to X = -375 (well to the left, plenty of clear space)
+		mb:PivotTo(CFrame.new(-375, baseY + sz.Y / 2, -135))
 	end
 
 	-- -------------------------------------------------------------------------
-	-- I. SPOT FOTO ESTETIK: 5 KUDA PEGAS DENGAN POHON SAKURA MEKAR DI BELAKANG
+	-- I. SPOT FOTO ESTETIK: 5 KUDA PEGAS DENGAN POHON SAKURA MEKAR DI BELAKANGNYA
 	-- -------------------------------------------------------------------------
 	local sakuraSpot = Vector3.new(-345, baseY, -135)
 
-	-- Sakura tree placed BEHIND the 5 animals at Z = -105 (30 studs behind)
+	-- Aesthetic Sakura Tree standing directly behind the middle animal (X = -345, Z = -156)
 	local treeSpot = csa and (csa:FindFirstChild("JapaneseSakuraTreeTemplate") or csa:FindFirstChild("CreatorStoreSakuraTree"))
 	if treeSpot then
 		local tree = treeSpot:Clone()
@@ -289,11 +276,11 @@ local function buildLakesideAmusementPlayground(root: Model)
 			if d:IsA("BasePart") then d.Anchored = true end
 		end
 		local _, sz = tree:GetBoundingBox()
-		-- Placed at Z = -105 so trunk is strictly behind animals and canopy arches gracefully overhead
-		tree:PivotTo(CFrame.new(sakuraSpot.X, baseY + sz.Y / 2, -105) * CFrame.Angles(0, math.rad(180), 0))
+		-- Positioned at X = -345, Z = -156 (directly in the background behind the 5 animals framing the lake)
+		tree:PivotTo(CFrame.new(sakuraSpot.X, baseY + sz.Y / 2, -156))
 	end
 
-	makePart("Part", "PhotoSpotPad", Vector3.new(24, 0.25, 12),
+	makePart("Part", "PhotoSpotPad", Vector3.new(26, 0.25, 12),
 		CFrame.new(sakuraSpot.X, baseY + 0.12, sakuraSpot.Z),
 		Color3.fromRGB(180, 176, 168), Enum.Material.Cobblestone, playground)
 
