@@ -1,7 +1,7 @@
 --!strict
 
--- RemoteController: client-side wrapper untuk memanggil remote yang
--- diregistrasi di shared/remotes.lua.
+-- RemoteController: client-side wrapper for calling the remotes that
+-- are registered in shared/remotes.lua.
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 

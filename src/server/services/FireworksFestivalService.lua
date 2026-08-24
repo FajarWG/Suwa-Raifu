@@ -233,6 +233,8 @@ local BURST_STYLES: { [string]: BurstStyle } = {
 	-- Kamuro: opens, then the stars rain down and hang instead of snapping out.
 	-- Low drag + long life is what keeps the curtain in the air.
 	willow = { speedLow = 48, speedHigh = 58, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2, streak = 7.5 },
+	-- Opens slowly and holds its shape: the flower-in-bloom look.
+	bloom = { speedLow = 58, speedHigh = 66, lifeLow = 2.6, lifeHigh = 3.4, drag = 7, gravity = 6, sizeScale = 1.05, streak = 6 },
 	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7, streak = 3.2 },
 }
 
@@ -341,75 +343,16 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	Debris:AddItem(host, style.lifeHigh * 1.1 + 1.5)
 end
 
--- Parametric heart, drawn in a vertical plane so it reads from the shore.
-local function heartOffsets(count: number, radius: number): { Vector3 }
-	local offsets = table.create(count)
-	local scale = radius / 15
-	for index = 1, count do
-		local t = (index / count) * math.pi * 2
-		local sin = math.sin(t)
-		local x = 16 * sin * sin * sin
-		local y = 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)
-		offsets[index] = Vector3.new(x * scale, y * scale, randomRange(-1.5, 1.5))
-	end
-	return offsets
-end
-
--- Shaped shells need stars at exact points, so these are placed individually
--- and each carries a small spark emitter for the glow.
-local function emitShapedBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, shapeName: string)
-	local count = math.clamp(math.floor(class.particles / 2), 40, 140)
-	local offsets = heartOffsets(count, class.radius)
-
-	for _, offset in offsets do
-		local target = position + offset
-		local star = makeNeonPart(parent, 'Star', Vector3.one * (class.radius * 0.022), CFrame.new(position), color)
-		star.Shape = Enum.PartType.Ball
-
-		local emitter = Instance.new('ParticleEmitter')
-		emitter.Texture = SPARK_TEXTURE
-		emitter.LightEmission = 1
-		emitter.LightInfluence = 0
-		emitter.Brightness = 6
-		emitter.Color = ColorSequence.new(color)
-		emitter.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, class.radius * 0.03),
-			NumberSequenceKeypoint.new(1, 0),
-		})
-		emitter.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.15),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		emitter.Lifetime = NumberRange.new(0.4, 0.8)
-		emitter.Speed = NumberRange.new(0, 2)
-		emitter.SpreadAngle = Vector2.new(180, 180)
-		emitter.Rate = 30
-		emitter.Parent = star
-
-		-- Snap out to the shape, hold it, then fade.
-		TweenService:Create(star, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			CFrame = CFrame.new(target),
-		}):Play()
-		task.delay(1.5, function()
-			if star.Parent then
-				emitter.Enabled = false
-				TweenService:Create(star, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					CFrame = CFrame.new(target - Vector3.new(0, class.radius * 0.3, 0)),
-					Transparency = 1,
-				}):Play()
-			end
-		end)
-	end
-end
-
--- Weighted so the show is mostly the classic drooping shells Suwa is known for.
--- Heart is a rare novelty: seeing it every other shell kills the effect.
+-- All natural shell types. Geometric "shapes" made from individually placed
+-- stars were removed: they always rendered as drawn outlines rather than
+-- bursts, and no Japanese festival reference shows one.
 local SHAPES = {
-	{ name = 'willow', shaped = false, weight = 27 },
-	{ name = 'peony', shaped = false, weight = 23 },
-	{ name = 'chrysanthemum', shaped = false, weight = 22 },
-	{ name = 'scatter', shaped = false, weight = 16 },
-	{ name = 'heart', shaped = true, weight = 4 },
+	{ name = 'willow', weight = 22 },
+	{ name = 'peony', weight = 18 },
+	{ name = 'chrysanthemum', weight = 18 },
+	{ name = 'bloom', weight = 16 },
+	{ name = 'double', weight = 14 },
+	{ name = 'scatter', weight = 12 },
 }
 
 local SHAPE_WEIGHT_TOTAL = 0
@@ -452,13 +395,18 @@ local function burst(position: Vector3, color: Color3, class: ShellClass, shape:
 		Transparency = 1,
 	}):Play()
 
-	if shape.shaped then
-		emitShapedBurst(effect, position, color, class, shape.name)
-		Debris:AddItem(effect, 5)
+	if shape.name == 'double' then
+		-- Shin-iri: a tight coloured pistil inside a wide outer shell, the
+		-- most recognisable big-shell look at a Japanese festival.
+		emitParticleBurst(effect, position, color, class, 'peony')
+		local core = table.clone(class)
+		core.radius = class.radius * 0.42
+		core.particles = math.floor(class.particles * 0.45)
+		emitParticleBurst(effect, position, pickDistinct(color), core, 'bloom')
 	else
 		emitParticleBurst(effect, position, color, class, shape.name)
-		Debris:AddItem(effect, 7)
 	end
+	Debris:AddItem(effect, 9)
 end
 
 local function launchShell(launchFrom: Vector3, className: string?)
@@ -815,15 +763,21 @@ for _, pattern in PATTERNS do
 	PATTERN_WEIGHT_TOTAL += pattern.weight
 end
 
-local function pickPattern()
-	local roll = math.random() * PATTERN_WEIGHT_TOTAL
+-- The opening of a taikai is deliberately sparse; the sky only fills up later.
+-- `progress` is 0 at the first shell and 1 at the end of the show.
+local OPENING_SECONDS = 20
+
+local function pickPattern(progress: number)
+	-- Bias the roll toward the heavier patterns (which sit later in the list)
+	-- as the show goes on, instead of picking uniformly the whole way through.
+	local roll = math.random() ^ (1 - progress * 0.55) * PATTERN_WEIGHT_TOTAL
 	for _, pattern in PATTERNS do
 		roll -= pattern.weight
 		if roll <= 0 then
 			return pattern
 		end
 	end
-	return PATTERNS[1]
+	return PATTERNS[#PATTERNS]
 end
 
 --=============================================================================
@@ -971,12 +925,23 @@ local function attachConsole(base: BasePart)
 		running = true
 		prompt.Enabled = false
 		local skyBefore = fadeSkyToNight()
-		local finishAt = os.clock() + showDuration()
+		local duration = showDuration()
+		local startedAt = os.clock()
+		local finishAt = startedAt + duration
 		task.spawn(function()
 			while running and os.clock() < finishAt do
+				local elapsed = os.clock() - startedAt
 				local remaining = math.max(0, math.ceil(finishAt - os.clock()))
 				label.Text = `花火大会 • {formatRemaining(remaining)}`
-				task.wait(pickPattern().run(launchers))
+
+				if elapsed < OPENING_SECONDS then
+					-- Opening: single shells, unhurried, so the finale lands.
+					launchShell(pick(launchers), if math.random() < 0.25 then 'large' else 'small')
+					task.wait(randomRange(2.0, 3.2))
+				else
+					local progress = math.clamp((elapsed - OPENING_SECONDS) / math.max(1, duration - OPENING_SECONDS), 0, 1)
+					task.wait(pickPattern(progress).run(launchers))
+				end
 			end
 			running = false
 			restoreSky(skyBefore)

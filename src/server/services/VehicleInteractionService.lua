@@ -1,283 +1,324 @@
 --!strict
+
+-- Makes anything ridable actually ridable, and puts every seat behind an E
+-- prompt so nobody is snapped into a seat just by brushing against it.
+--
+-- A vehicle is any Model that is either tagged with the attribute `Vehicle`, or
+-- sits inside a folder named Bicycles / LakeCrafts anywhere in the Workspace.
+-- Creator Store props ship fully anchored, so they are welded into one
+-- assembly and unanchored here; otherwise they cannot move at all.
+
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+
 local VehicleInteractionService = {}
 
+local VEHICLE_FOLDERS = { Bicycles = true, LakeCrafts = true }
+local BOOST_ATTRIBUTE = 'SuwaBoost'
+
+local activeDrives: { [BasePart]: RBXScriptConnection } = {}
+
+local function isInsideVehicleFolder(instance: Instance): boolean
+	local node = instance.Parent
+	while node and node ~= workspace do
+		if node:IsA('Folder') and VEHICLE_FOLDERS[node.Name] then
+			return true
+		end
+		node = node.Parent
+	end
+	return false
+end
+
+--=============================================================================
+-- Seat prompts
+--=============================================================================
+
+-- Every seat starts disabled, so touching it does nothing. The prompt is the
+-- only way in, and the seat is re-disabled the moment the rider leaves.
+local function setupSeat(seat: Seat | VehicleSeat, objectText: string)
+	if seat:FindFirstChild('RidePrompt') or seat:FindFirstChild('SitPrompt') then
+		return
+	end
+
+	seat.Disabled = true
+	local isDriver = seat:IsA('VehicleSeat')
+
+	local prompt = Instance.new('ProximityPrompt')
+	prompt.Name = 'RidePrompt'
+	prompt.ActionText = if isDriver then 'Ride' else 'Sit'
+	prompt.ObjectText = objectText
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.RequiresLineOfSight = false
+	prompt.MaxActivationDistance = 9
+	prompt.Parent = seat
+
+	prompt.Triggered:Connect(function(player)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass('Humanoid')
+		if not humanoid or humanoid.SeatPart or seat.Occupant then
+			return
+		end
+		seat.Disabled = false
+		seat:Sit(humanoid)
+	end)
+
+	seat:GetPropertyChangedSignal('Occupant'):Connect(function()
+		prompt.Enabled = seat.Occupant == nil
+		if not seat.Occupant then
+			-- Re-arm so the seat cannot be entered by touch afterwards.
+			task.defer(function()
+				if not seat.Occupant then
+					seat.Disabled = true
+				end
+			end)
+		end
+	end)
+end
+
+--=============================================================================
+-- Driving
+--=============================================================================
+
+local function stopDriving(seat: VehicleSeat, rootPart: BasePart?)
+	local connection = activeDrives[seat]
+	if connection then
+		connection:Disconnect()
+		activeDrives[seat] = nil
+	end
+	seat.Throttle = 0
+	seat.Steer = 0
+	if not rootPart then
+		return
+	end
+	for _, name in { 'DriveAttachment', 'DriveLV', 'DriveAV' } do
+		local existing = rootPart:FindFirstChild(name)
+		if existing then
+			existing:Destroy()
+		end
+	end
+	rootPart.AssemblyLinearVelocity = Vector3.new(0, rootPart.AssemblyLinearVelocity.Y, 0)
+	rootPart.AssemblyAngularVelocity = Vector3.zero
+end
+
+local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: boolean)
+	local attachment = Instance.new('Attachment')
+	attachment.Name = 'DriveAttachment'
+	attachment.Parent = rootPart
+
+	local linear = Instance.new('LinearVelocity')
+	linear.Name = 'DriveLV'
+	linear.Attachment0 = attachment
+	linear.ForceLimitMode = Enum.ForceLimitMode.PerAxis
+	-- No force on Y: buoyancy holds boats up, gravity holds bikes down.
+	linear.MaxAxesForce = Vector3.new(500000, 0, 500000)
+	linear.RelativeTo = Enum.ActuatorRelativeTo.World
+	linear.VectorVelocity = Vector3.zero
+	linear.Parent = rootPart
+
+	local angular = Instance.new('AngularVelocity')
+	angular.Name = 'DriveAV'
+	angular.Attachment0 = attachment
+	angular.MaxTorque = 500000
+	angular.RelativeTo = Enum.ActuatorRelativeTo.World
+	angular.AngularVelocity = Vector3.zero
+	angular.Parent = rootPart
+
+	-- Boats glide and take a while to answer the helm; bikes respond sharply.
+	local baseSpeed = if onWater then 40 else 34
+	local turnSpeed = if onWater then 1.0 else 1.9
+	local responsiveness = if onWater then 0.03 else 0.12
+
+	activeDrives[seat] = RunService.Heartbeat:Connect(function()
+		local boost = if seat:GetAttribute(BOOST_ATTRIBUTE) then 1.7 else 1
+		local throttle = seat.ThrottleFloat
+		local steer = seat.SteerFloat
+
+		local target = seat.CFrame.LookVector * (throttle * baseSpeed * boost)
+		local lerp = if throttle == 0 then responsiveness * 0.5 else responsiveness
+		local current = linear.VectorVelocity
+		linear.VectorVelocity = Vector3.new(
+			current.X + (target.X - current.X) * lerp,
+			0,
+			current.Z + (target.Z - current.Z) * lerp
+		)
+
+		local currentRot = angular.AngularVelocity
+		local targetRotY = -steer * turnSpeed
+		angular.AngularVelocity = Vector3.new(0, currentRot.Y + (targetRotY - currentRot.Y) * 0.1, 0)
+	end)
+end
+
+--=============================================================================
+-- Rigging a Creator Store prop into a drivable assembly
+--=============================================================================
+
+local function rigVehicle(model: Model)
+	if model:GetAttribute('SuwaRigged') then
+		return
+	end
+
+	local rootPart = model.PrimaryPart or model:FindFirstChildWhichIsA('BasePart', true)
+	if not rootPart then
+		warn(`[Vehicle] No BasePart in {model:GetFullName()}`)
+		return
+	end
+
+	local boundingCFrame, size = model:GetBoundingBox()
+	-- Water craft float; anything sitting on land is treated as a land vehicle.
+	local onWater = boundingCFrame.Position.Y < 6
+
+	-- Creator Store props hold themselves together with Anchored rather than
+	-- welds, so weld everything to the root before unanchoring or the model
+	-- collapses into loose parts the moment it is freed.
+	for _, part in model:GetDescendants() do
+		if part:IsA('BasePart') and part ~= rootPart then
+			local weld = Instance.new('WeldConstraint')
+			weld.Part0 = rootPart
+			weld.Part1 = part
+			weld.Parent = rootPart
+			part.Anchored = false
+		end
+	end
+	rootPart.Anchored = false
+	rootPart.CustomPhysicalProperties = PhysicalProperties.new(0.15, 0.3, 0.5)
+
+	-- Keep it upright. A bike with no rider falls over instantly otherwise.
+	local stability = Instance.new('Attachment')
+	stability.Name = 'StabilityAttachment'
+	stability.WorldAxis = Vector3.yAxis
+	stability.Parent = rootPart
+
+	local align = Instance.new('AlignOrientation')
+	align.Name = 'StabilityOrientation'
+	align.Attachment0 = stability
+	align.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	align.AlignType = Enum.AlignType.PrimaryAxisParallel
+	align.PrimaryAxisOnly = true -- free to turn, locked against tipping
+	align.PrimaryAxis = Vector3.yAxis
+	align.RigidityEnabled = true
+	align.Parent = rootPart
+
+	local existingDriver: VehicleSeat? = nil
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA('VehicleSeat') then
+			existingDriver = descendant
+			break
+		end
+	end
+
+	if not existingDriver then
+		local seat = Instance.new('VehicleSeat')
+		seat.Name = 'SuwaDriveSeat'
+		seat.Size = Vector3.new(1.6, 0.2, 1.6)
+		seat.Transparency = 1
+		seat.CanCollide = false
+		seat.CFrame = CFrame.new(boundingCFrame.Position + Vector3.new(0, size.Y * 0.25, 0))
+			* boundingCFrame.Rotation
+		seat.Parent = model
+
+		local weld = Instance.new('WeldConstraint')
+		weld.Part0 = seat
+		weld.Part1 = rootPart
+		weld.Parent = seat
+		existingDriver = seat
+	end
+
+	model:SetAttribute('SuwaRigged', true)
+
+	local driver = existingDriver :: VehicleSeat
+	setupSeat(driver, model.Name)
+	driver:GetPropertyChangedSignal('Occupant'):Connect(function()
+		if driver.Occupant then
+			startDriving(driver, rootPart, onWater)
+		else
+			stopDriving(driver, rootPart)
+		end
+	end)
+end
+
+--=============================================================================
+
+local function collectVehicleModels(): { Model }
+	local found: { Model } = {}
+	local seen: { [Model]: boolean } = {}
+
+	local function consider(model: Model)
+		if not seen[model] then
+			seen[model] = true
+			table.insert(found, model)
+		end
+	end
+
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA('Model') then
+			if descendant:GetAttribute('Vehicle') then
+				consider(descendant)
+			end
+		elseif descendant:IsA('Folder') and VEHICLE_FOLDERS[descendant.Name] then
+			for _, child in descendant:GetChildren() do
+				if child:IsA('Model') then
+					-- Creator Store packs often nest the real vehicle one level
+					-- deeper inside a wrapper model.
+					local inner = nil
+					for _, grandchild in child:GetChildren() do
+						if grandchild:IsA('Model') then
+							inner = grandchild
+							break
+						end
+					end
+					consider(inner or child)
+				end
+			end
+		end
+	end
+	return found
+end
+
 function VehicleInteractionService.init()
-    local RunService = game:GetService("RunService")
-    local activeDrives = {}
+	local vehicles = collectVehicleModels()
+	for _, model in vehicles do
+		rigVehicle(model)
+	end
 
-    local function setupSeat(seat: Seat | VehicleSeat)
-        seat.Disabled = true
+	-- Every remaining seat in the world (benches, ferris wheel, merry-go-round,
+	-- passenger seats) also goes behind a prompt.
+	local plainSeats = 0
+	for _, descendant in workspace:GetDescendants() do
+		if (descendant:IsA('Seat') or descendant:IsA('VehicleSeat')) and not descendant:FindFirstChild('RidePrompt') then
+			local owner = descendant:FindFirstAncestorWhichIsA('Model')
+			setupSeat(descendant, if owner then owner.Name else 'Seat')
+			plainSeats += 1
+		end
+	end
 
-        local prompt = Instance.new("ProximityPrompt")
-        prompt.ActionText = seat:IsA("VehicleSeat") and "Drive" or "Sit"
-        prompt.ObjectText = "Vehicle"
-        prompt.KeyboardKeyCode = Enum.KeyCode.E
-        prompt.RequiresLineOfSight = false
-        prompt.MaxActivationDistance = 8
-        prompt.Parent = seat
+	workspace.DescendantAdded:Connect(function(descendant)
+		if descendant:IsA('Seat') or descendant:IsA('VehicleSeat') then
+			task.defer(function()
+				if descendant.Parent and not descendant:FindFirstChild('RidePrompt') then
+					local owner = descendant:FindFirstAncestorWhichIsA('Model')
+					setupSeat(descendant, if owner then owner.Name else 'Seat')
+				end
+			end)
+		elseif descendant:IsA('Model') and isInsideVehicleFolder(descendant) then
+			task.delay(0.5, function()
+				if descendant.Parent then
+					rigVehicle(descendant)
+				end
+			end)
+		end
+	end)
 
-        prompt.Triggered:Connect(function(player)
-            local character = player.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    seat.Disabled = false
-                    seat:Sit(humanoid)
-                end
-            end
-        end)
+	Players.PlayerRemoving:Connect(function()
+		for seat, connection in activeDrives do
+			if not seat.Occupant then
+				connection:Disconnect()
+				activeDrives[seat] = nil
+			end
+		end
+	end)
 
-        seat:GetPropertyChangedSignal("Occupant"):Connect(function()
-            if seat.Occupant then
-                prompt.Enabled = false
-                
-                -- Start driving loop if it's a VehicleSeat
-                if seat:IsA("VehicleSeat") then
-                    local rootPart = seat.Parent and (seat.Parent.PrimaryPart or seat.Parent:FindFirstChildWhichIsA("BasePart"))
-                    if rootPart then
-                        -- Create Physics Constraints for butter-smooth client network replication
-                        local attachment = Instance.new("Attachment")
-                        attachment.Name = "DriveAttachment"
-                        attachment.Parent = rootPart
-                        
-                        local lv = Instance.new("LinearVelocity")
-                        lv.Name = "DriveLV"
-                        lv.Attachment0 = attachment
-                        lv.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-                        -- Massive force on X/Z to push the heavy boat, 0 on Y to let buoyancy work!
-                        lv.MaxAxesForce = Vector3.new(500000, 0, 500000)
-                        lv.RelativeTo = Enum.ActuatorRelativeTo.World
-                        lv.VectorVelocity = Vector3.zero
-                        lv.Parent = rootPart
-                        
-                        local av = Instance.new("AngularVelocity")
-                        av.Name = "DriveAV"
-                        av.Attachment0 = attachment
-                        av.MaxTorque = 500000
-                        av.RelativeTo = Enum.ActuatorRelativeTo.World
-                        av.AngularVelocity = Vector3.zero
-                        av.Parent = rootPart
-
-                        activeDrives[seat] = RunService.Heartbeat:Connect(function()
-                            local moveSpeed = 40
-                            local turnSpeed = 1.0
-                            
-                            local steer = seat.SteerFloat
-                            local throttle = seat.ThrottleFloat
-                            
-                            local forwardDir = seat.CFrame.LookVector
-                            local targetVel = forwardDir * (throttle * moveSpeed)
-                            
-                            local moveLerp = (throttle == 0) and 0.015 or 0.03
-                            local currentVel = lv.VectorVelocity
-                            local newX = currentVel.X + (targetVel.X - currentVel.X) * moveLerp
-                            local newZ = currentVel.Z + (targetVel.Z - currentVel.Z) * moveLerp
-                            
-                            local currentRot = av.AngularVelocity
-                            local targetRotY = -steer * turnSpeed
-                            local newRotY = currentRot.Y + (targetRotY - currentRot.Y) * 0.05
-                            
-                            lv.VectorVelocity = Vector3.new(newX, 0, newZ)
-                            av.AngularVelocity = Vector3.new(0, newRotY, 0)
-                        end)
-                    end
-                end
-            else
-                prompt.Enabled = true
-                seat.Disabled = true
-                
-                if seat:IsA("VehicleSeat") then
-                    seat.Throttle = 0
-                    seat.Steer = 0
-                    
-                    if activeDrives[seat] then
-                        activeDrives[seat]:Disconnect()
-                        activeDrives[seat] = nil
-                    end
-                    
-                    local rootPart = seat.Parent and (seat.Parent.PrimaryPart or seat.Parent:FindFirstChildWhichIsA("BasePart"))
-                    if rootPart then
-                        local att = rootPart:FindFirstChild("DriveAttachment")
-                        if att then att:Destroy() end
-                        local lv = rootPart:FindFirstChild("DriveLV")
-                        if lv then lv:Destroy() end
-                        local av = rootPart:FindFirstChild("DriveAV")
-                        if av then av:Destroy() end
-
-                        rootPart.AssemblyLinearVelocity = Vector3.new(0, rootPart.AssemblyLinearVelocity.Y, 0)
-                        rootPart.AssemblyAngularVelocity = Vector3.zero
-                    end
-                end
-            end
-        end)
-    end
-
-    local function ensureSeatExists(model: Model)
-        local hasVehicleSeat = false
-        for _, child in ipairs(model:GetDescendants()) do
-            if child:IsA("VehicleSeat") then
-                hasVehicleSeat = true
-                break
-            end
-        end
-
-        if not hasVehicleSeat then
-            local rootPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
-            if not rootPart then
-                warn("VehicleInteractionService: No BasePart in " .. model.Name)
-                return
-            end
-
-            local cf, size = model:GetBoundingBox()
-            local centerHeight = cf.Position.Y
-            
-            -- Creator Store static props are often held together by Anchored=true instead of welds.
-            -- We must weld everything to the rootPart before unanchoring, or the boat will collapse!
-            for _, part in ipairs(model:GetDescendants()) do
-                if part:IsA("BasePart") and part ~= rootPart then
-                    local weld = Instance.new("WeldConstraint")
-                    weld.Part0 = rootPart
-                    weld.Part1 = part
-                    weld.Parent = rootPart
-                    part.Anchored = false
-                end
-            end
-            
-            -- ULTIMATE STABILITY SYSTEM (Kunci Keseimbangan Absolut)
-            -- This completely bypasses Roblox's glitchy water buoyancy!
-            local floatAtt = Instance.new("Attachment")
-            floatAtt.Name = "StabilityAttachment"
-            floatAtt.Parent = rootPart
-            -- VERY IMPORTANT: Set WorldAxis to World Up so the boat doesn't tilt to the sky!
-            floatAtt.WorldAxis = Vector3.new(0, 1, 0)
-            
-            -- 1. LOCK TILT: Prevents the boat from ever wobbling or capsizing
-            local alignOri = Instance.new("AlignOrientation")
-            alignOri.Name = "StabilityOrientation"
-            alignOri.Attachment0 = floatAtt
-            alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
-            alignOri.AlignType = Enum.AlignType.PrimaryAxisParallel
-            alignOri.PrimaryAxisOnly = true -- Allows turning (yaw), but locks pitch and roll
-            alignOri.PrimaryAxis = Vector3.new(0, 1, 0)
-            alignOri.RigidityEnabled = true -- 100% rigid, feels like concrete!
-            alignOri.Parent = rootPart
-            
-            rootPart.Anchored = false
-            rootPart.CustomPhysicalProperties = PhysicalProperties.new(0.15, 0.3, 0.5)
-
-            -- Creator Store boats are often built facing backwards relative to their bounding box.
-            local forwardRotation = cf.Rotation * CFrame.Angles(0, math.pi, 0)
-
-            local function spawnSeat(isDriver, visualPart, rotation)
-                local seat = Instance.new(isDriver and "VehicleSeat" or "Seat")
-                seat.Name = isDriver and "AutoGeneratedVehicleSeat" or "AutoGeneratedPassengerSeat"
-                seat.Size = Vector3.new(1, 0.2, 1)
-                seat.Transparency = 1
-                seat.CanCollide = false
-                
-                if visualPart then
-                    seat.CFrame = CFrame.new(visualPart.Position) * rotation
-                else
-                    -- For boats with no seats (like WoodBoat), sit higher up from the floor
-                    seat.CFrame = CFrame.new(cf.Position + Vector3.new(0, -size.Y/2 + 1.5, 0)) * rotation
-                end
-                
-                seat.Parent = model
-                local weld = Instance.new("WeldConstraint")
-                weld.Part0 = seat
-                weld.Part1 = rootPart
-                weld.Parent = seat
-                
-                -- Initialize prompt rules immediately for this newly created seat
-                setupSeat(seat)
-            end
-
-            local foundHelm = false
-            for _, part in ipairs(model:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    local name = string.lower(part.Name)
-                    -- Driver seat
-                    if name == "helm_chair" or (string.match(name, "chair") and not foundHelm) then
-                        spawnSeat(true, part, forwardRotation)
-                        foundHelm = true
-                    -- Passenger couches
-                    elseif string.match(name, "couch_vinyl") or string.match(name, "passenger") or string.match(name, "bench") then
-                        -- Intelligent seating for complex couches (like Pontoon L-couches)
-                        local isPort = string.match(name, "port")
-                        local isStbd = string.match(name, "stbd")
-                        
-                        local upVector = forwardRotation.UpVector
-                        local forwardVector = forwardRotation.LookVector
-                        
-                        if isPort or isStbd then
-                            -- Port (Left) couches face Physical Right (-90 deg)
-                            -- Starboard (Right) couches face Physical Left (+90 deg)
-                            local faceRot = forwardRotation * CFrame.Angles(0, isPort and -math.pi/2 or math.pi/2, 0)
-                            
-                            -- Default spacing for straight couches
-                            local offsets = {1.2, -1.2}
-                            
-                            -- Specific override for the L-shaped back couch near the table
-                            -- The center of this mesh is at the back corner, so we must push both seats FORWARD
-                            -- along the long cushion to prevent clipping into the short backrest!
-                            if name == "portstern_couch_vinyl_main" then
-                                offsets = {0.8, 2.2}
-                            -- Specific override for the smaller back-right couch
-                            elseif name == "stbdstern_couch_vinyl" then
-                                offsets = {0.8, -0.8}
-                            end
-                            
-                            spawnSeat(false, {Position = part.Position + (forwardVector * offsets[1]) + (upVector * 0.25)}, faceRot)
-                            spawnSeat(false, {Position = part.Position + (forwardVector * offsets[2]) + (upVector * 0.25)}, faceRot)
-                        else
-                            -- Generic fallback for any other simple bench
-                            spawnSeat(false, {Position = part.Position + (upVector * 0.25)}, forwardRotation)
-                        end
-                    end
-                end
-            end
-
-            if not foundHelm then
-                spawnSeat(true, nil, forwardRotation)
-            end
-        end
-    end
-
-    local function scanForSeats(parent: Instance)
-        for _, child in ipairs(parent:GetChildren()) do
-            if child:IsA("Model") then
-                ensureSeatExists(child)
-            end
-        end
-
-        for _, child in ipairs(parent:GetDescendants()) do
-            if child:IsA("VehicleSeat") or child:IsA("Seat") then
-                setupSeat(child)
-            end
-        end
-        -- Listen for dynamically added vehicles in the future
-        parent.ChildAdded:Connect(function(child)
-            if child:IsA("Model") then
-                -- Yield slightly to allow vehicle parts to load
-                task.delay(0.5, function()
-                    ensureSeatExists(child)
-                    for _, desc in ipairs(child:GetDescendants()) do
-                        if desc:IsA("VehicleSeat") or desc:IsA("Seat") then
-                            setupSeat(desc)
-                        end
-                    end
-                end)
-            end
-        end)
-    end
-
-    local bicycles = workspace:WaitForChild("Bicycles")
-    local lakeCrafts = workspace:WaitForChild("LakeCrafts")
-
-    scanForSeats(bicycles)
-    scanForSeats(lakeCrafts)
-
-    print("[VehicleInteractionService] Initialized custom rules for vehicles.")
+	print(`[Vehicle] Rigged {#vehicles} vehicles, prompted {plainSeats} further seats.`)
 end
 
 return VehicleInteractionService

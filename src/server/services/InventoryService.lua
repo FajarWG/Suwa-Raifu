@@ -1,7 +1,7 @@
 --!strict
 
--- InventoryService: item, clothing, furniture, fish.
--- Operasi di server; client tidak mengubah langsung.
+-- InventoryService: items, clothing, furniture, fish.
+-- Server-side only; the client never mutates inventory directly.
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
@@ -10,7 +10,7 @@ local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):Wait
 
 local InventoryService = {}
 
--- Tambah item ke inventori (stackable di-merge).
+-- Add an item (stackables merge).
 function InventoryService.addItem(playerId: number, itemId: string, count: number): ProfileTypes.Result<number>
 	if count <= 0 then
 		return { ok = false, error = 'Invalid count' }
@@ -23,7 +23,7 @@ function InventoryService.addItem(playerId: number, itemId: string, count: numbe
 	return { ok = true, data = profile.inventory.items[itemId] }
 end
 
--- Ambil item (cek jumlah cukup).
+-- Remove an item, checking the player has enough.
 function InventoryService.removeItem(playerId: number, itemId: string, count: number): ProfileTypes.Result<number>
 	if count <= 0 then
 		return { ok = false, error = 'Invalid count' }
@@ -65,7 +65,7 @@ function InventoryService.getSnapshot(playerId: number): any
 	}
 end
 
--- Cek jumlah item yang dimiliki.
+-- How many of an item the player holds.
 function InventoryService.countItem(playerId: number, itemId: string): number
 	local profile = ProfileService.getProfile(playerId)
 	if not profile then
@@ -75,7 +75,7 @@ function InventoryService.countItem(playerId: number, itemId: string): number
 end
 
 function InventoryService.init()
-	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+	-- Remote hookups are registered by feature services.
 end
 
 return InventoryService

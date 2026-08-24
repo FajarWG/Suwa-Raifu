@@ -1,7 +1,6 @@
 --!strict
 
--- TimeService: clock game (server-authoritative), day/season/weather.
--- Skeleton: satu tick per detik, siarkan ke client via RemoteEvent.
+-- TimeService: server-authoritative game clock, plus day/season/weather.
 
 local timeInfo = {
 	dayNumber = 1,

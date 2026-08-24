@@ -1,7 +1,7 @@
 --!strict
 
--- Entry point server. Semua service di-init di sini.
--- RemoteRegistryService harus init paling awal (membuat folder remotes).
+-- Server entry point. Every service is initialised here.
+-- RemoteRegistryService must go first; the others register remotes on it.
 
 local Services = {}
 local servicesFolder = script.Parent:WaitForChild('services')
@@ -17,30 +17,23 @@ local function initService(module: ModuleScript)
 	end
 end
 
--- 1. Remote registry dulu (service lain register remote padanya).
+-- 1. Remote registry first.
 local remoteModule = servicesFolder:FindFirstChild('RemoteRegistryService')
 if remoteModule and remoteModule:IsA('ModuleScript') then
 	initService(remoteModule)
 end
 
--- 2. Service lain. World dressing (terrain, taman, jalan, perahu, fauna) sudah
--- tidak digenerate lewat kode -- semua itu dipasang manual di Studio lewat
--- Creator Store agar hasil Rojo sync tetap bersih.
-local bicycleModule = servicesFolder:FindFirstChild('BicycleService')
+-- 2. Everything else. World dressing (terrain, park, roads, boats, wildlife) is
+-- no longer generated in code; it is placed by hand in Studio from the Creator
+-- Store, so a Rojo sync never overwrites the build.
+--
+-- ParkInteractionService runs last: it creates Seat objects on bench props, and
+-- VehicleInteractionService must already be listening in order to prompt them.
 local interactionModule = servicesFolder:FindFirstChild('ParkInteractionService')
 for _, module in servicesFolder:GetChildren() do
-	if
-		module:IsA('ModuleScript')
-		and module ~= remoteModule
-		and module ~= bicycleModule
-		and module ~= interactionModule
-	then
+	if module:IsA('ModuleScript') and module ~= remoteModule and module ~= interactionModule then
 		initService(module)
 	end
-end
-
-if bicycleModule and bicycleModule:IsA('ModuleScript') then
-	initService(bicycleModule)
 end
 
 if interactionModule and interactionModule:IsA('ModuleScript') then

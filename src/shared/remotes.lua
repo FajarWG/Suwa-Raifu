@@ -1,14 +1,13 @@
 --!strict
 
--- Registry remote API. Satu sumber kebenaran nama RemoteEvent/RemoteFunction.
--- Server & client memakai nama yang sama.
+-- Remote registry: the single source of truth for RemoteEvent/RemoteFunction
+-- names. Server and client both read these.
 
 export type RemoteNames = {
 	workRequest: string,
 	fishCast: string,
 	fishReel: string,
 	shopBuy: string,
-	npcInteract: string,
 	bikeRequest: string,
 	getProfile: string,
 	getShopCatalog: string,
@@ -26,9 +25,7 @@ local Remotes: RemoteDefinitions = {
 		'FishCast',
 		'FishReel',
 		'ShopBuy',
-		'NPCInteract',
 		'BikeRequest',
-		'NPCOpenDialog',
 		'FishingState',
 		'InventoryUpdated',
 		'OpenShop',
@@ -40,12 +37,11 @@ local Remotes: RemoteDefinitions = {
 		'GetProfile',
 		'GetShopCatalog',
 		'GetTimeInfo',
-		'NPCGetDialog',
 		'GetInventory',
 	},
 }
 
--- Helper: cek apakah nama remote valid (cegah typo).
+-- Guards against typos in remote names.
 local function assertValid(name: string)
 	for _, existing in Remotes.events do
 		if existing == name then

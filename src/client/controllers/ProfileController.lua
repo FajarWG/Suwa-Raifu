@@ -1,13 +1,10 @@
 --!strict
 
--- ProfileController (client): mengambil profile dari server & menyimpan
--- locale lokal untuk LocalizationService.
+-- ProfileController (client): fetches the player profile from the server.
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
-local LocalizationService =
-	require(ReplicatedStorage.Shared:WaitForChild('services'):WaitForChild('LocalizationService'))
 local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):WaitForChild('ProfileTypes'))
 
 local profile: ProfileTypes.Profile?
@@ -19,15 +16,10 @@ function ProfileController.getProfile(): ProfileTypes.Profile?
 end
 
 function ProfileController.init()
-	-- Ambil profile dari server (RemoteFunction GetProfile)
 	task.spawn(function()
 		local result = RemoteController.invoke('GetProfile')
 		if type(result) == 'table' then
 			profile = result
-			local locale = LocalizationService.getLocaleForProfile(result)
-			-- Set locale untuk dialog controller
-			local DialogController = require(script.Parent:WaitForChild('DialogController'))
-			DialogController.setLocale(locale)
 		end
 	end)
 end

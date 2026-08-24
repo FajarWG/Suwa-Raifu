@@ -1,34 +1,29 @@
 --!strict
 
--- Makes park benches/seats genuinely interactive, whatever their source (Creator Store included).
+-- Turns bench props that are plain BaseParts (rather than real Seat objects)
+-- into something sittable. The prompt itself is added by
+-- VehicleInteractionService, which owns every seat in the world and picks these
+-- up through its DescendantAdded listener.
 
 local ParkInteractionService = {}
 
-local function addSitPrompt(seat: Seat, objectText: string)
-	local prompt = Instance.new('ProximityPrompt')
-	prompt.Name = 'SitPrompt'
-	prompt.ActionText = 'Duduk'
-	prompt.ObjectText = objectText
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 8
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
+local VEHICLE_FOLDERS = { Bicycles = true, LakeCrafts = true }
 
-	-- Hide prompt when occupied (as a fallback)
-	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
-		prompt.Enabled = (seat.Occupant == nil)
-	end)
-
-	prompt.Triggered:Connect(function(player)
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass('Humanoid')
-		if humanoid and humanoid.SeatPart == nil and not seat.Occupant then
-			seat:Sit(humanoid)
+local function isInsideVehicle(instance: Instance): boolean
+	local node = instance.Parent
+	while node and node ~= workspace do
+		if node:IsA('Folder') and VEHICLE_FOLDERS[node.Name] then
+			return true
 		end
-	end)
+		if node:IsA('Model') and node:GetAttribute('SuwaRigged') then
+			return true
+		end
+		node = node.Parent
+	end
+	return false
 end
 
-local function makeFunctionalSeat(visual: BasePart, objectText: string): Seat
+local function makeFunctionalSeat(visual: BasePart)
 	local seat = Instance.new('Seat')
 	seat.Name = `Functional_{visual.Name}`
 	seat.Size = Vector3.new(math.clamp(visual.Size.X, 1.5, 6), 0.5, math.clamp(visual.Size.Z, 1.4, 2.5))
@@ -39,37 +34,25 @@ local function makeFunctionalSeat(visual: BasePart, objectText: string): Seat
 	seat.CanTouch = false
 	seat.Parent = visual.Parent
 	seat:SetAttribute('VisualSeatPart', visual.Name)
-	addSitPrompt(seat, objectText)
-	return seat
-end
-
-local function configureBenches()
-	for _, descendant in workspace:GetDescendants() do
-		if descendant:IsA('Seat') then
-			-- Existing Seat objects (e.g. from Creator Store benches)
-			if not descendant:FindFirstAncestor("Bicycles")
-				and not descendant:FindFirstAncestor("LakeCrafts")
-				and not descendant:FindFirstChild("SitPrompt")
-				and not descendant:FindFirstChild("RidePrompt")
-			then
-				descendant.CanTouch = false
-				addSitPrompt(descendant, 'Bangku')
-			end
-		elseif
-			descendant:IsA('BasePart')
-			and not descendant:IsA('VehicleSeat')
-			and string.find(descendant.Name, 'Seat')
-			and not descendant:FindFirstAncestor("Bicycles")
-			and not descendant:FindFirstAncestor("LakeCrafts")
-			and not descendant.Parent:FindFirstChild(`Functional_{descendant.Name}`)
-		then
-			makeFunctionalSeat(descendant, 'Park seat')
-		end
-	end
 end
 
 function ParkInteractionService.init()
-	configureBenches()
+	local created = 0
+	for _, descendant in workspace:GetDescendants() do
+		if
+			descendant:IsA('BasePart')
+			and not descendant:IsA('Seat')
+			and not descendant:IsA('VehicleSeat')
+			and string.find(descendant.Name, 'Seat')
+			and not isInsideVehicle(descendant)
+			and descendant.Parent
+			and not descendant.Parent:FindFirstChild(`Functional_{descendant.Name}`)
+		then
+			makeFunctionalSeat(descendant)
+			created += 1
+		end
+	end
+	print(`[Park] Created {created} functional bench seats.`)
 end
 
 return ParkInteractionService

@@ -1,7 +1,6 @@
 --!strict
 
--- ProfileAPI (server): hookup remote GetProfile.
--- Tempat mendaftarkan remote yang melayani client.
+-- ProfileAPI (server): serves the GetProfile remote to the client.
 
 local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
 local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
@@ -16,7 +15,7 @@ local function pushHudState(player: Player)
 end
 
 function ProfileAPI.init()
-	-- Beri client profile (sanitized, tanpa data sensitif)
+	-- Hand the client its profile.
 	RemoteRegistry.registerFunction('GetProfile', function(player: Player)
 		return ProfileService.getProfile(player.UserId)
 	end)

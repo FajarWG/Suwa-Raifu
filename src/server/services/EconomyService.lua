@@ -1,7 +1,7 @@
 --!strict
 
--- EconomyService: transaksi yen (server-authoritative).
--- Semua perubahan yen lewat sini (anti-exploit).
+-- EconomyService: yen transactions, server-authoritative.
+-- Every yen change goes through here so the client cannot forge one.
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
@@ -10,7 +10,7 @@ local ProfileTypes = require(ReplicatedStorage.Shared:WaitForChild('types'):Wait
 
 local EconomyService = {}
 
--- Tambah yen ke profil. Return Result.
+-- Add yen. Returns a Result.
 function EconomyService.addYen(playerId: number, amount: number): ProfileTypes.Result<number>
 	if amount <= 0 then
 		return { ok = false, error = 'Invalid amount' }
@@ -23,7 +23,7 @@ function EconomyService.addYen(playerId: number, amount: number): ProfileTypes.R
 	return { ok = true, data = profile.economy.yen }
 end
 
--- Kurangi yen (validasi saldo cukup).
+-- Spend yen, validating the balance first.
 function EconomyService.spendYen(playerId: number, amount: number): ProfileTypes.Result<number>
 	if amount <= 0 then
 		return { ok = false, error = 'Invalid amount' }
@@ -40,7 +40,7 @@ function EconomyService.spendYen(playerId: number, amount: number): ProfileTypes
 end
 
 function EconomyService.init()
-	-- Remote hookups didaftarkan oleh fitur (lihat runner.server.lua).
+	-- Remote hookups are registered by feature services.
 end
 
 return EconomyService

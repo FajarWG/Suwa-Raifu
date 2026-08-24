@@ -1,15 +1,14 @@
 --!strict
 
--- Global konfigurasi game (single source of truth).
--- PRD: pemain/server, ekonomi, time system.
+-- Global game configuration (single source of truth).
 
 export type GameConfig = {
-	-- Server & gameplay
+	-- Server and gameplay
 	maxPlayersPerServer: number,
-	dailyLoopDurationMinutes: number, -- durasi 1 hari game (real menit)
+	dailyLoopDurationMinutes: number, -- length of one in-game day, in real minutes
 	dayPhases: { string },
 
-	-- Ekonomi
+	-- Economy
 	startingYen: number,
 	startingEnergy: number,
 	startingHunger: number,
@@ -25,7 +24,7 @@ export type GameConfig = {
 	profileVersion: number,
 	dataStoreRetries: number,
 
-	-- Bahasa
+	-- Language
 	availableLocales: { string },
 	defaultLocale: string,
 }
@@ -48,7 +47,7 @@ local Config: GameConfig = {
 	profileVersion = 1,
 	dataStoreRetries = 3,
 
-	-- Prototype map-first memakai English saja. Resource ja/id disimpan untuk phase localization nanti.
+	-- English only for now.
 	availableLocales = { 'en' },
 	defaultLocale = 'en',
 }

@@ -560,9 +560,9 @@ local function beginFishing(player: Player, spot: BasePart)
 	end)
 end
 
--- Titik mancing manual: BasePart mana pun dengan Attribute 'FishingSpot', atau
--- yang namanya diawali 'FishingSpot'. Dermaga Creator Store cukup ditandai satu
--- part kecil (boleh invisible) sebagai titik lempar kail.
+-- Manual fishing spots: any BasePart with the attribute 'FishingSpot', or one
+-- named 'FishingSpot...'. For a Creator Store pier, tag one small (optionally
+-- invisible) part as the casting point.
 local function configureFishingSpots()
 	local found = 0
 	for _, spot in workspace:GetDescendants() do
@@ -599,9 +599,9 @@ local function configureFishingSpots()
 	end
 end
 
--- Toko sekarang murni manual di Studio (model Creator Store). Tinggal beri
--- BasePart mana pun sebuah Attribute 'ShopId' (nilainya salah satu key di
--- FishingData.shops, mis. 'fishing_supply'), dan prompt beli otomatis terpasang.
+-- Shops are placed by hand in Studio. Give any BasePart an attribute 'ShopId'
+-- naming a key in FishingData.shops (e.g. 'fishing_supply') and the browse
+-- prompt is attached automatically.
 local function configureManualShops()
 	for _, descendant in workspace:GetDescendants() do
 		if descendant:IsA('BasePart') then

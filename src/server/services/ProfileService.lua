@@ -1,9 +1,9 @@
 --!strict
 
--- ProfileService: load/save profile dari DataStoreService.
--- - Session lock (Anti-Abuse) mencegah data tertimpa jika pemain reconnect cepat.
--- - Migrasi versi profile (profiles[version]).
--- - Retry terbatas pada load/save.
+-- ProfileService: loads and saves profiles through DataStoreService.
+-- - Session locking stops a fast reconnect from clobbering saved data.
+-- - Forward migration between profile versions.
+-- - Bounded retries on load and save.
 
 local Players = game:GetService('Players')
 local DataStoreService = game:GetService('DataStoreService')
@@ -60,7 +60,7 @@ local function defaultProfile(playerId: number): ProfileTypes.Profile
 	}
 end
 
--- Migrasi profile lama ke versi terbaru (forward chain).
+-- Migrate an older profile forward to the current version.
 local MIGRATIONS: { [number]: (profile: any) -> any } = {}
 
 local function migrate(profile: any): ProfileTypes.Profile
@@ -78,7 +78,7 @@ local function migrate(profile: any): ProfileTypes.Profile
 	return profile
 end
 
--- Retry helper: jalankan fn, retry sampai maxAttempts.
+-- Run fn, retrying up to maxAttempts times.
 local function withRetry(fn: () -> any, maxAttempts: number): (boolean, any)
 	local attempts = 0
 	while attempts < maxAttempts do
@@ -98,7 +98,7 @@ local function keyOf(playerId: number): string
 	return Config.profileKeyPrefix .. tostring(playerId)
 end
 
--- Ambil profile, session-lock via DataStore (Anti-Abuse).
+-- Load or create a profile.
 local function loadOrCreate(playerId: number): ProfileTypes.Profile?
 	if not store then
 		local fresh = defaultProfile(playerId)
@@ -127,7 +127,7 @@ local function loadOrCreate(playerId: number): ProfileTypes.Profile?
 		return migrated
 	end
 
-	-- Player baru
+	-- New player
 	local fresh = defaultProfile(playerId)
 	profiles[playerId] = fresh
 	return fresh
@@ -193,7 +193,7 @@ function ProfileService.init()
 	end
 
 	Players.PlayerRemoving:Connect(function(player)
-		-- Tunggu load selesai sebelum save (hindari save data kosong)
+		-- Wait for the load to finish before saving, or we persist an empty profile
 		task.spawn(function()
 			while loading[player.UserId] do
 				task.wait(0.1)
@@ -226,7 +226,7 @@ function ProfileService.setProfile(playerId: number, profile: ProfileTypes.Profi
 	profiles[playerId] = profile
 end
 
--- Export untuk unit test / tools
+-- Exported for unit tests and tooling
 ProfileService.defaultProfile = defaultProfile
 ProfileService.migrate = migrate
 

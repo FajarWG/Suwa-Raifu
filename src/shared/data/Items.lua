@@ -1,7 +1,7 @@
 --!strict
 
--- Data definitions statis (single source of truth untuk item).
--- Referensi tipe: shared/types/Definitions.lua (ItemDef).
+-- Static item definitions (single source of truth).
+-- Types: shared/types/Definitions.lua (ItemDef).
 
 local ITEMS = {
 	onigiri = {

@@ -1,12 +1,18 @@
 --!strict
 
--- MovementController: hold Shift to run.
+-- MovementController: hold Shift to run on desktop, or hold the on-screen
+-- Sprint button on touch devices. While seated in a vehicle the same control
+-- becomes a speed boost, since phones have no Shift key either way.
 
 local Players = game:GetService('Players')
 local UserInputService = game:GetService('UserInputService')
+local ProximityPromptService = game:GetService('ProximityPromptService')
 
 local WALK_SPEED = 16
 local RUN_SPEED = 32
+
+-- Read by VehicleInteractionService's drive loop as a throttle multiplier.
+local VEHICLE_BOOST_ATTRIBUTE = 'SuwaBoost'
 
 local player = Players.LocalPlayer
 local currentHumanoid: Humanoid? = nil
@@ -15,37 +21,116 @@ local sprinting = false
 local MovementController = {}
 
 local function applySpeed()
-	if not currentHumanoid then
+	local humanoid = currentHumanoid
+	if not humanoid then
 		return
 	end
-	currentHumanoid.WalkSpeed = if sprinting then RUN_SPEED else WALK_SPEED
+
+	local seat = humanoid.SeatPart
+	if seat then
+		-- Seated: the button drives the vehicle boost instead of WalkSpeed.
+		seat:SetAttribute(VEHICLE_BOOST_ATTRIBUTE, sprinting)
+		return
+	end
+	humanoid.WalkSpeed = if sprinting then RUN_SPEED else WALK_SPEED
+end
+
+local function setSprinting(value: boolean)
+	if sprinting == value then
+		return
+	end
+	sprinting = value
+	applySpeed()
+end
+
+-- Touch devices get a real button; there is no Shift to hold.
+local function buildTouchButton()
+	if not UserInputService.TouchEnabled then
+		return
+	end
+
+	local playerGui = player:WaitForChild('PlayerGui')
+	if playerGui:FindFirstChild('SuwaSprintGui') then
+		return
+	end
+
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'SuwaSprintGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = playerGui
+
+	local button = Instance.new('TextButton')
+	button.Name = 'SprintButton'
+	button.AnchorPoint = Vector2.new(1, 1)
+	-- Clear of the jump button, which sits at the bottom-right on touch.
+	button.Position = UDim2.new(1, -30, 1, -180)
+	button.Size = UDim2.new(0, 96, 0, 96)
+	button.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+	button.BackgroundTransparency = 0.25
+	button.Text = 'SPRINT'
+	button.Font = Enum.Font.GothamBold
+	button.TextSize = 15
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.AutoButtonColor = false
+	button.Parent = gui
+
+	local corner = Instance.new('UICorner')
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = button
+
+	local stroke = Instance.new('UIStroke')
+	stroke.Color = Color3.fromRGB(255, 190, 120)
+	stroke.Thickness = 2
+	stroke.Transparency = 0.3
+	stroke.Parent = button
+
+	local function press()
+		setSprinting(true)
+		button.BackgroundColor3 = Color3.fromRGB(80, 62, 34)
+		stroke.Transparency = 0
+	end
+	local function release()
+		setSprinting(false)
+		button.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+		stroke.Transparency = 0.3
+	end
+
+	button.MouseButton1Down:Connect(press)
+	button.MouseButton1Up:Connect(release)
+	button.MouseLeave:Connect(release)
+	button.TouchLongPress:Connect(press)
 end
 
 local function hookCharacter(character: Model)
 	local humanoid = character:FindFirstChildOfClass('Humanoid') or character:WaitForChild('Humanoid')
-	if humanoid and humanoid:IsA('Humanoid') then
-		currentHumanoid = humanoid
-		applySpeed()
-		
-		-- Hide all proximity prompts when sitting
-		humanoid:GetPropertyChangedSignal("SeatPart"):Connect(function()
-			game:GetService("ProximityPromptService").Enabled = (humanoid.SeatPart == nil)
-		end)
-		game:GetService("ProximityPromptService").Enabled = (humanoid.SeatPart == nil)
-		
-		humanoid.Died:Connect(function()
-			sprinting = false
-			currentHumanoid = nil
-			game:GetService("ProximityPromptService").Enabled = true
-		end)
+	if not (humanoid and humanoid:IsA('Humanoid')) then
+		return
 	end
+	currentHumanoid = humanoid
+	applySpeed()
+
+	-- Hide prompts while seated so they do not overlap the ride.
+	local function syncPrompts()
+		ProximityPromptService.Enabled = humanoid.SeatPart == nil
+		-- Re-apply, since seated and walking use the control differently.
+		applySpeed()
+	end
+	humanoid:GetPropertyChangedSignal('SeatPart'):Connect(syncPrompts)
+	syncPrompts()
+
+	humanoid.Died:Connect(function()
+		sprinting = false
+		currentHumanoid = nil
+		ProximityPromptService.Enabled = true
+	end)
 end
 
 function MovementController.init()
+	buildTouchButton()
+
 	if player.Character then
 		hookCharacter(player.Character)
 	end
-
 	player.CharacterAdded:Connect(hookCharacter)
 
 	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
@@ -53,15 +138,13 @@ function MovementController.init()
 			return
 		end
 		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
-			sprinting = true
-			applySpeed()
+			setSprinting(true)
 		end
 	end)
 
 	UserInputService.InputEnded:Connect(function(input: InputObject)
 		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
-			sprinting = false
-			applySpeed()
+			setSprinting(false)
 		end
 	end)
 end
