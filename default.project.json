@@ -30,24 +30,10 @@
           "StreamingMinRadius": 128,
           "StreamingTargetRadius": 256
         },
-        "SuwaCentral": {
-          "$path": "maps/SuwaCentral.model.json"
-        },
-        "Dormitory": {
-          "$path": "maps/Dormitory.model.json"
-        },
-        "LanguageAcademy": {
-          "$path": "maps/LanguageAcademy.model.json"
-        },
+        "$ignoreUnknownInstances": true,
         "Bicycles": {
           "$className": "Folder",
           "$ignoreUnknownInstances": true
-        },
-        "LakesideOpenMic": {
-          "$path": "maps/LakesideOpenMic.model.json"
-        },
-        "LakesideActivities": {
-          "$path": "maps/LakesideActivities.model.json"
         },
         "LakeCrafts": {
           "$className": "Folder",

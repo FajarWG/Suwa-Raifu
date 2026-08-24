@@ -11,8 +11,6 @@ export type Profile = {
 		preferredLanguage: string,
 	},
 	progress: {
-		japaneseXp: number,
-		japaneseLevel: number,
 		workReputation: number,
 		explorationRank: number,
 		fishingLevel: number,
@@ -31,15 +29,6 @@ export type Profile = {
 		clothing: { [string]: number },
 		furniture: { [string]: number },
 		fish: { [string]: number },
-	},
-	school: {
-		attendance: number,
-		completedLessons: { string },
-		examResults: { [string]: number },
-	},
-	quests: {
-		active: { string },
-		completed: { string },
 	},
 	friendship: { [string]: number },
 	bike: {

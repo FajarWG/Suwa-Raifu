@@ -33,21 +33,6 @@ local NPCS: {
 							{ key = 'dialog.sakura.intro1' },
 							{ key = 'dialog.sakura.intro2' },
 						},
-						next = 'quest_offer',
-					},
-					quest_offer = {
-						id = 'quest_offer',
-						lines = {
-							{ key = 'dialog.sakura.quest_offer' },
-						},
-						choices = {
-							{
-								textKey = 'dialog.sakura.choice.accept',
-								next = nil,
-								action = 'quest_accept:quest_intro',
-							},
-							{ textKey = 'dialog.sakura.choice.decline', next = nil },
-						},
 					},
 				},
 			},

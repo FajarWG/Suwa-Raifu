@@ -6,7 +6,6 @@
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
 local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
-local QuestService = require(script.Parent:WaitForChild('QuestService'))
 local NPCs = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('NPCs'))
 
 local function handleInteract(player: Player, npcId: string)
@@ -15,9 +14,6 @@ local function handleInteract(player: Player, npcId: string)
 		warn(`[NPC] Unknown NPC: {npcId}`)
 		return
 	end
-
-	-- Progress quest 'talk' objective untuk NPC ini
-	QuestService.progressTalk(player.UserId, npcId)
 
 	-- Beri client dialog (client akan fetch node via RemoteFunction)
 	RemoteRegistry.fireClient(player, 'NPCOpenDialog', {

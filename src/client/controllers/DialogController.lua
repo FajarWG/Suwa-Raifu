@@ -146,24 +146,9 @@ end
 
 -- Navigasi node: tampilkan baris, lalu pilihan / lanjut / tutup.
 local function showNode(npc: { id: string, displayNameKey: string }, node: { lines: any, choices: any, next: string? })
-	local function handleAction(action: string?)
-		if action then
-			local questId = action:match('^quest_accept:(.+)$')
-			if questId then
-				RemoteController.fire('QuestAccept', questId)
-				return
-			end
-			questId = action:match('^quest_claim:(.+)$')
-			if questId then
-				RemoteController.fire('QuestClaim', questId)
-			end
-		end
-	end
-
 	showLines(npc.displayNameKey, node.lines, function()
 		if node.choices and #node.choices > 0 then
 			showChoices(node.choices, function(choice)
-				handleAction(choice.action)
 				if choice.next then
 					local result = RemoteController.invoke('NPCGetDialog', npc.id, choice.next)
 					if result and result.node then

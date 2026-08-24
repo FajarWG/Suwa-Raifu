@@ -32,8 +32,6 @@ local function defaultProfile(playerId: number): ProfileTypes.Profile
 			preferredLanguage = Config.defaultLocale,
 		},
 		progress = {
-			japaneseXp = 0,
-			japaneseLevel = 1,
 			workReputation = 0,
 			explorationRank = 0,
 			fishingLevel = 0,
@@ -51,12 +49,6 @@ local function defaultProfile(playerId: number): ProfileTypes.Profile
 			furniture = {},
 			fish = {},
 		},
-		school = {
-			attendance = 0,
-			completedLessons = {},
-			examResults = {},
-		},
-		quests = { active = {}, completed = {} },
 		friendship = {},
 		bike = { owned = false, upgrades = {} },
 		settings = {

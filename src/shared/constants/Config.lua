@@ -25,10 +25,6 @@ export type GameConfig = {
 	profileVersion: number,
 	dataStoreRetries: number,
 
-	-- Quest
-	initialQuestId: string,
-	textbookItemId: string,
-
 	-- NPC
 	spawnNpcId: string,
 
@@ -54,9 +50,6 @@ local Config: GameConfig = {
 	profileKeyPrefix = 'player_',
 	profileVersion = 1,
 	dataStoreRetries = 3,
-
-	initialQuestId = 'quest_intro',
-	textbookItemId = 'textbook',
 
 	spawnNpcId = 'teacher_sakura',
 
