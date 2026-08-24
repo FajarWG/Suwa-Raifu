@@ -734,8 +734,7 @@ local function buildLakesideShops()
 	root.Name = 'LakesideShops'
 	root.Parent = workspace
 	buildShop(root, 'fishing_supply', Vector3.new(345, 0.4, -73), Color3.fromRGB(77, 111, 103), '釣具店')
-	buildShop(root, 'ice_cream', Vector3.new(-145, 0.4, -65), Color3.fromRGB(203, 145, 126), 'アイスクリーム')
-	buildShop(root, 'island_festival', Vector3.new(50, 3.4, -610), Color3.fromRGB(164, 73, 57), '島の売店')
+	-- ice_cream & island_festival greybox dilepas; akan diganti model Creator Store manual di Studio.
 end
 
 local function buyItem(player: Player, payload: any)

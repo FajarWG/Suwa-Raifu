@@ -25,9 +25,6 @@ export type GameConfig = {
 	profileVersion: number,
 	dataStoreRetries: number,
 
-	-- NPC
-	spawnNpcId: string,
-
 	-- Bahasa
 	availableLocales: { string },
 	defaultLocale: string,
@@ -50,8 +47,6 @@ local Config: GameConfig = {
 	profileKeyPrefix = 'player_',
 	profileVersion = 1,
 	dataStoreRetries = 3,
-
-	spawnNpcId = 'teacher_sakura',
 
 	-- Prototype map-first memakai English saja. Resource ja/id disimpan untuk phase localization nanti.
 	availableLocales = { 'en' },
