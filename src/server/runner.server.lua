@@ -23,22 +23,15 @@ if remoteModule and remoteModule:IsA('ModuleScript') then
 	initService(remoteModule)
 end
 
--- 2. Terrain harus selesai sebelum generator taman, kendaraan, toko, dan fauna
--- menghitung elevasi. Ini mencegah aset memakai Y lama lalu melayang/tertimbun.
-local terrainModule = servicesFolder:FindFirstChild('TerrainService')
-if terrainModule and terrainModule:IsA('ModuleScript') then
-	initService(terrainModule)
-end
-
--- 3. Service lain. Interaksi kursi/playground ditunda sampai generator taman
--- selesai agar semua bangku dan ashiyu yang baru dibuat ikut menjadi fungsional.
+-- 2. Service lain. World dressing (terrain, taman, jalan, perahu, fauna) sudah
+-- tidak digenerate lewat kode -- semua itu dipasang manual di Studio lewat
+-- Creator Store agar hasil Rojo sync tetap bersih.
 local bicycleModule = servicesFolder:FindFirstChild('BicycleService')
 local interactionModule = servicesFolder:FindFirstChild('ParkInteractionService')
 for _, module in servicesFolder:GetChildren() do
 	if
 		module:IsA('ModuleScript')
 		and module ~= remoteModule
-		and module ~= terrainModule
 		and module ~= bicycleModule
 		and module ~= interactionModule
 	then
@@ -46,8 +39,6 @@ for _, module in servicesFolder:GetChildren() do
 	end
 end
 
--- Sepeda dirakit setelah permukaan/rak taman tersedia, sehingga raycast awal
--- mengenai pavement sebenarnya dan roda tidak ditanam ke Y dunia yang lama.
 if bicycleModule and bicycleModule:IsA('ModuleScript') then
 	initService(bicycleModule)
 end

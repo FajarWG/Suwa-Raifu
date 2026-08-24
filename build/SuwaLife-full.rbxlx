@@ -2858,7 +2858,7 @@ local function cylinder(
 	return object
 end
 
-local function makeTree(parent: Instance, position: Vector3, scale: number)
+<!-- local function makeTree(parent: Instance, position: Vector3, scale: number)
 	local tree = Instance.new('Model')
 	tree.Name = 'GroundedBroadleafTree'
 	tree:SetAttribute('TerrainGrounded', true)
@@ -2923,7 +2923,7 @@ local function makeTree(parent: Instance, position: Vector3, scale: number)
 		foliage.CanCollide = false
 		foliage.CanTouch = false
 	end
-end
+end -->
 
 local function buildIslandDetails(root: Model)
 	local island = Instance.new('Model')
