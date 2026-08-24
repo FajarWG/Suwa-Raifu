@@ -9,16 +9,34 @@
 --   report sounds  160248xxx    (Stickmasterluke firework pack, audited clean)
 --   deep mortar    9114361763   (Pro Sound Effects)
 --
--- Launch points: any BasePart with the attribute FireworksLaunchPoint, or any
--- part whose name starts with "Launcher". Creator Store barges work as-is.
--- Console: any BasePart with the attribute FireworksConsole; if none exists a
--- placeholder is built on the shore so the show is always reachable.
+-- Launch points: any BasePart tagged FireworksLaunchPoint wins. With none
+-- tagged, shells rise from a ring around the torii islet and lean out over the
+-- water toward the lakeside park, so the show reads from both banks.
+-- Console: any BasePart tagged FireworksConsole; otherwise a placeholder is
+-- built on the islet so the show is always reachable.
 
 local Debris = game:GetService('Debris')
 local Lighting = game:GetService('Lighting')
 local TweenService = game:GetService('TweenService')
 
 local SHOW_CLOCK_TIME = 20.2
+
+-- Festival control point: the torii islet in the middle of the lake, where
+-- players gather to watch. Ground height is resolved from terrain at runtime,
+-- so only X/Z are pinned here.
+local CONSOLE_SPOT_X = -24
+local CONSOLE_SPOT_Z = -545
+
+-- Shells rise from a ring around the islet rather than one spot, which is what
+-- lets the sequenced-row and starmine patterns sweep across the sky.
+local ISLAND_LAUNCH_RADIUS = 34
+local ISLAND_LAUNCH_COUNT = 7
+
+-- Lakeside park, the far bank the audience watches from (centre ~(0, -122)).
+-- Bursts lean this way so they hang over open water between islet and shore.
+local PARK_VIEWPOINT = Vector3.new(0, 0, -122)
+local PARK_LEAN_MIN = 60
+local PARK_LEAN_MAX = 175
 
 local NORMAL_DURATION = 10 * 60
 local AUGUST_15_DURATION = 60 * 60
@@ -60,39 +78,54 @@ type ShellClass = {
 
 local SHELL_CLASSES: { [string]: ShellClass } = {
 	small = {
-		apexLow = 78,
-		apexHigh = 104,
-		radius = 20,
-		particles = 150,
-		volume = 1.6,
-		pitch = 1.0,
-		range = 380,
-		climb = 0.95,
+		apexLow = 95,
+		apexHigh = 128,
+		radius = 27,
+		particles = 210,
+		volume = 2.0,
+		pitch = 0.95,
+		range = 460,
+		climb = 1.05,
 	},
 	large = {
-		apexLow = 118,
-		apexHigh = 152,
-		radius = 36,
-		particles = 320,
-		volume = 3.2,
-		pitch = 0.72,
-		range = 700,
-		climb = 1.2,
+		apexLow = 150,
+		apexHigh = 192,
+		radius = 50,
+		particles = 470,
+		volume = 3.8,
+		pitch = 0.68,
+		range = 820,
+		climb = 1.35,
 	},
 	huge = {
-		apexLow = 162,
-		apexHigh = 205,
-		radius = 55,
-		particles = 520,
-		volume = 5.0,
-		pitch = 0.55,
-		range = 1000,
-		climb = 1.45,
+		apexLow = 205,
+		apexHigh = 268,
+		radius = 80,
+		particles = 780,
+		volume = 5.5,
+		pitch = 0.5,
+		range = 1250,
+		climb = 1.7,
 	},
 }
 
+-- Kamuro (crown) willows burn gold and settle to amber.
+local KAMURO_GOLD = Color3.fromRGB(255, 198, 96)
+local KAMURO_EMBER = Color3.fromRGB(255, 128, 38)
+
 local function pick<T>(list: { T }): T
 	return list[math.random(1, #list)]
+end
+
+-- A colour change only reads if the second colour is actually different.
+local function pickDistinct(from: Color3): Color3
+	for _ = 1, 8 do
+		local candidate = palette[math.random(1, #palette)]
+		if candidate ~= from then
+			return candidate
+		end
+	end
+	return palette[1]
 end
 
 local function randomRange(low: number, high: number): number
@@ -192,7 +225,9 @@ local BURST_STYLES: { [string]: BurstStyle } = {
 		gravity = 20,
 		sizeScale = 1.1,
 	},
-	willow = { speedLow = 34, speedHigh = 56, lifeLow = 3.2, lifeHigh = 4.6, drag = 3, gravity = 34, sizeScale = 1.25 },
+	-- Kamuro: opens, then the stars rain down and hang instead of snapping out.
+	-- Low drag + long life is what keeps the curtain in the air.
+	willow = { speedLow = 30, speedHigh = 52, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2 },
 	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7 },
 }
 
@@ -208,11 +243,17 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	emitter.LightInfluence = 0
 	emitter.Brightness = 8
 	emitter.Orientation = Enum.ParticleOrientation.FacingCamera
-	-- Two-tone stars: big Japanese shells change colour as they burn.
-	local second = if math.random() < 0.55 then pick(palette) else color
+	-- Colour change (iro-henka): hold the first colour, then switch late in the
+	-- burn so the change is actually seen instead of blending into a smear.
+	-- Kamuro willows stay gold and deepen to amber, the way the real ones do.
+	local isWillow = styleName == 'willow'
+	local first = if isWillow then KAMURO_GOLD else color
+	local second = if isWillow then KAMURO_EMBER else pickDistinct(color)
 	emitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 252, 240)),
-		ColorSequenceKeypoint.new(0.25, color),
+		ColorSequenceKeypoint.new(0.12, first),
+		ColorSequenceKeypoint.new(0.5, first),
+		ColorSequenceKeypoint.new(0.74, second),
 		ColorSequenceKeypoint.new(1, second),
 	})
 	-- Small stars, many of them: large sprites read as clumps of mini-fireworks
@@ -240,7 +281,48 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	emitter.Parent = host
 
 	emitter:Emit(class.particles)
-	Debris:AddItem(host, style.lifeHigh + 1.5)
+
+	-- Senrin: a fine crackling shimmer riding on top of the main stars. The
+	-- wide lifetime spread is what makes it twinkle rather than just glow —
+	-- individual specks wink out at different moments.
+	local glitter = Instance.new('ParticleEmitter')
+	glitter.Name = 'Glitter'
+	glitter.Texture = SPARK_TEXTURE
+	glitter.LightEmission = 1
+	glitter.LightInfluence = 0
+	glitter.Brightness = 12
+	glitter.Orientation = Enum.ParticleOrientation.FacingCamera
+	glitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 245)),
+		ColorSequenceKeypoint.new(0.6, if isWillow then KAMURO_GOLD else Color3.fromRGB(255, 240, 200)),
+		ColorSequenceKeypoint.new(1, second),
+	})
+	local fleck = starSize * 0.4
+	glitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, fleck),
+		NumberSequenceKeypoint.new(0.5, fleck * 1.25),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	glitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.35, 0.55),
+		NumberSequenceKeypoint.new(0.55, 0),
+		NumberSequenceKeypoint.new(0.8, 0.6),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	glitter.Lifetime = NumberRange.new(style.lifeLow * 0.35, style.lifeHigh * 1.1)
+	glitter.Speed = NumberRange.new(style.speedLow * 0.6 * (class.radius / 36), style.speedHigh * 1.15 * (class.radius / 36))
+	glitter.SpreadAngle = Vector2.new(180, 180)
+	glitter.Drag = style.drag * 1.6
+	glitter.Acceleration = Vector3.new(0, -style.gravity * 0.8, 0)
+	glitter.Rate = 0
+	glitter.Rotation = NumberRange.new(0, 360)
+	glitter.RotSpeed = NumberRange.new(-160, 160)
+	glitter.Enabled = false
+	glitter.Parent = host
+	glitter:Emit(math.floor(class.particles * 0.8))
+
+	Debris:AddItem(host, style.lifeHigh * 1.1 + 1.5)
 end
 
 -- Parametric heart, drawn in a vertical plane so it reads from the shore.
@@ -318,13 +400,15 @@ local function emitShapedBurst(parent: Instance, position: Vector3, color: Color
 	end
 end
 
+-- Weighted so the show is mostly the classic drooping shells Suwa is known for.
+-- Heart is a rare novelty: seeing it every other shell kills the effect.
 local SHAPES = {
-	{ name = 'peony', shaped = false, weight = 26 },
-	{ name = 'chrysanthemum', shaped = false, weight = 18 },
-	{ name = 'willow', shaped = false, weight = 18 },
+	{ name = 'willow', shaped = false, weight = 27 },
+	{ name = 'peony', shaped = false, weight = 23 },
+	{ name = 'chrysanthemum', shaped = false, weight = 22 },
 	{ name = 'scatter', shaped = false, weight = 16 },
-	{ name = 'ring', shaped = true, weight = 12 },
-	{ name = 'heart', shaped = true, weight = 10 },
+	{ name = 'ring', shaped = true, weight = 9 },
+	{ name = 'heart', shaped = true, weight = 3 },
 }
 
 local SHAPE_WEIGHT_TOTAL = 0
@@ -375,14 +459,19 @@ local function burst(position: Vector3, color: Color3, class: ShellClass, shape:
 	end
 end
 
-local function launchShell(launcher: BasePart, className: string?)
+local function launchShell(launchFrom: Vector3, className: string?)
 	local class = SHELL_CLASSES[className or 'small'] or SHELL_CLASSES.small
 	local shape = pickShape()
 	local color = pick(palette)
 
-	local origin = launcher.Position + Vector3.new(0, 2, 0)
+	local origin = launchFrom + Vector3.new(0, 2, 0)
+	-- Shells lean out over the water toward the park, so the show frames well
+	-- both from the islet underneath and from the lakeside promenade opposite.
+	local towardPark = (PARK_VIEWPOINT - origin) * Vector3.new(1, 0, 1)
+	local lean = if towardPark.Magnitude > 1 then towardPark.Unit else Vector3.zAxis
 	local destination = origin
-		+ Vector3.new(randomRange(-32, 32), randomRange(class.apexLow, class.apexHigh), randomRange(-28, 28))
+		+ lean * randomRange(PARK_LEAN_MIN, PARK_LEAN_MAX)
+		+ Vector3.new(randomRange(-40, 40), randomRange(class.apexLow, class.apexHigh), randomRange(-30, 30))
 
 	local shell = makeNeonPart(workspace, 'FireworkShell', Vector3.new(0.7, 2.2, 0.7), CFrame.new(origin), color)
 	playPositionalSound(shell, WHISTLE_SOUND, class.volume * 0.3, randomRange(0.85, 1.15), 280)
@@ -427,23 +516,49 @@ end
 -- Rhythm director
 --=============================================================================
 
-local function collectLaunchers(): { BasePart }
-	local result: { BasePart } = {}
-	for _, descendant in workspace:GetDescendants() do
-		if descendant:IsA('BasePart') then
-			if descendant:GetAttribute('FireworksLaunchPoint') or descendant.Name:match('^Launcher') then
-				table.insert(result, descendant)
-			end
-		end
-	end
-	return result
+-- Ground height at an X/Z, terrain only (water ignored).
+local function terrainHeight(x: number, z: number): number?
+	local parameters = RaycastParams.new()
+	parameters.FilterType = Enum.RaycastFilterType.Include
+	parameters.FilterDescendantsInstances = { workspace.Terrain }
+	parameters.IgnoreWater = true
+	local result = workspace:Raycast(Vector3.new(x, 400, z), Vector3.new(0, -800, 0), parameters)
+	return if result then result.Position.Y else nil
 end
 
--- Left-to-right along the barge, so sequenced volleys read as a real row.
-local function orderedLaunchers(launchers: { BasePart }): { BasePart }
-	local ordered = table.clone(launchers)
+-- Launch origins are plain positions, so the show does not depend on any
+-- particular greybox barge existing.
+--
+-- Priority: parts the builder tagged FireworksLaunchPoint win outright. With
+-- none tagged, shells go up from a spread around the festival islet, which is
+-- where players actually stand to watch.
+local function collectLaunchOrigins(): { Vector3 }
+	local tagged: { Vector3 } = {}
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA('BasePart') and descendant:GetAttribute('FireworksLaunchPoint') then
+			table.insert(tagged, descendant.Position)
+		end
+	end
+	if #tagged > 0 then
+		return tagged
+	end
+
+	local groundY = terrainHeight(CONSOLE_SPOT_X, CONSOLE_SPOT_Z) or 6
+	local origins: { Vector3 } = {}
+	for index = 1, ISLAND_LAUNCH_COUNT do
+		local angle = ((index - 1) / ISLAND_LAUNCH_COUNT) * math.pi * 2 + 0.4
+		local x = CONSOLE_SPOT_X + math.cos(angle) * ISLAND_LAUNCH_RADIUS
+		local z = CONSOLE_SPOT_Z + math.sin(angle) * ISLAND_LAUNCH_RADIUS
+		origins[index] = Vector3.new(x, (terrainHeight(x, z) or groundY) + 1, z)
+	end
+	return origins
+end
+
+-- Left-to-right, so sequenced volleys read as a real row.
+local function orderedOrigins(origins: { Vector3 }): { Vector3 }
+	local ordered = table.clone(origins)
 	table.sort(ordered, function(a, b)
-		return a.Position.X < b.Position.X
+		return a.X < b.X
 	end)
 	return ordered
 end
@@ -453,18 +568,18 @@ local PATTERNS = {
 	-- A lone shell: the breathing space between bigger moments.
 	{
 		weight = 20,
-		run = function(launchers: { BasePart }): number
-			launchShell(pick(launchers), if math.random() < 0.3 then 'large' else 'small')
+		run = function(origins: { Vector3 }): number
+			launchShell(pick(origins), if math.random() < 0.3 then 'large' else 'small')
 			return randomRange(1.2, 2.3)
 		end,
 	},
 	-- A quick cluster from scattered tubes.
 	{
 		weight = 24,
-		run = function(launchers: { BasePart }): number
+		run = function(origins: { Vector3 }): number
 			for index = 1, math.random(3, 6) do
 				task.delay((index - 1) * randomRange(0.08, 0.2), function()
-					launchShell(pick(launchers), if math.random() < 0.35 then 'large' else 'small')
+					launchShell(pick(origins), if math.random() < 0.35 then 'large' else 'small')
 				end)
 			end
 			return randomRange(1.9, 3.0)
@@ -473,13 +588,13 @@ local PATTERNS = {
 	-- Sequenced row down the barge (deretan).
 	{
 		weight = 18,
-		run = function(launchers: { BasePart }): number
-			local ordered = orderedLaunchers(launchers)
+		run = function(origins: { Vector3 }): number
+			local ordered = orderedOrigins(origins)
 			local reverse = math.random() < 0.5
-			for index, launcher in ordered do
+			for index, origin in ordered do
 				local slot = if reverse then #ordered - index + 1 else index
 				task.delay((slot - 1) * randomRange(0.14, 0.22), function()
-					launchShell(launcher, 'small')
+					launchShell(origin, 'small')
 				end)
 			end
 			return randomRange(2.1, 3.2)
@@ -488,16 +603,16 @@ local PATTERNS = {
 	-- One big shell, given room to breathe.
 	{
 		weight = 16,
-		run = function(launchers: { BasePart }): number
-			launchShell(pick(launchers), 'huge')
+		run = function(origins: { Vector3 }): number
+			launchShell(pick(origins), 'huge')
 			return randomRange(2.8, 4.2)
 		end,
 	},
 	-- Twin large shells opening together.
 	{
 		weight = 12,
-		run = function(launchers: { BasePart }): number
-			local ordered = orderedLaunchers(launchers)
+		run = function(origins: { Vector3 }): number
+			local ordered = orderedOrigins(origins)
 			launchShell(ordered[1], 'large')
 			task.delay(0.06, function()
 				launchShell(ordered[#ordered], 'large')
@@ -508,12 +623,12 @@ local PATTERNS = {
 	-- Starmine: rolling wall of shells, the crowd-pleaser.
 	{
 		weight = 10,
-		run = function(launchers: { BasePart }): number
-			local ordered = orderedLaunchers(launchers)
+		run = function(origins: { Vector3 }): number
+			local ordered = orderedOrigins(origins)
 			for wave = 0, 2 do
-				for index, launcher in ordered do
+				for index, origin in ordered do
 					task.delay(wave * 0.55 + (index - 1) * 0.09, function()
-						launchShell(launcher, if wave == 2 then 'large' else 'small')
+						launchShell(origin, if wave == 2 then 'large' else 'small')
 					end)
 				end
 			end
@@ -580,23 +695,20 @@ local function findTaggedConsole(): BasePart?
 	return nil
 end
 
-local function terrainHeight(x: number, z: number): number?
-	local parameters = RaycastParams.new()
-	parameters.FilterType = Enum.RaycastFilterType.Include
-	parameters.FilterDescendantsInstances = { workspace.Terrain }
-	parameters.IgnoreWater = true
-	local result = workspace:Raycast(Vector3.new(x, 400, z), Vector3.new(0, -800, 0), parameters)
-	return if result then result.Position.Y else nil
-end
-
--- Nearest dry land to the launchers, searched as widening rings so the console
--- lands on the shore rather than out on the lake.
-local function findConsoleSpot(launchers: { BasePart }): Vector3
-	local centre = Vector3.zero
-	for _, launcher in launchers do
-		centre += launcher.Position
+local function findConsoleSpot(origins: { Vector3 }): Vector3
+	-- Preferred: the pinned festival spot on the islet.
+	local pinned = terrainHeight(CONSOLE_SPOT_X, CONSOLE_SPOT_Z)
+	if pinned then
+		return Vector3.new(CONSOLE_SPOT_X, pinned, CONSOLE_SPOT_Z)
 	end
-	centre /= #launchers
+
+	-- Fallback only if that spot has no ground (terrain edited away): nearest
+	-- dry land to the launch origins, searched as widening rings.
+	local centre = Vector3.zero
+	for _, origin in origins do
+		centre += origin
+	end
+	centre /= #origins
 
 	for _, distance in { 26, 42, 60, 85, 115, 150 } do
 		for step = 0, 11 do
@@ -614,13 +726,13 @@ end
 
 -- Placeholder console so the show is always reachable before a Creator Store
 -- model is dropped in. Tag your own part with FireworksConsole to replace it.
-local function buildFallbackConsole(launchers: { BasePart }): BasePart
+local function buildFallbackConsole(origins: { Vector3 }): BasePart
 	local previous = workspace:FindFirstChild('FestivalFireworksControl')
 	if previous then
 		previous:Destroy()
 	end
 
-	local spot = findConsoleSpot(launchers)
+	local spot = findConsoleSpot(origins)
 	local console = Instance.new('Model')
 	console.Name = 'FestivalFireworksControl'
 	console.Parent = workspace
@@ -681,7 +793,7 @@ local function attachConsole(base: BasePart)
 		if running then
 			return
 		end
-		local launchers = collectLaunchers()
+		local launchers = collectLaunchOrigins()
 		if #launchers == 0 then
 			label.Text = 'Launchers are not ready'
 			return
@@ -705,7 +817,7 @@ local function attachConsole(base: BasePart)
 end
 
 function FireworksFestivalService.init()
-	local launchers = collectLaunchers()
+	local launchers = collectLaunchOrigins()
 	if #launchers == 0 then
 		warn(
 			'[Fireworks] No launch points found. Tag a part with the attribute '
