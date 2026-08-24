@@ -11,12 +11,45 @@
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
 
+local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
+
 local VehicleInteractionService = {}
 
 local VEHICLE_FOLDERS = { Bicycles = true, LakeCrafts = true }
-local BOOST_ATTRIBUTE = 'SuwaBoost'
 
 local activeDrives: { [BasePart]: RBXScriptConnection } = {}
+-- Client input arrives over remotes: attributes set on the client never
+-- replicate up to the server, so they cannot carry driver input.
+local boosting: { [Player]: boolean } = {}
+local hopRequested: { [Player]: boolean } = {}
+
+-- A wheel is a disc: its thinnest dimension is the axle it spins around.
+local function axleAxis(part: BasePart): Vector3
+	local size = part.Size
+	if size.X <= size.Y and size.X <= size.Z then
+		return Vector3.xAxis
+	elseif size.Y <= size.X and size.Y <= size.Z then
+		return Vector3.yAxis
+	end
+	return Vector3.zAxis
+end
+
+local function looksLikeWheel(part: BasePart): boolean
+	local name = part.Name:lower()
+	if name:find('wheel') or name:find('tire') or name:find('tyre') then
+		return true
+	end
+	-- A rim is sometimes left unnamed with only a CylinderMesh on it, but so
+	-- are frame tubes and bottle holders. Require an actual disc: two matching
+	-- faces and a much thinner axle.
+	if not part:FindFirstChildWhichIsA('CylinderMesh') then
+		return false
+	end
+	local size = part.Size
+	local dims = { size.X, size.Y, size.Z }
+	table.sort(dims)
+	return dims[1] < dims[2] * 0.5 and dims[3] < dims[2] * 1.35
+end
 
 local function isInsideVehicleFolder(instance: Instance): boolean
 	local node = instance.Parent
@@ -101,7 +134,7 @@ local function stopDriving(seat: VehicleSeat, rootPart: BasePart?)
 	rootPart.AssemblyAngularVelocity = Vector3.zero
 end
 
-local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: boolean)
+local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: boolean, wheels: { { motor: Motor6D, axis: Vector3, radius: number } })
 	local attachment = Instance.new('Attachment')
 	attachment.Name = 'DriveAttachment'
 	attachment.Parent = rootPart
@@ -124,15 +157,60 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	angular.AngularVelocity = Vector3.zero
 	angular.Parent = rootPart
 
+	local groundCheck = RaycastParams.new()
+	groundCheck.FilterType = Enum.RaycastFilterType.Exclude
+	groundCheck.FilterDescendantsInstances = { rootPart:FindFirstAncestorWhichIsA('Model') :: Instance }
+
 	-- Boats glide and take a while to answer the helm; bikes respond sharply.
 	local baseSpeed = if onWater then 40 else 34
 	local turnSpeed = if onWater then 1.0 else 1.9
 	local responsiveness = if onWater then 0.03 else 0.12
 
-	activeDrives[seat] = RunService.Heartbeat:Connect(function()
-		local boost = if seat:GetAttribute(BOOST_ATTRIBUTE) then 1.7 else 1
+	local spin = 0
+	activeDrives[seat] = RunService.Heartbeat:Connect(function(delta)
+		local occupant = seat.Occupant
+		local rider = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+		local boost = if rider and boosting[rider] then 1.7 else 1
+
+		-- Hop: kick the front up first, the way a rider lifts over a kerb. The
+		-- upright constraint has to release for a moment or the pitch is locked.
+		if rider and hopRequested[rider] then
+			hopRequested[rider] = false
+			local grounded = workspace:Raycast(
+				rootPart.Position,
+				Vector3.new(0, -(rootPart.Size.Y * 0.5 + 4), 0),
+				groundCheck
+			)
+			if grounded and not onWater then
+				local mass = rootPart.AssemblyMass
+				local align = rootPart:FindFirstChild('StabilityOrientation')
+				if align and align:IsA('AlignOrientation') then
+					align.Enabled = false
+					task.delay(0.65, function()
+						if align.Parent then
+							align.Enabled = true
+						end
+					end)
+				end
+				rootPart:ApplyImpulseAtPosition(
+					Vector3.new(0, mass * 62, 0),
+					rootPart.Position + rootPart.CFrame.LookVector * (rootPart.Size.Z * 0.5 + 1.2)
+				)
+			end
+		end
 		local throttle = seat.ThrottleFloat
 		local steer = seat.SteerFloat
+
+		-- Roll the wheels at the speed the vehicle is actually travelling, so
+		-- they never spin while stationary or skid while moving.
+		if #wheels > 0 then
+			local velocity = rootPart.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+			local direction = if rootPart.CFrame.LookVector:Dot(velocity) < 0 then -1 else 1
+			spin = (spin + (velocity.Magnitude / wheels[1].radius) * delta * direction) % (math.pi * 2)
+			for _, wheel in wheels do
+				wheel.motor.Transform = CFrame.fromAxisAngle(wheel.axis, spin)
+			end
+		end
 
 		local target = seat.CFrame.LookVector * (throttle * baseSpeed * boost)
 		local lerp = if throttle == 0 then responsiveness * 0.5 else responsiveness
@@ -171,13 +249,47 @@ local function rigVehicle(model: Model)
 	-- Creator Store props hold themselves together with Anchored rather than
 	-- welds, so weld everything to the root before unanchoring or the model
 	-- collapses into loose parts the moment it is freed.
+	--
+	-- Wheels are the exception: a rigid weld locks them solid. They get a
+	-- Motor6D instead, which holds them in place but can still be rotated.
+	local wheels: { { motor: Motor6D, axis: Vector3, radius: number } } = {}
 	for _, part in model:GetDescendants() do
 		if part:IsA('BasePart') and part ~= rootPart then
-			local weld = Instance.new('WeldConstraint')
-			weld.Part0 = rootPart
-			weld.Part1 = part
-			weld.Parent = rootPart
 			part.Anchored = false
+			if looksLikeWheel(part) then
+				-- Drop any existing joint, or the motor fights it.
+				for _, joint in part:GetChildren() do
+					if joint:IsA('WeldConstraint') or joint:IsA('Weld') or joint:IsA('Motor6D') then
+						joint:Destroy()
+					end
+				end
+				for _, joint in rootPart:GetChildren() do
+					if joint:IsA('WeldConstraint') and (joint.Part0 == part or joint.Part1 == part) then
+						joint:Destroy()
+					end
+				end
+
+				local motor = Instance.new('Motor6D')
+				motor.Name = `WheelMotor_{part.Name}`
+				motor.Part0 = rootPart
+				motor.Part1 = part
+				motor.C0 = rootPart.CFrame:ToObjectSpace(part.CFrame)
+				motor.C1 = CFrame.identity
+				motor.Parent = rootPart
+
+				local size = part.Size
+				table.insert(wheels, {
+					motor = motor,
+					axis = axleAxis(part),
+					-- Radius is half the widest face, never the axle thickness.
+					radius = math.max(0.5, math.max(size.X, size.Y, size.Z) / 2),
+				})
+			else
+				local weld = Instance.new('WeldConstraint')
+				weld.Part0 = rootPart
+				weld.Part1 = part
+				weld.Parent = rootPart
+			end
 		end
 	end
 	rootPart.Anchored = false
@@ -230,7 +342,7 @@ local function rigVehicle(model: Model)
 	setupSeat(driver, model.Name)
 	driver:GetPropertyChangedSignal('Occupant'):Connect(function()
 		if driver.Occupant then
-			startDriving(driver, rootPart, onWater)
+			startDriving(driver, rootPart, onWater, wheels)
 		else
 			stopDriving(driver, rootPart)
 		end
@@ -309,7 +421,16 @@ function VehicleInteractionService.init()
 		end
 	end)
 
-	Players.PlayerRemoving:Connect(function()
+	RemoteRegistry.registerEvent('VehicleBoost', function(player: Player, value: unknown)
+		boosting[player] = value == true
+	end)
+	RemoteRegistry.registerEvent('VehicleHop', function(player: Player)
+		hopRequested[player] = true
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		boosting[player] = nil
+		hopRequested[player] = nil
 		for seat, connection in activeDrives do
 			if not seat.Occupant then
 				connection:Disconnect()

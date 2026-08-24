@@ -11,14 +11,17 @@ local ProximityPromptService = game:GetService('ProximityPromptService')
 local WALK_SPEED = 16
 local RUN_SPEED = 32
 
--- Read by VehicleInteractionService's drive loop as a throttle multiplier.
-local VEHICLE_BOOST_ATTRIBUTE = 'SuwaBoost'
-
 local player = Players.LocalPlayer
 local currentHumanoid: Humanoid? = nil
 local sprinting = false
 
 local MovementController = {}
+
+local function vehicleControl()
+	-- Resolved lazily: both controllers are loaded by the same runner pass.
+	local module = script.Parent:FindFirstChild('VehicleControlController')
+	return if module then require(module) :: any else nil
+end
 
 local function applySpeed()
 	local humanoid = currentHumanoid
@@ -26,10 +29,13 @@ local function applySpeed()
 		return
 	end
 
-	local seat = humanoid.SeatPart
-	if seat then
-		-- Seated: the button drives the vehicle boost instead of WalkSpeed.
-		seat:SetAttribute(VEHICLE_BOOST_ATTRIBUTE, sprinting)
+	if humanoid.SeatPart then
+		-- Seated: the same control becomes the vehicle boost. This has to go
+		-- over a remote; a client-set attribute never reaches the server.
+		local control = vehicleControl()
+		if control then
+			control.setBoost(sprinting)
+		end
 		return
 	end
 	humanoid.WalkSpeed = if sprinting then RUN_SPEED else WALK_SPEED

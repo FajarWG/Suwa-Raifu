@@ -9,6 +9,8 @@ export type RemoteNames = {
 	fishReel: string,
 	shopBuy: string,
 	bikeRequest: string,
+	vehicleBoost: string,
+	vehicleHop: string,
 	getProfile: string,
 	getShopCatalog: string,
 	getTimeInfo: string,
@@ -31,6 +33,8 @@ local Remotes: RemoteDefinitions = {
 		'OpenShop',
 		'ShopResult',
 		'InventoryAction',
+		'VehicleBoost',
+		'VehicleHop',
 		'ProfileUpdated',
 	},
 	functions = {
