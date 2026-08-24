@@ -81,30 +81,30 @@ type ShellClass = {
 
 local SHELL_CLASSES: { [string]: ShellClass } = {
 	small = {
-		apexLow = 165,
-		apexHigh = 215,
-		radius = 27,
-		particles = 210,
+		apexLow = 175,
+		apexHigh = 230,
+		radius = 44,
+		particles = 320,
 		volume = 2.0,
 		pitch = 0.95,
 		range = 460,
 		climb = 1.45,
 	},
 	large = {
-		apexLow = 245,
-		apexHigh = 315,
-		radius = 50,
-		particles = 470,
+		apexLow = 265,
+		apexHigh = 340,
+		radius = 82,
+		particles = 680,
 		volume = 3.8,
 		pitch = 0.68,
 		range = 820,
 		climb = 1.8,
 	},
 	huge = {
-		apexLow = 335,
-		apexHigh = 425,
-		radius = 80,
-		particles = 780,
+		apexLow = 360,
+		apexHigh = 460,
+		radius = 135,
+		particles = 1000,
 		volume = 5.5,
 		pitch = 0.5,
 		range = 1250,
@@ -219,10 +219,10 @@ type BurstStyle = {
 }
 
 local BURST_STYLES: { [string]: BurstStyle } = {
-	peony = { speedLow = 62, speedHigh = 84, lifeLow = 1.3, lifeHigh = 1.9, drag = 6, gravity = 8, sizeScale = 1.0, streak = 4.5 },
+	peony = { speedLow = 76, speedHigh = 86, lifeLow = 1.3, lifeHigh = 1.9, drag = 6, gravity = 8, sizeScale = 1.0, streak = 4.5 },
 	chrysanthemum = {
-		speedLow = 55,
-		speedHigh = 76,
+		speedLow = 68,
+		speedHigh = 78,
 		lifeLow = 2.1,
 		lifeHigh = 2.9,
 		drag = 5,
@@ -232,7 +232,7 @@ local BURST_STYLES: { [string]: BurstStyle } = {
 	},
 	-- Kamuro: opens, then the stars rain down and hang instead of snapping out.
 	-- Low drag + long life is what keeps the curtain in the air.
-	willow = { speedLow = 36, speedHigh = 54, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2, streak = 7.5 },
+	willow = { speedLow = 48, speedHigh = 58, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2, streak = 7.5 },
 	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7, streak = 3.2 },
 }
 
@@ -246,7 +246,7 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	emitter.Texture = SPARK_TEXTURE
 	emitter.LightEmission = 1
 	emitter.LightInfluence = 0
-	emitter.Brightness = 14
+	emitter.Brightness = 11
 	-- Real hanabi read as long radial RAYS, not dots. Aligning each star to its
 	-- own velocity and squashing it along that axis is what draws the streak.
 	emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
@@ -355,25 +355,11 @@ local function heartOffsets(count: number, radius: number): { Vector3 }
 	return offsets
 end
 
--- Flat ring, tilted so it never reads as a straight line.
-local function ringOffsets(count: number, radius: number): { Vector3 }
-	local offsets = table.create(count)
-	local rotation = CFrame.Angles(randomRange(0.25, 0.6), randomRange(0, math.pi), randomRange(0.1, 0.35))
-	for index = 1, count do
-		local angle = (index / count) * math.pi * 2
-		local flat = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-		offsets[index] = rotation:VectorToWorldSpace(flat)
-	end
-	return offsets
-end
-
 -- Shaped shells need stars at exact points, so these are placed individually
 -- and each carries a small spark emitter for the glow.
 local function emitShapedBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, shapeName: string)
 	local count = math.clamp(math.floor(class.particles / 2), 40, 140)
-	local offsets = if shapeName == 'heart'
-		then heartOffsets(count, class.radius)
-		else ringOffsets(count, class.radius)
+	local offsets = heartOffsets(count, class.radius)
 
 	for _, offset in offsets do
 		local target = position + offset
@@ -423,8 +409,7 @@ local SHAPES = {
 	{ name = 'peony', shaped = false, weight = 23 },
 	{ name = 'chrysanthemum', shaped = false, weight = 22 },
 	{ name = 'scatter', shaped = false, weight = 16 },
-	{ name = 'ring', shaped = true, weight = 5 },
-	{ name = 'heart', shaped = true, weight = 3 },
+	{ name = 'heart', shaped = true, weight = 4 },
 }
 
 local SHAPE_WEIGHT_TOTAL = 0
@@ -452,17 +437,18 @@ local function burst(position: Vector3, color: Color3, class: ShellClass, shape:
 	anchor.Transparency = 1
 	playBoom(anchor, class)
 
-	-- Opening flash.
+	-- Opening flash: a brief core pop only. Anything larger or slower renders as
+	-- a plain glowing sphere that hides the rays behind it.
 	local flash = makeNeonPart(
 		effect,
 		'Flash',
-		Vector3.one * (class.radius * 0.3),
+		Vector3.one * (class.radius * 0.08),
 		CFrame.new(position),
 		Color3.fromRGB(255, 252, 236)
 	)
 	flash.Shape = Enum.PartType.Ball
-	TweenService:Create(flash, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = Vector3.one * (class.radius * 1.1),
+	TweenService:Create(flash, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.one * (class.radius * 0.3),
 		Transparency = 1,
 	}):Play()
 
