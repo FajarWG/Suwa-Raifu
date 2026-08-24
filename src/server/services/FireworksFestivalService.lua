@@ -1,21 +1,38 @@
 --!strict
 
--- Suwa-style lake fireworks. Safe (non-damaging), and driven by a rhythm
--- director so the show mixes single shells, salvos, sequenced rows and finales
--- instead of firing one identical shell on a fixed beat.
+-- Suwa-style lake fireworks. Safe (non-damaging), driven by a rhythm director
+-- so the show mixes single shells, salvos, sequenced rows and finales instead
+-- of firing one identical shell on a fixed beat.
+--
+-- Visuals/audio are Creator Store assets, choreographed by this script:
+--   spark texture  14365285883  (particle model 16396991939, no scripts)
+--   report sounds  160248xxx    (Stickmasterluke firework pack, audited clean)
+--   deep mortar    9114361763   (Pro Sound Effects)
 --
 -- Launch points: any BasePart with the attribute FireworksLaunchPoint, or any
--- part whose name starts with "Launcher". Creator Store barges therefore work
--- as-is, without tagging anything by hand.
+-- part whose name starts with "Launcher". Creator Store barges work as-is.
+-- Console: any BasePart with the attribute FireworksConsole; if none exists a
+-- placeholder is built on the shore so the show is always reachable.
 
 local Debris = game:GetService('Debris')
+local Lighting = game:GetService('Lighting')
 local TweenService = game:GetService('TweenService')
+
+local SHOW_CLOCK_TIME = 20.2
 
 local NORMAL_DURATION = 10 * 60
 local AUGUST_15_DURATION = 60 * 60
 
-local BOOM_SOUND = 'rbxasset://sounds/Rocket shot.wav'
-local WHOOSH_SOUND = 'rbxasset://sounds/Rocket whoosh 01.wav'
+local SPARK_TEXTURE = 'rbxassetid://14365285883'
+local MORTAR_SOUND = 'rbxassetid://9114361763'
+local WHISTLE_SOUND = 'rbxassetid://160247625'
+local CRACKLE_SOUND = 'rbxassetid://100559751053348'
+local BANG_SOUNDS = {
+	'rbxassetid://160248459',
+	'rbxassetid://160248479',
+	'rbxassetid://160248493',
+	'rbxassetid://160248505',
+}
 
 local FireworksFestivalService = {}
 local running = false
@@ -30,14 +47,11 @@ local palette = {
 	Color3.fromRGB(255, 150, 60),
 }
 
--- How high a shell climbs, how wide it opens, and how hard it lands.
 type ShellClass = {
 	apexLow: number,
 	apexHigh: number,
 	radius: number,
-	sparks: number,
-	sparkSize: number,
-	life: number,
+	particles: number,
 	volume: number,
 	pitch: number,
 	range: number,
@@ -46,39 +60,33 @@ type ShellClass = {
 
 local SHELL_CLASSES: { [string]: ShellClass } = {
 	small = {
-		apexLow = 72,
-		apexHigh = 96,
-		radius = 18,
-		sparks = 26,
-		sparkSize = 0.34,
-		life = 1.3,
-		volume = 1.0,
-		pitch = 1.05,
-		range = 340,
+		apexLow = 78,
+		apexHigh = 104,
+		radius = 20,
+		particles = 150,
+		volume = 1.6,
+		pitch = 1.0,
+		range = 380,
 		climb = 0.95,
 	},
 	large = {
-		apexLow = 112,
-		apexHigh = 148,
-		radius = 34,
-		sparks = 54,
-		sparkSize = 0.55,
-		life = 2.0,
-		volume = 2.2,
-		pitch = 0.62,
-		range = 640,
+		apexLow = 118,
+		apexHigh = 152,
+		radius = 36,
+		particles = 320,
+		volume = 3.2,
+		pitch = 0.72,
+		range = 700,
 		climb = 1.2,
 	},
 	huge = {
-		apexLow = 158,
-		apexHigh = 198,
-		radius = 52,
-		sparks = 76,
-		sparkSize = 0.78,
-		life = 2.7,
-		volume = 3.3,
-		pitch = 0.42,
-		range = 920,
+		apexLow = 162,
+		apexHigh = 205,
+		radius = 55,
+		particles = 520,
+		volume = 5.0,
+		pitch = 0.55,
+		range = 1000,
 		climb = 1.45,
 	},
 }
@@ -92,21 +100,147 @@ local function randomRange(low: number, high: number): number
 end
 
 --=============================================================================
--- Burst shapes: each returns offsets from the burst centre.
+-- Audio
 --=============================================================================
 
--- Even spread in every direction (fibonacci sphere) — the classic peony.
-local function sphereOffsets(count: number, radius: number): { Vector3 }
-	local offsets = table.create(count)
-	local golden = math.pi * (3 - math.sqrt(5))
-	for index = 0, count - 1 do
-		local y = 1 - (index / math.max(1, count - 1)) * 2
-		local ring = math.sqrt(math.max(0, 1 - y * y))
-		local theta = golden * index
-		local jitter = randomRange(0.86, 1.14)
-		offsets[index + 1] = Vector3.new(math.cos(theta) * ring, y, math.sin(theta) * ring) * radius * jitter
+local function playPositionalSound(
+	parent: BasePart,
+	soundId: string,
+	volume: number,
+	playbackSpeed: number,
+	range: number
+)
+	local sound = Instance.new('Sound')
+	sound.Name = 'FireworkSound'
+	sound.SoundId = soundId
+	sound.Volume = volume
+	sound.PlaybackSpeed = playbackSpeed
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = 30
+	sound.RollOffMaxDistance = range
+	sound.Parent = parent
+	sound:Play()
+	Debris:AddItem(sound, 8)
+end
+
+-- Layered report: a sharp crack over a deep, slightly delayed mortar rumble,
+-- which is what makes a big shell read as big rather than just loud.
+local function playBoom(anchor: BasePart, class: ShellClass)
+	playPositionalSound(anchor, pick(BANG_SOUNDS), class.volume, class.pitch, class.range)
+	if class.volume >= 3 then
+		task.delay(0.05, function()
+			if anchor.Parent then
+				playPositionalSound(anchor, MORTAR_SOUND, class.volume * 0.85, class.pitch * 0.8, class.range * 1.2)
+			end
+		end)
 	end
-	return offsets
+	if class.volume >= 5 then
+		task.delay(0.35, function()
+			if anchor.Parent then
+				playPositionalSound(anchor, MORTAR_SOUND, class.volume * 0.5, 0.35, class.range * 1.4)
+			end
+		end)
+	end
+	-- Crackling tail as the stars burn out.
+	task.delay(0.5, function()
+		if anchor.Parent then
+			playPositionalSound(anchor, CRACKLE_SOUND, class.volume * 0.35, randomRange(0.9, 1.2), class.range * 0.7)
+		end
+	end)
+end
+
+--=============================================================================
+-- Burst rendering
+--=============================================================================
+
+local function makeNeonPart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3): Part
+	local object = Instance.new('Part')
+	object.Name = name
+	object.Size = size
+	object.CFrame = cframe
+	object.Color = color
+	object.Material = Enum.Material.Neon
+	object.Anchored = true
+	object.CanCollide = false
+	object.CanTouch = false
+	object.CanQuery = false
+	object.CastShadow = false
+	object.Parent = parent
+	return object
+end
+
+-- Per-style particle behaviour. Drag + downward acceleration is what separates
+-- a crisp peony from a slow, drooping willow.
+type BurstStyle = {
+	speedLow: number,
+	speedHigh: number,
+	lifeLow: number,
+	lifeHigh: number,
+	drag: number,
+	gravity: number,
+	sizeScale: number,
+}
+
+local BURST_STYLES: { [string]: BurstStyle } = {
+	peony = { speedLow = 55, speedHigh = 85, lifeLow = 1.3, lifeHigh = 1.9, drag = 6, gravity = 8, sizeScale = 1.0 },
+	chrysanthemum = {
+		speedLow = 48,
+		speedHigh = 78,
+		lifeLow = 2.1,
+		lifeHigh = 2.9,
+		drag = 5,
+		gravity = 20,
+		sizeScale = 1.1,
+	},
+	willow = { speedLow = 34, speedHigh = 56, lifeLow = 3.2, lifeHigh = 4.6, drag = 3, gravity = 34, sizeScale = 1.25 },
+	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7 },
+}
+
+local function emitParticleBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, styleName: string)
+	local style = BURST_STYLES[styleName] or BURST_STYLES.peony
+	local host = makeNeonPart(parent, 'BurstOrigin', Vector3.one * 0.2, CFrame.new(position), color)
+	host.Transparency = 1
+
+	local emitter = Instance.new('ParticleEmitter')
+	emitter.Name = 'Stars'
+	emitter.Texture = SPARK_TEXTURE
+	emitter.LightEmission = 1
+	emitter.LightInfluence = 0
+	emitter.Brightness = 8
+	emitter.Orientation = Enum.ParticleOrientation.FacingCamera
+	-- Two-tone stars: big Japanese shells change colour as they burn.
+	local second = if math.random() < 0.55 then pick(palette) else color
+	emitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 252, 240)),
+		ColorSequenceKeypoint.new(0.25, color),
+		ColorSequenceKeypoint.new(1, second),
+	})
+	-- Small stars, many of them: large sprites read as clumps of mini-fireworks
+	-- rather than one shell opening.
+	local starSize = class.radius * 0.018 * style.sizeScale
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, starSize * 1.4),
+		NumberSequenceKeypoint.new(0.7, starSize),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.65, 0.15),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emitter.Lifetime = NumberRange.new(style.lifeLow, style.lifeHigh)
+	emitter.Speed = NumberRange.new(style.speedLow * (class.radius / 36), style.speedHigh * (class.radius / 36))
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Drag = style.drag
+	emitter.Acceleration = Vector3.new(0, -style.gravity, 0)
+	emitter.Rate = 0
+	emitter.Rotation = NumberRange.new(0, 360)
+	emitter.RotSpeed = NumberRange.new(-40, 40)
+	emitter.Enabled = false
+	emitter.Parent = host
+
+	emitter:Emit(class.particles)
+	Debris:AddItem(host, style.lifeHigh + 1.5)
 end
 
 -- Parametric heart, drawn in a vertical plane so it reads from the shore.
@@ -126,8 +260,7 @@ end
 -- Flat ring, tilted so it never reads as a straight line.
 local function ringOffsets(count: number, radius: number): { Vector3 }
 	local offsets = table.create(count)
-	local tilt = randomRange(0.25, 0.6)
-	local rotation = CFrame.Angles(tilt, randomRange(0, math.pi), tilt * 0.5)
+	local rotation = CFrame.Angles(randomRange(0.25, 0.6), randomRange(0, math.pi), randomRange(0.1, 0.35))
 	for index = 1, count do
 		local angle = (index / count) * math.pi * 2
 		local flat = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
@@ -136,40 +269,62 @@ local function ringOffsets(count: number, radius: number): { Vector3 }
 	return offsets
 end
 
--- Wide, slightly flattened dome — the base for drooping willow shells.
-local function willowOffsets(count: number, radius: number): { Vector3 }
-	local offsets = table.create(count)
-	for index = 1, count do
-		local angle = (index / count) * math.pi * 2 + randomRange(-0.2, 0.2)
-		local lift = randomRange(0.15, 1.0)
-		local reach = radius * randomRange(0.75, 1.25)
-		offsets[index] = Vector3.new(math.cos(angle) * reach, lift * radius * 0.55, math.sin(angle) * reach)
+-- Shaped shells need stars at exact points, so these are placed individually
+-- and each carries a small spark emitter for the glow.
+local function emitShapedBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, shapeName: string)
+	local count = math.clamp(math.floor(class.particles / 3), 20, 64)
+	local offsets = if shapeName == 'heart'
+		then heartOffsets(count, class.radius)
+		else ringOffsets(count, class.radius)
+
+	for _, offset in offsets do
+		local target = position + offset
+		local star = makeNeonPart(parent, 'Star', Vector3.one * (class.radius * 0.05), CFrame.new(position), color)
+		star.Shape = Enum.PartType.Ball
+
+		local emitter = Instance.new('ParticleEmitter')
+		emitter.Texture = SPARK_TEXTURE
+		emitter.LightEmission = 1
+		emitter.LightInfluence = 0
+		emitter.Brightness = 6
+		emitter.Color = ColorSequence.new(color)
+		emitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, class.radius * 0.05),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		emitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.15),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		emitter.Lifetime = NumberRange.new(0.4, 0.8)
+		emitter.Speed = NumberRange.new(0, 2)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.Rate = 30
+		emitter.Parent = star
+
+		-- Snap out to the shape, hold it, then fade.
+		TweenService:Create(star, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(target),
+		}):Play()
+		task.delay(1.5, function()
+			if star.Parent then
+				emitter.Enabled = false
+				TweenService:Create(star, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					CFrame = CFrame.new(target - Vector3.new(0, class.radius * 0.3, 0)),
+					Transparency = 1,
+				}):Play()
+			end
+		end)
 	end
-	return offsets
 end
 
--- Dense scatter of short-lived flecks — the crackle/scatter shell.
-local function scatterOffsets(count: number, radius: number): { Vector3 }
-	local offsets = table.create(count)
-	for index = 1, count do
-		local direction = Vector3.new(randomRange(-1, 1), randomRange(-0.7, 1), randomRange(-1, 1))
-		if direction.Magnitude < 0.05 then
-			direction = Vector3.yAxis
-		end
-		offsets[index] = direction.Unit * radius * randomRange(0.35, 1.1)
-	end
-	return offsets
-end
-
--- shape -> how the sparks travel after they open.
--- droop: how far they sag while flying. fall: extra slow drop afterwards.
 local SHAPES = {
-	{ name = 'peony', build = sphereOffsets, droop = 0.30, fall = 0.0, weight = 26 },
-	{ name = 'chrysanthemum', build = sphereOffsets, droop = 0.55, fall = 0.9, weight = 18 },
-	{ name = 'willow', build = willowOffsets, droop = 0.35, fall = 2.4, weight = 18 },
-	{ name = 'ring', build = ringOffsets, droop = 0.18, fall = 0.0, weight = 12 },
-	{ name = 'scatter', build = scatterOffsets, droop = 0.45, fall = 0.5, weight = 16 },
-	{ name = 'heart', build = heartOffsets, droop = 0.12, fall = 0.0, weight = 10 },
+	{ name = 'peony', shaped = false, weight = 26 },
+	{ name = 'chrysanthemum', shaped = false, weight = 18 },
+	{ name = 'willow', shaped = false, weight = 18 },
+	{ name = 'scatter', shaped = false, weight = 16 },
+	{ name = 'ring', shaped = true, weight = 12 },
+	{ name = 'heart', shaped = true, weight = 10 },
 }
 
 local SHAPE_WEIGHT_TOTAL = 0
@@ -188,69 +343,12 @@ local function pickShape()
 	return SHAPES[1]
 end
 
---=============================================================================
--- Rendering
---=============================================================================
-
-local function makeNeonPart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3): Part
-	local object = Instance.new('Part')
-	object.Name = name
-	object.Size = size
-	object.CFrame = cframe
-	object.Color = color
-	object.Material = Enum.Material.Neon
-	object.Anchored = true
-	object.CanCollide = false
-	object.CanTouch = false
-	object.CanQuery = false
-	object.CastShadow = false
-	object.Parent = parent
-	return object
-end
-
-local function playPositionalSound(
-	parent: BasePart,
-	soundId: string,
-	volume: number,
-	playbackSpeed: number,
-	range: number
-)
-	local sound = Instance.new('Sound')
-	sound.Name = 'FireworkSound'
-	sound.SoundId = soundId
-	sound.Volume = volume
-	sound.PlaybackSpeed = playbackSpeed
-	sound.RollOffMode = Enum.RollOffMode.InverseTapered
-	sound.RollOffMinDistance = 25
-	sound.RollOffMaxDistance = range
-	sound.Parent = parent
-	sound:Play()
-	Debris:AddItem(sound, 6)
-end
-
--- Layered report: a sharp crack over a deep, slightly delayed rumble.
-local function playBoom(anchor: BasePart, class: ShellClass)
-	playPositionalSound(anchor, BOOM_SOUND, class.volume, class.pitch, class.range)
-	if class.volume >= 2 then
-		task.delay(0.09, function()
-			if anchor.Parent then
-				playPositionalSound(anchor, BOOM_SOUND, class.volume * 0.8, class.pitch * 0.62, class.range * 1.15)
-			end
-		end)
-		task.delay(0.26, function()
-			if anchor.Parent then
-				playPositionalSound(anchor, BOOM_SOUND, class.volume * 0.45, class.pitch * 0.5, class.range * 1.3)
-			end
-		end)
-	end
-end
-
 local function burst(position: Vector3, color: Color3, class: ShellClass, shape: any)
 	local effect = Instance.new('Model')
 	effect.Name = `SafeFireworkBurst_{shape.name}`
 	effect.Parent = workspace
 
-	local anchor = makeNeonPart(effect, 'SoundAnchor', Vector3.new(0.2, 0.2, 0.2), CFrame.new(position), color)
+	local anchor = makeNeonPart(effect, 'SoundAnchor', Vector3.one * 0.2, CFrame.new(position), color)
 	anchor.Transparency = 1
 	playBoom(anchor, class)
 
@@ -258,59 +356,23 @@ local function burst(position: Vector3, color: Color3, class: ShellClass, shape:
 	local flash = makeNeonPart(
 		effect,
 		'Flash',
-		Vector3.one * (class.radius * 0.32),
+		Vector3.one * (class.radius * 0.3),
 		CFrame.new(position),
 		Color3.fromRGB(255, 252, 236)
 	)
 	flash.Shape = Enum.PartType.Ball
-	TweenService:Create(flash, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = Vector3.one * (class.radius * 1.05),
+	TweenService:Create(flash, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.one * (class.radius * 1.1),
 		Transparency = 1,
 	}):Play()
 
-	-- A second colour on big shells reads as a layered Japanese shell.
-	local innerColor = if class.volume >= 2 and math.random() < 0.55 then pick(palette) else color
-
-	local offsets = shape.build(class.sparks, class.radius)
-	local totalLife = class.life + shape.fall
-
-	for index, offset in offsets do
-		local sparkColor = if index % 3 == 0 then innerColor else color
-		local target = position + offset
-		local length = class.sparkSize * (if shape.name == 'willow' then 7 else 4.5)
-
-		local spark = makeNeonPart(
-			effect,
-			'Spark',
-			Vector3.new(class.sparkSize, class.sparkSize, length),
-			CFrame.lookAt(position, target),
-			sparkColor
-		)
-
-		-- Stage 1: fly out to the shape.
-		local outward = TweenService:Create(
-			spark,
-			TweenInfo.new(class.life * 0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-			{ CFrame = CFrame.lookAt(target, target + offset), Transparency = 0.15 }
-		)
-		outward:Play()
-
-		-- Stage 2: sag, then (for willow/chrysanthemum) drift down and burn out.
-		outward.Completed:Once(function()
-			if not spark.Parent then
-				return
-			end
-			local drop = class.radius * (shape.droop + shape.fall * 0.75)
-			local settled = target - Vector3.new(0, drop, 0)
-			TweenService:Create(
-				spark,
-				TweenInfo.new(totalLife * 0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-				{ CFrame = CFrame.lookAt(settled, settled - Vector3.yAxis), Transparency = 1 }
-			):Play()
-		end)
+	if shape.shaped then
+		emitShapedBurst(effect, position, color, class, shape.name)
+		Debris:AddItem(effect, 5)
+	else
+		emitParticleBurst(effect, position, color, class, shape.name)
+		Debris:AddItem(effect, 7)
 	end
-
-	Debris:AddItem(effect, totalLife + 1.2)
 end
 
 local function launchShell(launcher: BasePart, className: string?)
@@ -320,26 +382,16 @@ local function launchShell(launcher: BasePart, className: string?)
 
 	local origin = launcher.Position + Vector3.new(0, 2, 0)
 	local destination = origin
-		+ Vector3.new(
-			randomRange(-30, 30),
-			randomRange(class.apexLow, class.apexHigh),
-			randomRange(-26, 26)
-		)
+		+ Vector3.new(randomRange(-32, 32), randomRange(class.apexLow, class.apexHigh), randomRange(-28, 28))
 
-	local shell = makeNeonPart(
-		workspace,
-		'FireworkShell',
-		Vector3.new(class.sparkSize * 1.2, class.sparkSize * 3.4, class.sparkSize * 1.2),
-		CFrame.new(origin),
-		color
-	)
-	playPositionalSound(shell, WHOOSH_SOUND, class.volume * 0.32, 1, 220)
+	local shell = makeNeonPart(workspace, 'FireworkShell', Vector3.new(0.7, 2.2, 0.7), CFrame.new(origin), color)
+	playPositionalSound(shell, WHISTLE_SOUND, class.volume * 0.3, randomRange(0.85, 1.15), 280)
 
 	local attachment0 = Instance.new('Attachment')
-	attachment0.Position = Vector3.new(0, -0.8, 0)
+	attachment0.Position = Vector3.new(0, -0.9, 0)
 	attachment0.Parent = shell
 	local attachment1 = Instance.new('Attachment')
-	attachment1.Position = Vector3.new(0, 0.6, 0)
+	attachment1.Position = Vector3.new(0, 0.7, 0)
 	attachment1.Parent = shell
 
 	local trail = Instance.new('Trail')
@@ -350,7 +402,7 @@ local function launchShell(launcher: BasePart, className: string?)
 		NumberSequenceKeypoint.new(0, 0.1),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	trail.Lifetime = 0.45
+	trail.Lifetime = 0.5
 	trail.LightEmission = 1
 	trail.WidthScale = NumberSequence.new(1, 0.1)
 	trail.Parent = shell
@@ -368,7 +420,7 @@ local function launchShell(launcher: BasePart, className: string?)
 		end
 	end)
 
-	Debris:AddItem(shell, class.climb + 0.4)
+	Debris:AddItem(shell, class.climb + 0.5)
 end
 
 --=============================================================================
@@ -398,28 +450,27 @@ end
 
 -- Each pattern fires its shells and returns how long to rest afterwards.
 local PATTERNS = {
-	-- A lone shell, the breathing space between bigger moments.
+	-- A lone shell: the breathing space between bigger moments.
 	{
-		weight = 22,
+		weight = 20,
 		run = function(launchers: { BasePart }): number
 			launchShell(pick(launchers), if math.random() < 0.3 then 'large' else 'small')
-			return randomRange(1.1, 2.2)
+			return randomRange(1.2, 2.3)
 		end,
 	},
 	-- A quick cluster from scattered tubes.
 	{
 		weight = 24,
 		run = function(launchers: { BasePart }): number
-			local count = math.random(3, 6)
-			for index = 1, count do
+			for index = 1, math.random(3, 6) do
 				task.delay((index - 1) * randomRange(0.08, 0.2), function()
 					launchShell(pick(launchers), if math.random() < 0.35 then 'large' else 'small')
 				end)
 			end
-			return randomRange(1.8, 3.0)
+			return randomRange(1.9, 3.0)
 		end,
 	},
-	-- Sequenced row down the barge (senkou / deretan).
+	-- Sequenced row down the barge (deretan).
 	{
 		weight = 18,
 		run = function(launchers: { BasePart }): number
@@ -431,7 +482,7 @@ local PATTERNS = {
 					launchShell(launcher, 'small')
 				end)
 			end
-			return randomRange(2.0, 3.2)
+			return randomRange(2.1, 3.2)
 		end,
 	},
 	-- One big shell, given room to breathe.
@@ -439,7 +490,7 @@ local PATTERNS = {
 		weight = 16,
 		run = function(launchers: { BasePart }): number
 			launchShell(pick(launchers), 'huge')
-			return randomRange(2.6, 4.0)
+			return randomRange(2.8, 4.2)
 		end,
 	},
 	-- Twin large shells opening together.
@@ -447,18 +498,16 @@ local PATTERNS = {
 		weight = 12,
 		run = function(launchers: { BasePart }): number
 			local ordered = orderedLaunchers(launchers)
-			local left = ordered[1]
-			local right = ordered[#ordered]
-			launchShell(left, 'large')
+			launchShell(ordered[1], 'large')
 			task.delay(0.06, function()
-				launchShell(right, 'large')
+				launchShell(ordered[#ordered], 'large')
 			end)
-			return randomRange(2.2, 3.4)
+			return randomRange(2.3, 3.4)
 		end,
 	},
 	-- Starmine: rolling wall of shells, the crowd-pleaser.
 	{
-		weight = 8,
+		weight = 10,
 		run = function(launchers: { BasePart }): number
 			local ordered = orderedLaunchers(launchers)
 			for wave = 0, 2 do
@@ -468,10 +517,10 @@ local PATTERNS = {
 					end)
 				end
 			end
-			task.delay(1.9, function()
+			task.delay(1.95, function()
 				launchShell(pick(ordered), 'huge')
 			end)
-			return randomRange(3.6, 5.0)
+			return randomRange(3.8, 5.2)
 		end,
 	},
 }
@@ -510,21 +559,83 @@ local function formatRemaining(seconds: number): string
 	return string.format('%02d:%02d', minutes, seconds % 60)
 end
 
--- Any part tagged FireworksConsole, otherwise the old greybox console base if
--- it is still lying around, so the show stays reachable either way.
-local function findConsoleAnchor(): BasePart?
-	local fallback: BasePart? = nil
+-- A real hanabi taikai runs after dark, and the stars simply do not read
+-- against a bright sky. Dusk is eased in for the show and restored after.
+local function fadeSkyToNight(): number
+	local before = Lighting.ClockTime
+	TweenService:Create(Lighting, TweenInfo.new(6, Enum.EasingStyle.Sine), { ClockTime = SHOW_CLOCK_TIME }):Play()
+	return before
+end
+
+local function restoreSky(before: number)
+	TweenService:Create(Lighting, TweenInfo.new(10, Enum.EasingStyle.Sine), { ClockTime = before }):Play()
+end
+
+local function findTaggedConsole(): BasePart?
 	for _, descendant in workspace:GetDescendants() do
-		if descendant:IsA('BasePart') then
-			if descendant:GetAttribute('FireworksConsole') then
-				return descendant
-			end
-			if not fallback and descendant.Name == 'FireworksConsole' then
-				fallback = descendant
+		if descendant:IsA('BasePart') and descendant:GetAttribute('FireworksConsole') then
+			return descendant
+		end
+	end
+	return nil
+end
+
+local function terrainHeight(x: number, z: number): number?
+	local parameters = RaycastParams.new()
+	parameters.FilterType = Enum.RaycastFilterType.Include
+	parameters.FilterDescendantsInstances = { workspace.Terrain }
+	parameters.IgnoreWater = true
+	local result = workspace:Raycast(Vector3.new(x, 400, z), Vector3.new(0, -800, 0), parameters)
+	return if result then result.Position.Y else nil
+end
+
+-- Nearest dry land to the launchers, searched as widening rings so the console
+-- lands on the shore rather than out on the lake.
+local function findConsoleSpot(launchers: { BasePart }): Vector3
+	local centre = Vector3.zero
+	for _, launcher in launchers do
+		centre += launcher.Position
+	end
+	centre /= #launchers
+
+	for _, distance in { 26, 42, 60, 85, 115, 150 } do
+		for step = 0, 11 do
+			local angle = (step / 12) * math.pi * 2
+			local x = centre.X + math.cos(angle) * distance
+			local z = centre.Z + math.sin(angle) * distance
+			local y = terrainHeight(x, z)
+			if y and y > 1.5 then
+				return Vector3.new(x, y, z)
 			end
 		end
 	end
-	return fallback
+	return centre + Vector3.new(0, 3, 30)
+end
+
+-- Placeholder console so the show is always reachable before a Creator Store
+-- model is dropped in. Tag your own part with FireworksConsole to replace it.
+local function buildFallbackConsole(launchers: { BasePart }): BasePart
+	local previous = workspace:FindFirstChild('FestivalFireworksControl')
+	if previous then
+		previous:Destroy()
+	end
+
+	local spot = findConsoleSpot(launchers)
+	local console = Instance.new('Model')
+	console.Name = 'FestivalFireworksControl'
+	console.Parent = workspace
+
+	local base = makeNeonPart(
+		console,
+		'FireworksConsole',
+		Vector3.new(5.5, 3.2, 4),
+		CFrame.new(spot + Vector3.new(0, 1.9, 0)),
+		Color3.fromRGB(74, 78, 76)
+	)
+	base.Material = Enum.Material.Metal
+	base.CanCollide = true
+	base.CanQuery = true
+	return base
 end
 
 local function attachConsole(base: BasePart)
@@ -577,15 +688,16 @@ local function attachConsole(base: BasePart)
 		end
 		running = true
 		prompt.Enabled = false
+		local skyBefore = fadeSkyToNight()
 		local finishAt = os.clock() + showDuration()
 		task.spawn(function()
 			while running and os.clock() < finishAt do
 				local remaining = math.max(0, math.ceil(finishAt - os.clock()))
 				label.Text = `花火大会 • {formatRemaining(remaining)}`
-				local rest = pickPattern().run(launchers)
-				task.wait(rest)
+				task.wait(pickPattern().run(launchers))
 			end
 			running = false
+			restoreSky(skyBefore)
 			prompt.Enabled = true
 			label.Text = `花火大会 • Ready ({formatRemaining(showDuration())})`
 		end)
@@ -593,15 +705,15 @@ local function attachConsole(base: BasePart)
 end
 
 function FireworksFestivalService.init()
-	local anchor = findConsoleAnchor()
-	if anchor then
-		attachConsole(anchor)
-	else
+	local launchers = collectLaunchers()
+	if #launchers == 0 then
 		warn(
-			'[Fireworks] No console found. Tag any part with the attribute '
-				.. 'FireworksConsole (boolean) to place the festival control.'
+			'[Fireworks] No launch points found. Tag a part with the attribute '
+				.. 'FireworksLaunchPoint, or name it "Launcher...".'
 		)
+		return
 	end
+	attachConsole(findTaggedConsole() or buildFallbackConsole(launchers))
 end
 
 return FireworksFestivalService
