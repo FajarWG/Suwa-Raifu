@@ -30,15 +30,6 @@ local sessions: { [Player]: FishingSession } = {}
 local activeShops: { [Player]: { id: string, expiresAt: number } } = {}
 local nextToken = 0
 
-local function terrainHeight(x: number, z: number, fallback: number): number
-	local parameters = RaycastParams.new()
-	parameters.FilterType = Enum.RaycastFilterType.Include
-	parameters.FilterDescendantsInstances = { workspace.Terrain }
-	parameters.IgnoreWater = true
-	local result = workspace:Raycast(Vector3.new(x, 90, z), Vector3.new(0, -200, 0), parameters)
-	return if result then result.Position.Y else fallback
-end
-
 local function makePart(
 	parent: Instance,
 	name: string,
@@ -58,21 +49,6 @@ local function makePart(
 	object.BottomSurface = Enum.SurfaceType.Smooth
 	object.Parent = parent
 	return object
-end
-
-local function addSign(part: BasePart, text: string)
-	local gui = Instance.new('SurfaceGui')
-	gui.Face = Enum.NormalId.Front
-	gui.PixelsPerStud = 40
-	gui.Parent = part
-	local label = Instance.new('TextLabel')
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextColor3 = Color3.fromRGB(55, 48, 38)
-	label.TextScaled = true
-	label.Parent = gui
 end
 
 local function snapshot(player: Player): any
@@ -584,157 +560,67 @@ local function beginFishing(player: Player, spot: BasePart)
 	end)
 end
 
+-- Titik mancing manual: BasePart mana pun dengan Attribute 'FishingSpot', atau
+-- yang namanya diawali 'FishingSpot'. Dermaga Creator Store cukup ditandai satu
+-- part kecil (boleh invisible) sebagai titik lempar kail.
 local function configureFishingSpots()
-	local activities = workspace:FindFirstChild('LakesideActivities')
-	if not activities then
-		return
-	end
-	for _, spot in activities:GetDescendants() do
-		if spot:IsA('BasePart') and string.find(spot.Name, 'FishingSpot') then
-			spot.Transparency = 1
-			spot.CanCollide = false
-			local old = spot:FindFirstChild('FishingPrompt')
-			if old then
-				old:Destroy()
+	local found = 0
+	for _, spot in workspace:GetDescendants() do
+		if spot:IsA('BasePart') then
+			local attributed = spot:GetAttribute('FishingSpot')
+			local legacyMarker = spot.Name:match('^FishingSpot') ~= nil
+			if (attributed or legacyMarker) and not spot:FindFirstChild('FishingPrompt') then
+				-- Legacy greybox markers are meant to be invisible pads. A part the
+				-- builder tagged themselves is their own model: leave it as-is.
+				if legacyMarker and not attributed then
+					spot.Transparency = 1
+					spot.CanCollide = false
+				end
+				local prompt = Instance.new('ProximityPrompt')
+				prompt.Name = 'FishingPrompt'
+				prompt.ActionText = 'Cast line'
+				prompt.ObjectText = 'Lake Suwa fishing spot'
+				prompt.HoldDuration = 0.8
+				prompt.MaxActivationDistance = 10
+				prompt.RequiresLineOfSight = false
+				prompt.Parent = spot
+				prompt.Triggered:Connect(function(player)
+					beginFishing(player, spot)
+				end)
+				found += 1
 			end
-			local prompt = Instance.new('ProximityPrompt')
-			prompt.Name = 'FishingPrompt'
-			prompt.ActionText = 'Cast line'
-			prompt.ObjectText = 'Lake Suwa fishing spot'
-			prompt.HoldDuration = 0.8
-			prompt.MaxActivationDistance = 10
-			prompt.RequiresLineOfSight = false
-			prompt.Parent = spot
-			prompt.Triggered:Connect(function(player)
-				beginFishing(player, spot)
-			end)
 		end
 	end
-end
-
-local function buildShop(parent: Model, shopId: string, position: Vector3, color: Color3, signText: string)
-	position = Vector3.new(position.X, terrainHeight(position.X, position.Z, position.Y - 0.4) + 0.35, position.Z)
-	local shop = Instance.new('Model')
-	shop.Name = shopId
-	shop.Parent = parent
-	makePart(
-		shop,
-		'Foundation',
-		Vector3.new(30, 0.7, 18),
-		CFrame.new(position),
-		Color3.fromRGB(139, 137, 127),
-		Enum.Material.Pavement
-	)
-	makePart(
-		shop,
-		'BackWall',
-		Vector3.new(27, 10, 1),
-		CFrame.new(position + Vector3.new(0, 5.3, 7.5)),
-		color,
-		Enum.Material.WoodPlanks
-	)
-	makePart(
-		shop,
-		'Counter',
-		Vector3.new(27, 3.5, 3),
-		CFrame.new(position + Vector3.new(0, 2, -6.5)),
-		Color3.fromRGB(114, 79, 50),
-		Enum.Material.WoodPlanks
-	)
-	for _, x in { -12, 12 } do
-		makePart(
-			shop,
-			'Post',
-			Vector3.new(0.8, 10, 0.8),
-			CFrame.new(position + Vector3.new(x, 5.3, 0)),
-			Color3.fromRGB(78, 62, 46),
-			Enum.Material.Wood
+	if found == 0 then
+		warn(
+			'[Fishing] No fishing spots found. Tag any part with the attribute '
+				.. 'FishingSpot (boolean) to mark a casting point.'
 		)
 	end
-	makePart(
-		shop,
-		'Roof',
-		Vector3.new(33, 1, 21),
-		CFrame.new(position + Vector3.new(0, 11, 0)) * CFrame.Angles(0, 0, math.rad(-4)),
-		Color3.fromRGB(66, 71, 66),
-		Enum.Material.RoofShingles
-	)
-	local sign = makePart(
-		shop,
-		'ShopSign',
-		Vector3.new(20, 4, 0.6),
-		CFrame.new(position + Vector3.new(0, 8, -7.9)),
-		Color3.fromRGB(231, 219, 188),
-		Enum.Material.WoodPlanks
-	)
-	addSign(sign, signText)
-	local promptPart = shop:FindFirstChild('Counter') :: BasePart
-	local prompt = Instance.new('ProximityPrompt')
-	prompt.ActionText = 'Browse shop'
-	prompt.ObjectText = FishingData.shops[shopId].name
-	prompt.MaxActivationDistance = 11
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = promptPart
-	prompt.Triggered:Connect(function(player)
-		activeShops[player] = { id = shopId, expiresAt = os.clock() + 30 }
-		RemoteRegistry.fireClient(player, 'OpenShop', FishingData.shops[shopId])
-	end)
-
-	if shopId == 'fishing_supply' then
-		for index = -2, 2 do
-			makePart(
-				shop,
-				'DisplayRod',
-				Vector3.new(0.16, 6.5, 0.16),
-				CFrame.new(position + Vector3.new(index * 3, 5.2, 7)) * CFrame.Angles(0, 0, math.rad(-8)),
-				Color3.fromRGB(48, 53, 50),
-				Enum.Material.Metal
-			).CanCollide =
-				false
-		end
-	elseif shopId == 'ice_cream' then
-		for index, scoopColor in
-			{ Color3.fromRGB(244, 232, 203), Color3.fromRGB(126, 160, 91), Color3.fromRGB(239, 170, 139) }
-		do
-			local scoop = makePart(
-				shop,
-				'IceCreamDisplay',
-				Vector3.new(1.4, 1.4, 1.4),
-				CFrame.new(position + Vector3.new(-4 + index * 4, 4.4, -8.2)),
-				scoopColor,
-				Enum.Material.SmoothPlastic
-			)
-			scoop.Shape = Enum.PartType.Ball
-			scoop.CanCollide = false
-		end
-	else
-		for index, lanternColor in
-			{ Color3.fromRGB(230, 64, 49), Color3.fromRGB(247, 218, 86), Color3.fromRGB(84, 148, 190) }
-		do
-			local lantern = makePart(
-				shop,
-				'FestivalLantern',
-				Vector3.new(1.4, 2.1, 1.4),
-				CFrame.new(position + Vector3.new(-8 + index * 4, 7.8, -8.2)),
-				lanternColor,
-				Enum.Material.Neon
-			)
-			lantern.Shape = Enum.PartType.Ball
-			lantern.CanCollide = false
-		end
-	end
 end
 
-local function buildLakesideShops()
-	local previous = workspace:FindFirstChild('LakesideShops')
-	if previous then
-		previous:Destroy()
+-- Toko sekarang murni manual di Studio (model Creator Store). Tinggal beri
+-- BasePart mana pun sebuah Attribute 'ShopId' (nilainya salah satu key di
+-- FishingData.shops, mis. 'fishing_supply'), dan prompt beli otomatis terpasang.
+local function configureManualShops()
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA('BasePart') then
+			local shopId = descendant:GetAttribute('ShopId')
+			if type(shopId) == 'string' and FishingData.shops[shopId] and not descendant:FindFirstChild('ShopPrompt') then
+				local prompt = Instance.new('ProximityPrompt')
+				prompt.Name = 'ShopPrompt'
+				prompt.ActionText = 'Browse shop'
+				prompt.ObjectText = FishingData.shops[shopId].name
+				prompt.MaxActivationDistance = 11
+				prompt.RequiresLineOfSight = false
+				prompt.Parent = descendant
+				prompt.Triggered:Connect(function(player)
+					activeShops[player] = { id = shopId, expiresAt = os.clock() + 30 }
+					RemoteRegistry.fireClient(player, 'OpenShop', FishingData.shops[shopId])
+				end)
+			end
+		end
 	end
-	local root = Instance.new('Model')
-	root.Name = 'LakesideShops'
-	root.Parent = workspace
-	buildShop(root, 'fishing_supply', Vector3.new(345, 0.4, -73), Color3.fromRGB(77, 111, 103), '釣具店')
-	-- ice_cream & island_festival greybox dilepas; akan diganti model Creator Store manual di Studio.
 end
 
 local function buyItem(player: Player, payload: any)
@@ -801,7 +687,7 @@ local function inventoryAction(player: Player, payload: any)
 end
 
 function FishingGameService.init()
-	buildLakesideShops()
+	configureManualShops()
 	configureFishingSpots()
 
 	RemoteRegistry.registerFunction('GetInventory', function(player: Player)
