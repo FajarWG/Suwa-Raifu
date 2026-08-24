@@ -21,22 +21,25 @@ local TweenService = game:GetService('TweenService')
 
 local SHOW_CLOCK_TIME = 20.2
 
--- Festival control point: the torii islet in the middle of the lake, where
--- players gather to watch. Ground height is resolved from terrain at runtime,
--- so only X/Z are pinned here.
-local CONSOLE_SPOT_X = -24
-local CONSOLE_SPOT_Z = -545
+-- Festival control point: the islet's south shore, where players stand to
+-- watch. Ground height is resolved from terrain at runtime, so only X/Z pinned.
+local CONSOLE_SPOT_X = 4
+local CONSOLE_SPOT_Z = -679
 
--- Shells rise from a ring around the islet rather than one spot, which is what
--- lets the sequenced-row and starmine patterns sweep across the sky.
-local ISLAND_LAUNCH_RADIUS = 34
-local ISLAND_LAUNCH_COUNT = 7
+-- Launch battery: a row of tubes moored on the open water *behind* the viewing
+-- spot, firing north across the lake — the way real hanabi barges are set up.
+-- Shells therefore climb away from the audience rather than out of nowhere.
+local BATTERY_Z = -707
+local BATTERY_X_MIN = -62
+local BATTERY_X_MAX = 70
+local BATTERY_COUNT = 7
+local BATTERY_Y = 1.6
 
--- Lakeside park, the far bank the audience watches from (centre ~(0, -122)).
--- Bursts lean this way so they hang over open water between islet and shore.
+-- Lakeside park, the far bank opposite (centre ~(0, -122)). Bursts lean this
+-- way so they open over open water, framed from the islet and the park alike.
 local PARK_VIEWPOINT = Vector3.new(0, 0, -122)
-local PARK_LEAN_MIN = 60
-local PARK_LEAN_MAX = 175
+local PARK_LEAN_MIN = 110
+local PARK_LEAN_MAX = 250
 
 local NORMAL_DURATION = 10 * 60
 local AUGUST_15_DURATION = 60 * 60
@@ -78,34 +81,34 @@ type ShellClass = {
 
 local SHELL_CLASSES: { [string]: ShellClass } = {
 	small = {
-		apexLow = 95,
-		apexHigh = 128,
+		apexLow = 165,
+		apexHigh = 215,
 		radius = 27,
 		particles = 210,
 		volume = 2.0,
 		pitch = 0.95,
 		range = 460,
-		climb = 1.05,
+		climb = 1.45,
 	},
 	large = {
-		apexLow = 150,
-		apexHigh = 192,
+		apexLow = 245,
+		apexHigh = 315,
 		radius = 50,
 		particles = 470,
 		volume = 3.8,
 		pitch = 0.68,
 		range = 820,
-		climb = 1.35,
+		climb = 1.8,
 	},
 	huge = {
-		apexLow = 205,
-		apexHigh = 268,
+		apexLow = 335,
+		apexHigh = 425,
 		radius = 80,
 		particles = 780,
 		volume = 5.5,
 		pitch = 0.5,
 		range = 1250,
-		climb = 1.7,
+		climb = 2.2,
 	},
 }
 
@@ -212,23 +215,25 @@ type BurstStyle = {
 	drag: number,
 	gravity: number,
 	sizeScale: number,
+	streak: number,
 }
 
 local BURST_STYLES: { [string]: BurstStyle } = {
-	peony = { speedLow = 55, speedHigh = 85, lifeLow = 1.3, lifeHigh = 1.9, drag = 6, gravity = 8, sizeScale = 1.0 },
+	peony = { speedLow = 62, speedHigh = 84, lifeLow = 1.3, lifeHigh = 1.9, drag = 6, gravity = 8, sizeScale = 1.0, streak = 4.5 },
 	chrysanthemum = {
-		speedLow = 48,
-		speedHigh = 78,
+		speedLow = 55,
+		speedHigh = 76,
 		lifeLow = 2.1,
 		lifeHigh = 2.9,
 		drag = 5,
 		gravity = 20,
 		sizeScale = 1.1,
+		streak = 5.5,
 	},
 	-- Kamuro: opens, then the stars rain down and hang instead of snapping out.
 	-- Low drag + long life is what keeps the curtain in the air.
-	willow = { speedLow = 30, speedHigh = 52, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2 },
-	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7 },
+	willow = { speedLow = 36, speedHigh = 54, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2, streak = 7.5 },
+	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7, streak = 3.2 },
 }
 
 local function emitParticleBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, styleName: string)
@@ -241,8 +246,10 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	emitter.Texture = SPARK_TEXTURE
 	emitter.LightEmission = 1
 	emitter.LightInfluence = 0
-	emitter.Brightness = 8
-	emitter.Orientation = Enum.ParticleOrientation.FacingCamera
+	emitter.Brightness = 14
+	-- Real hanabi read as long radial RAYS, not dots. Aligning each star to its
+	-- own velocity and squashing it along that axis is what draws the streak.
+	emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
 	-- Colour change (iro-henka): hold the first colour, then switch late in the
 	-- burn so the change is actually seen instead of blending into a smear.
 	-- Kamuro willows stay gold and deepen to amber, the way the real ones do.
@@ -258,7 +265,7 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	})
 	-- Small stars, many of them: large sprites read as clumps of mini-fireworks
 	-- rather than one shell opening.
-	local starSize = class.radius * 0.018 * style.sizeScale
+	local starSize = class.radius * 0.07 * style.sizeScale
 	emitter.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, starSize * 1.4),
 		NumberSequenceKeypoint.new(0.7, starSize),
@@ -270,13 +277,20 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	emitter.Lifetime = NumberRange.new(style.lifeLow, style.lifeHigh)
-	emitter.Speed = NumberRange.new(style.speedLow * (class.radius / 36), style.speedHigh * (class.radius / 36))
+	-- A tight speed band keeps the shell's outer edge crisp instead of smeared.
+	local speedScale = class.radius / 36
+	emitter.Speed = NumberRange.new(style.speedLow * speedScale, style.speedHigh * speedScale)
 	emitter.SpreadAngle = Vector2.new(180, 180)
 	emitter.Drag = style.drag
 	emitter.Acceleration = Vector3.new(0, -style.gravity, 0)
 	emitter.Rate = 0
-	emitter.Rotation = NumberRange.new(0, 360)
-	emitter.RotSpeed = NumberRange.new(-40, 40)
+	-- Negative squash stretches along the velocity axis. Positive squashes
+	-- across it, which renders the burst as horizontal bars instead of rays.
+	emitter.Squash = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, -style.streak),
+		NumberSequenceKeypoint.new(0.6, -style.streak * 0.6),
+		NumberSequenceKeypoint.new(1, 0),
+	})
 	emitter.Enabled = false
 	emitter.Parent = host
 
@@ -290,14 +304,13 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	glitter.Texture = SPARK_TEXTURE
 	glitter.LightEmission = 1
 	glitter.LightInfluence = 0
-	glitter.Brightness = 12
-	glitter.Orientation = Enum.ParticleOrientation.FacingCamera
+	glitter.Brightness = 22
 	glitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 245)),
 		ColorSequenceKeypoint.new(0.6, if isWillow then KAMURO_GOLD else Color3.fromRGB(255, 240, 200)),
 		ColorSequenceKeypoint.new(1, second),
 	})
-	local fleck = starSize * 0.4
+	local fleck = starSize * 0.28
 	glitter.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, fleck),
 		NumberSequenceKeypoint.new(0.5, fleck * 1.25),
@@ -316,8 +329,11 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	glitter.Drag = style.drag * 1.6
 	glitter.Acceleration = Vector3.new(0, -style.gravity * 0.8, 0)
 	glitter.Rate = 0
-	glitter.Rotation = NumberRange.new(0, 360)
-	glitter.RotSpeed = NumberRange.new(-160, 160)
+	glitter.Orientation = Enum.ParticleOrientation.VelocityParallel
+	glitter.Squash = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, -style.streak * 0.4),
+		NumberSequenceKeypoint.new(1, 0),
+	})
 	glitter.Enabled = false
 	glitter.Parent = host
 	glitter:Emit(math.floor(class.particles * 0.8))
@@ -354,14 +370,14 @@ end
 -- Shaped shells need stars at exact points, so these are placed individually
 -- and each carries a small spark emitter for the glow.
 local function emitShapedBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, shapeName: string)
-	local count = math.clamp(math.floor(class.particles / 3), 20, 64)
+	local count = math.clamp(math.floor(class.particles / 2), 40, 140)
 	local offsets = if shapeName == 'heart'
 		then heartOffsets(count, class.radius)
 		else ringOffsets(count, class.radius)
 
 	for _, offset in offsets do
 		local target = position + offset
-		local star = makeNeonPart(parent, 'Star', Vector3.one * (class.radius * 0.05), CFrame.new(position), color)
+		local star = makeNeonPart(parent, 'Star', Vector3.one * (class.radius * 0.022), CFrame.new(position), color)
 		star.Shape = Enum.PartType.Ball
 
 		local emitter = Instance.new('ParticleEmitter')
@@ -371,7 +387,7 @@ local function emitShapedBurst(parent: Instance, position: Vector3, color: Color
 		emitter.Brightness = 6
 		emitter.Color = ColorSequence.new(color)
 		emitter.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, class.radius * 0.05),
+			NumberSequenceKeypoint.new(0, class.radius * 0.03),
 			NumberSequenceKeypoint.new(1, 0),
 		})
 		emitter.Transparency = NumberSequence.new({
@@ -407,7 +423,7 @@ local SHAPES = {
 	{ name = 'peony', shaped = false, weight = 23 },
 	{ name = 'chrysanthemum', shaped = false, weight = 22 },
 	{ name = 'scatter', shaped = false, weight = 16 },
-	{ name = 'ring', shaped = true, weight = 9 },
+	{ name = 'ring', shaped = true, weight = 5 },
 	{ name = 'heart', shaped = true, weight = 3 },
 }
 
@@ -473,8 +489,42 @@ local function launchShell(launchFrom: Vector3, className: string?)
 		+ lean * randomRange(PARK_LEAN_MIN, PARK_LEAN_MAX)
 		+ Vector3.new(randomRange(-40, 40), randomRange(class.apexLow, class.apexHigh), randomRange(-30, 30))
 
+	-- Muzzle flash and smoke at the tube, so the launch is visibly the source.
+	local muzzle = makeNeonPart(
+		workspace,
+		'MuzzleFlash',
+		Vector3.one * 3.2,
+		CFrame.new(launchFrom),
+		Color3.fromRGB(255, 226, 158)
+	)
+	muzzle.Shape = Enum.PartType.Ball
+	TweenService:Create(muzzle, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.one * 8,
+		Transparency = 1,
+	}):Play()
+	local smoke = Instance.new('ParticleEmitter')
+	smoke.Texture = SPARK_TEXTURE
+	smoke.Color = ColorSequence.new(Color3.fromRGB(150, 150, 150))
+	smoke.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(1, 9),
+	})
+	smoke.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	smoke.Lifetime = NumberRange.new(0.8, 1.6)
+	smoke.Speed = NumberRange.new(4, 12)
+	smoke.SpreadAngle = Vector2.new(35, 35)
+	smoke.Drag = 4
+	smoke.LightEmission = 0.2
+	smoke.Rate = 0
+	smoke.Parent = muzzle
+	smoke:Emit(18)
+	Debris:AddItem(muzzle, 2.2)
+
 	local shell = makeNeonPart(workspace, 'FireworkShell', Vector3.new(0.7, 2.2, 0.7), CFrame.new(origin), color)
-	playPositionalSound(shell, WHISTLE_SOUND, class.volume * 0.3, randomRange(0.85, 1.15), 280)
+	playPositionalSound(shell, WHISTLE_SOUND, class.volume * 0.45, randomRange(0.85, 1.15), 340)
 
 	local attachment0 = Instance.new('Attachment')
 	attachment0.Position = Vector3.new(0, -0.9, 0)
@@ -487,13 +537,15 @@ local function launchShell(launchFrom: Vector3, className: string?)
 	trail.Attachment0 = attachment0
 	trail.Attachment1 = attachment1
 	trail.Color = ColorSequence.new(color)
+	-- Keep this very short. At a half-second lifetime the shell outruns it and
+	-- the trail draws a solid line clear across the sky instead of a spark tail.
 	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0, 0.35),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	trail.Lifetime = 0.5
+	trail.Lifetime = 0.15
 	trail.LightEmission = 1
-	trail.WidthScale = NumberSequence.new(1, 0.1)
+	trail.WidthScale = NumberSequence.new(0.45, 0)
 	trail.Parent = shell
 
 	local flight = TweenService:Create(
@@ -512,6 +564,70 @@ local function launchShell(launchFrom: Vector3, className: string?)
 	Debris:AddItem(shell, class.climb + 0.5)
 end
 
+-- Low fan jets off the barge deck: the wall of angled sprays at water level
+-- that sits under the shells in every Japanese festival photo.
+local function fireFanJet(origin: Vector3, tilt: number, color: Color3)
+	local host = makeNeonPart(workspace, 'FanJet', Vector3.one * 0.3, CFrame.new(origin), color)
+	host.Transparency = 1
+
+	local jet = Instance.new('ParticleEmitter')
+	jet.Name = 'Fan'
+	jet.Texture = SPARK_TEXTURE
+	jet.LightEmission = 1
+	jet.LightInfluence = 0
+	jet.Brightness = 20
+	jet.Orientation = Enum.ParticleOrientation.VelocityParallel
+	jet.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 245)),
+		ColorSequenceKeypoint.new(0.55, color),
+		ColorSequenceKeypoint.new(1, color),
+	})
+	jet.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2.4),
+		NumberSequenceKeypoint.new(0.7, 1.8),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	jet.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.7, 0.2),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	jet.Squash = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, -6),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	jet.Lifetime = NumberRange.new(1.6, 2.4)
+	jet.Speed = NumberRange.new(70, 105)
+	jet.SpreadAngle = Vector2.new(7, 7)
+	jet.Drag = 2.5
+	jet.Acceleration = Vector3.new(0, -42, 0)
+	jet.EmissionDirection = Enum.NormalId.Top
+	jet.Rate = 130
+	jet.Parent = host
+
+	-- Lean the whole jet outward so a row of them reads as a fan.
+	host.CFrame = CFrame.new(origin) * CFrame.Angles(0, 0, tilt)
+
+	playPositionalSound(host, CRACKLE_SOUND, 1.1, randomRange(0.9, 1.15), 420)
+	task.delay(2.0, function()
+		if host.Parent then
+			jet.Enabled = false
+		end
+	end)
+	Debris:AddItem(host, 5)
+end
+
+-- A wall of fan jets across the whole battery, splayed outward from the middle.
+local function fireFanWall(origins: { Vector3 })
+	local colors = { Color3.fromRGB(255, 240, 200), Color3.fromRGB(120, 210, 255), Color3.fromRGB(255, 140, 210) }
+	for index, origin in origins do
+		local t = if #origins == 1 then 0 else (index - 1) / (#origins - 1) * 2 - 1
+		task.delay((index - 1) * 0.05, function()
+			fireFanJet(origin, -t * math.rad(34), colors[(index - 1) % #colors + 1])
+		end)
+	end
+end
+
 --=============================================================================
 -- Rhythm director
 --=============================================================================
@@ -524,6 +640,52 @@ local function terrainHeight(x: number, z: number): number?
 	parameters.IgnoreWater = true
 	local result = workspace:Raycast(Vector3.new(x, 400, z), Vector3.new(0, -800, 0), parameters)
 	return if result then result.Position.Y else nil
+end
+
+-- A visible battery of mortar tubes moored on the water. Shells have to come
+-- out of something the player can see, otherwise they read as appearing from
+-- nowhere. Rebuilt on start; tag your own parts FireworksLaunchPoint to skip.
+local function buildLaunchBattery(): { Vector3 }
+	local previous = workspace:FindFirstChild('FireworksLaunchBattery')
+	if previous then
+		previous:Destroy()
+	end
+
+	local battery = Instance.new('Model')
+	battery.Name = 'FireworksLaunchBattery'
+	battery.Parent = workspace
+
+	local span = BATTERY_X_MAX - BATTERY_X_MIN
+	local deck = Instance.new('Part')
+	deck.Name = 'Barge'
+	deck.Size = Vector3.new(span + 16, 1.6, 15)
+	deck.CFrame = CFrame.new((BATTERY_X_MIN + BATTERY_X_MAX) / 2, BATTERY_Y, BATTERY_Z)
+	deck.Color = Color3.fromRGB(58, 47, 38)
+	deck.Material = Enum.Material.WoodPlanks
+	deck.Anchored = true
+	deck.Parent = battery
+
+	local origins: { Vector3 } = {}
+	for index = 1, BATTERY_COUNT do
+		local t = if BATTERY_COUNT == 1 then 0.5 else (index - 1) / (BATTERY_COUNT - 1)
+		local x = BATTERY_X_MIN + span * t
+		local tube = Instance.new('Part')
+		tube.Name = `LaunchTube{index}`
+		tube.Shape = Enum.PartType.Cylinder
+		tube.Size = Vector3.new(9, 3.4, 3.4)
+		-- Stood upright, then tilted north so the muzzles point across the lake.
+		tube.CFrame = CFrame.new(x, BATTERY_Y + 5, BATTERY_Z)
+			* CFrame.Angles(0, 0, math.rad(90))
+			* CFrame.Angles(0, math.rad(-14), 0)
+		tube.Color = Color3.fromRGB(38, 40, 42)
+		tube.Material = Enum.Material.Metal
+		tube.Anchored = true
+		tube.Parent = battery
+
+		-- Muzzle sits at the top end of the cylinder's long axis.
+		origins[index] = tube.Position + Vector3.new(0, 4.5, 0)
+	end
+	return origins
 end
 
 -- Launch origins are plain positions, so the show does not depend on any
@@ -543,15 +705,7 @@ local function collectLaunchOrigins(): { Vector3 }
 		return tagged
 	end
 
-	local groundY = terrainHeight(CONSOLE_SPOT_X, CONSOLE_SPOT_Z) or 6
-	local origins: { Vector3 } = {}
-	for index = 1, ISLAND_LAUNCH_COUNT do
-		local angle = ((index - 1) / ISLAND_LAUNCH_COUNT) * math.pi * 2 + 0.4
-		local x = CONSOLE_SPOT_X + math.cos(angle) * ISLAND_LAUNCH_RADIUS
-		local z = CONSOLE_SPOT_Z + math.sin(angle) * ISLAND_LAUNCH_RADIUS
-		origins[index] = Vector3.new(x, (terrainHeight(x, z) or groundY) + 1, z)
-	end
-	return origins
+	return buildLaunchBattery()
 end
 
 -- Left-to-right, so sequenced volleys read as a real row.
@@ -620,6 +774,33 @@ local PATTERNS = {
 			return randomRange(2.3, 3.4)
 		end,
 	},
+	-- Fan wall at water level with shells opening above it: the signature
+	-- Japanese festival frame.
+	{
+		weight = 14,
+		run = function(origins: { Vector3 }): number
+			fireFanWall(origins)
+			for index = 1, math.random(4, 7) do
+				task.delay(0.25 + (index - 1) * randomRange(0.12, 0.26), function()
+					launchShell(pick(origins), if math.random() < 0.45 then 'large' else 'small')
+				end)
+			end
+			return randomRange(3.0, 4.2)
+		end,
+	},
+	-- Full sky: many shells at once, spread wide, the way a finale photo looks.
+	{
+		weight = 12,
+		run = function(origins: { Vector3 }): number
+			for index = 1, math.random(8, 12) do
+				task.delay((index - 1) * randomRange(0.05, 0.14), function()
+					local roll = math.random()
+					launchShell(pick(origins), if roll < 0.2 then 'huge' elseif roll < 0.6 then 'large' else 'small')
+				end)
+			end
+			return randomRange(3.4, 4.6)
+		end,
+	},
 	-- Starmine: rolling wall of shells, the crowd-pleaser.
 	{
 		weight = 10,
@@ -632,10 +813,13 @@ local PATTERNS = {
 					end)
 				end
 			end
+			task.delay(1.8, function()
+				fireFanWall(ordered)
+			end)
 			task.delay(1.95, function()
 				launchShell(pick(ordered), 'huge')
 			end)
-			return randomRange(3.8, 5.2)
+			return randomRange(4.2, 5.6)
 		end,
 	},
 }
