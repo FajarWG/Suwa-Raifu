@@ -4,7 +4,9 @@
 -- prompt so nobody is snapped into a seat just by brushing against it.
 --
 -- A vehicle is any Model that is either tagged with the attribute `Vehicle`, or
--- sits inside a folder named Bicycles / LakeCrafts anywhere in the Workspace.
+-- sits inside a folder named LakeCrafts anywhere in the Workspace. Bicycles are
+-- not handled here: BicycleService rigs and drives those, and two systems
+-- fighting over one seat is exactly what used to make them unridable.
 -- Creator Store props ship fully anchored, so they are welded into one
 -- assembly and unanchored here; otherwise they cannot move at all.
 
@@ -15,7 +17,7 @@ local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService
 
 local VehicleInteractionService = {}
 
-local VEHICLE_FOLDERS = { Bicycles = true, LakeCrafts = true }
+local VEHICLE_FOLDERS = { LakeCrafts = true }
 
 local activeDrives: { [BasePart]: RBXScriptConnection } = {}
 -- Client input arrives over remotes: attributes set on the client never
@@ -231,8 +233,16 @@ end
 -- Rigging a Creator Store prop into a drivable assembly
 --=============================================================================
 
+local function isBicycle(model: Model): boolean
+	if model:GetAttribute('ParkBike') or model:GetAttribute('SuwaBicycle') then
+		return true
+	end
+	local name = model.Name:lower()
+	return name:find('bike') ~= nil or name:find('bicycle') ~= nil
+end
+
 local function rigVehicle(model: Model)
-	if model:GetAttribute('SuwaRigged') then
+	if model:GetAttribute('SuwaRigged') or isBicycle(model) then
 		return
 	end
 

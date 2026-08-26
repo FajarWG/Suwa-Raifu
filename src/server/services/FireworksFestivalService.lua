@@ -38,8 +38,15 @@ local BATTERY_Y = 1.6
 -- Lakeside park, the far bank opposite (centre ~(0, -122)). Bursts lean this
 -- way so they open over open water, framed from the islet and the park alike.
 local PARK_VIEWPOINT = Vector3.new(0, 0, -122)
-local PARK_LEAN_MIN = 110
-local PARK_LEAN_MAX = 250
+local PARK_LEAN_MIN = 90
+local PARK_LEAN_MAX = 340
+
+-- Every shell swings its own way inside this arc around the park heading, and
+-- jitters its apex. Firing each one along the same bearing to the same height
+-- is what piled the whole show into one column over the same patch of sky.
+local BEARING_SPREAD = 48
+local APEX_JITTER_LOW = 0.78
+local APEX_JITTER_HIGH = 1.32
 
 local NORMAL_DURATION = 10 * 60
 local AUGUST_15_DURATION = 60 * 60
@@ -84,7 +91,7 @@ local SHELL_CLASSES: { [string]: ShellClass } = {
 		apexLow = 175,
 		apexHigh = 230,
 		radius = 44,
-		particles = 320,
+		particles = 240,
 		volume = 2.0,
 		pitch = 0.95,
 		range = 460,
@@ -94,7 +101,7 @@ local SHELL_CLASSES: { [string]: ShellClass } = {
 		apexLow = 265,
 		apexHigh = 340,
 		radius = 82,
-		particles = 680,
+		particles = 420,
 		volume = 3.8,
 		pitch = 0.68,
 		range = 820,
@@ -104,7 +111,7 @@ local SHELL_CLASSES: { [string]: ShellClass } = {
 		apexLow = 360,
 		apexHigh = 460,
 		radius = 135,
-		particles = 1000,
+		particles = 620,
 		volume = 5.5,
 		pitch = 0.5,
 		range = 1250,
@@ -115,6 +122,12 @@ local SHELL_CLASSES: { [string]: ShellClass } = {
 -- Kamuro (crown) willows burn gold and settle to amber.
 local KAMURO_GOLD = Color3.fromRGB(255, 198, 96)
 local KAMURO_EMBER = Color3.fromRGB(255, 128, 38)
+
+-- A flat SpreadAngle fans the stars out in the plane the host's own axes
+-- define, and that plane's normal is the host's X axis. This quarter turn is
+-- what points that normal at the audience so a ring shell reads as a hoop
+-- instead of a bare line seen edge-on.
+local RING_PLANE = CFrame.Angles(0, math.rad(90), 0)
 
 local function pick<T>(list: { T }): T
 	return list[math.random(1, #list)]
@@ -236,19 +249,43 @@ local BURST_STYLES: { [string]: BurstStyle } = {
 	-- Opens slowly and holds its shape: the flower-in-bloom look.
 	bloom = { speedLow = 58, speedHigh = 66, lifeLow = 2.6, lifeHigh = 3.4, drag = 7, gravity = 6, sizeScale = 1.05, streak = 6 },
 	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7, streak = 3.2 },
+	-- Yashi: a handful of very thick, slow rays instead of a fine sphere. Reads
+	-- as a palm tree rather than a ball, which is the point of having it.
+	palm = { speedLow = 40, speedHigh = 50, lifeLow = 2.8, lifeHigh = 3.9, drag = 1.5, gravity = 30, sizeScale = 2.2, streak = 9.5 },
+	-- Emitted into a plane rather than a sphere, so it draws a hoop.
+	ring = { speedLow = 70, speedHigh = 76, lifeLow = 1.9, lifeHigh = 2.5, drag = 4.5, gravity = 9, sizeScale = 1.0, streak = 5 },
+	-- Nishiki kamuro: barely spreads, just falls. A gold curtain down the sky.
+	horsetail = { speedLow = 24, speedHigh = 34, lifeLow = 5.0, lifeHigh = 7.2, drag = 1.3, gravity = 34, sizeScale = 1.5, streak = 8.5 },
+	-- Tight and short-lived, because the secondary breaks are the show here.
+	crossette = { speedLow = 60, speedHigh = 70, lifeLow = 0.9, lifeHigh = 1.4, drag = 7.5, gravity = 10, sizeScale = 0.9, streak = 3.8 },
 }
 
-local function emitParticleBurst(parent: Instance, position: Vector3, color: Color3, class: ShellClass, styleName: string)
+local function emitParticleBurst(
+	parent: Instance,
+	position: Vector3,
+	color: Color3,
+	class: ShellClass,
+	styleName: string,
+	facing: Vector3?
+)
 	local style = BURST_STYLES[styleName] or BURST_STYLES.peony
 	local host = makeNeonPart(parent, 'BurstOrigin', Vector3.one * 0.2, CFrame.new(position), color)
 	host.Transparency = 1
+	-- A ring shell is emitted into a plane instead of a sphere. The plane is
+	-- turned to face the audience, or it reads as a bare line edge-on.
+	local planar = styleName == 'ring'
+	if planar and facing then
+		host.CFrame = CFrame.lookAt(position, position + facing) * RING_PLANE
+	end
 
 	local emitter = Instance.new('ParticleEmitter')
 	emitter.Name = 'Stars'
 	emitter.Texture = SPARK_TEXTURE
-	emitter.LightEmission = 1
+	emitter.LightEmission = 0.85
 	emitter.LightInfluence = 0
-	emitter.Brightness = 11
+	-- Kept low deliberately: additive sprites stack, and at the old value a big
+	-- shell washed out to a solid white ball with no colour left in it.
+	emitter.Brightness = 4.5
 	-- Real hanabi read as long radial RAYS, not dots. Aligning each star to its
 	-- own velocity and squashing it along that axis is what draws the streak.
 	emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
@@ -260,14 +297,14 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	local second = if isWillow then KAMURO_EMBER else pickDistinct(color)
 	emitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 252, 240)),
-		ColorSequenceKeypoint.new(0.12, first),
+		ColorSequenceKeypoint.new(0.05, first),
 		ColorSequenceKeypoint.new(0.5, first),
 		ColorSequenceKeypoint.new(0.74, second),
 		ColorSequenceKeypoint.new(1, second),
 	})
 	-- Small stars, many of them: large sprites read as clumps of mini-fireworks
 	-- rather than one shell opening.
-	local starSize = class.radius * 0.07 * style.sizeScale
+	local starSize = class.radius * 0.055 * style.sizeScale
 	emitter.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, starSize * 1.4),
 		NumberSequenceKeypoint.new(0.7, starSize),
@@ -282,7 +319,7 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	-- A tight speed band keeps the shell's outer edge crisp instead of smeared.
 	local speedScale = class.radius / 36
 	emitter.Speed = NumberRange.new(style.speedLow * speedScale, style.speedHigh * speedScale)
-	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.SpreadAngle = if planar then Vector2.new(180, 5) else Vector2.new(180, 180)
 	emitter.Drag = style.drag
 	emitter.Acceleration = Vector3.new(0, -style.gravity, 0)
 	emitter.Rate = 0
@@ -306,7 +343,7 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	glitter.Texture = SPARK_TEXTURE
 	glitter.LightEmission = 1
 	glitter.LightInfluence = 0
-	glitter.Brightness = 22
+	glitter.Brightness = 8
 	glitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 245)),
 		ColorSequenceKeypoint.new(0.6, if isWillow then KAMURO_GOLD else Color3.fromRGB(255, 240, 200)),
@@ -327,7 +364,7 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	})
 	glitter.Lifetime = NumberRange.new(style.lifeLow * 0.35, style.lifeHigh * 1.1)
 	glitter.Speed = NumberRange.new(style.speedLow * 0.6 * (class.radius / 36), style.speedHigh * 1.15 * (class.radius / 36))
-	glitter.SpreadAngle = Vector2.new(180, 180)
+	glitter.SpreadAngle = if planar then Vector2.new(180, 9) else Vector2.new(180, 180)
 	glitter.Drag = style.drag * 1.6
 	glitter.Acceleration = Vector3.new(0, -style.gravity * 0.8, 0)
 	glitter.Rate = 0
@@ -338,7 +375,7 @@ local function emitParticleBurst(parent: Instance, position: Vector3, color: Col
 	})
 	glitter.Enabled = false
 	glitter.Parent = host
-	glitter:Emit(math.floor(class.particles * 0.8))
+	glitter:Emit(math.floor(class.particles * 0.6))
 
 	Debris:AddItem(host, style.lifeHigh * 1.1 + 1.5)
 end
@@ -347,12 +384,17 @@ end
 -- stars were removed: they always rendered as drawn outlines rather than
 -- bursts, and no Japanese festival reference shows one.
 local SHAPES = {
-	{ name = 'willow', weight = 22 },
-	{ name = 'peony', weight = 18 },
-	{ name = 'chrysanthemum', weight = 18 },
-	{ name = 'bloom', weight = 16 },
-	{ name = 'double', weight = 14 },
-	{ name = 'scatter', weight = 12 },
+	{ name = 'peony', weight = 14 },
+	{ name = 'chrysanthemum', weight = 12 },
+	{ name = 'willow', weight = 12 },
+	{ name = 'ring', weight = 11 },
+	{ name = 'crossette', weight = 10 },
+	{ name = 'palm', weight = 10 },
+	{ name = 'double', weight = 9 },
+	{ name = 'bloom', weight = 8 },
+	{ name = 'horsetail', weight = 7 },
+	{ name = 'multibreak', weight = 6 },
+	{ name = 'scatter', weight = 6 },
 }
 
 local SHAPE_WEIGHT_TOTAL = 0
@@ -380,22 +422,28 @@ local function burst(position: Vector3, color: Color3, class: ShellClass, shape:
 	anchor.Transparency = 1
 	playBoom(anchor, class)
 
+	-- Which way the audience is, for shells whose shape has an orientation.
+	local facing = (PARK_VIEWPOINT - position) * Vector3.new(1, 0, 1)
+	facing = if facing.Magnitude > 1 then facing.Unit else Vector3.zAxis
+
 	-- Opening flash: a brief core pop only. Anything larger or slower renders as
 	-- a plain glowing sphere that hides the rays behind it.
 	local flash = makeNeonPart(
 		effect,
 		'Flash',
-		Vector3.one * (class.radius * 0.08),
+		Vector3.one * (class.radius * 0.05),
 		CFrame.new(position),
 		Color3.fromRGB(255, 252, 236)
 	)
 	flash.Shape = Enum.PartType.Ball
-	TweenService:Create(flash, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = Vector3.one * (class.radius * 0.3),
+	TweenService:Create(flash, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.one * (class.radius * 0.2),
 		Transparency = 1,
 	}):Play()
 
-	if shape.name == 'double' then
+	local name = shape.name
+
+	if name == 'double' then
 		-- Shin-iri: a tight coloured pistil inside a wide outer shell, the
 		-- most recognisable big-shell look at a Japanese festival.
 		emitParticleBurst(effect, position, color, class, 'peony')
@@ -403,10 +451,59 @@ local function burst(position: Vector3, color: Color3, class: ShellClass, shape:
 		core.radius = class.radius * 0.42
 		core.particles = math.floor(class.particles * 0.45)
 		emitParticleBurst(effect, position, pickDistinct(color), core, 'bloom')
+	elseif name == 'crossette' then
+		-- The stars fly out, then each one breaks again. Five small secondary
+		-- bursts ringing the first is the whole character of the shell.
+		emitParticleBurst(effect, position, color, class, 'crossette')
+		local child = table.clone(class)
+		child.radius = class.radius * 0.4
+		child.particles = math.floor(class.particles * 0.22)
+		child.volume = class.volume * 0.45
+		child.range = class.range * 0.8
+		local secondColor = pickDistinct(color)
+		for index = 1, 5 do
+			local angle = (index / 5) * math.pi * 2 + math.random() * 0.6
+			local offset = Vector3.new(math.cos(angle), randomRange(-0.35, 0.45), math.sin(angle))
+				* (class.radius * 0.8)
+			task.delay(randomRange(0.42, 0.62), function()
+				if effect.Parent then
+					emitParticleBurst(effect, position + offset, secondColor, child, 'peony')
+					playPositionalSound(anchor, CRACKLE_SOUND, class.volume * 0.3, randomRange(1.1, 1.4), class.range * 0.6)
+				end
+			end)
+		end
+	elseif name == 'multibreak' then
+		-- Sandan-uchi: three breaks climbing the sky one after another, so the
+		-- shell occupies a column rather than a single point.
+		local step = table.clone(class)
+		step.radius = class.radius * 0.7
+		step.particles = math.floor(class.particles * 0.55)
+		step.volume = class.volume * 0.7
+		local styles = { 'peony', 'chrysanthemum', 'willow' }
+		for index = 0, 2 do
+			task.delay(index * randomRange(0.3, 0.42), function()
+				if effect.Parent then
+					local spot = position + Vector3.new(randomRange(-18, 18), index * 26, randomRange(-18, 18))
+					emitParticleBurst(effect, spot, if index == 0 then color else pickDistinct(color), step, styles[index + 1])
+				end
+			end)
+		end
+	elseif name == 'ring' then
+		-- A hoop with a small heart in the middle, the way real ring shells go.
+		emitParticleBurst(effect, position, color, class, 'ring', facing)
+		local heart = table.clone(class)
+		heart.radius = class.radius * 0.22
+		heart.particles = math.floor(class.particles * 0.16)
+		emitParticleBurst(effect, position, pickDistinct(color), heart, 'bloom')
+	elseif name == 'palm' then
+		emitParticleBurst(effect, position, KAMURO_GOLD, class, 'palm')
+	elseif name == 'horsetail' then
+		emitParticleBurst(effect, position, KAMURO_GOLD, class, 'horsetail')
 	else
-		emitParticleBurst(effect, position, color, class, shape.name)
+		emitParticleBurst(effect, position, color, class, name)
 	end
-	Debris:AddItem(effect, 9)
+
+	Debris:AddItem(effect, 11)
 end
 
 local function launchShell(launchFrom: Vector3, className: string?)
@@ -418,10 +515,13 @@ local function launchShell(launchFrom: Vector3, className: string?)
 	-- Shells lean out over the water toward the park, so the show frames well
 	-- both from the islet underneath and from the lakeside promenade opposite.
 	local towardPark = (PARK_VIEWPOINT - origin) * Vector3.new(1, 0, 1)
-	local lean = if towardPark.Magnitude > 1 then towardPark.Unit else Vector3.zAxis
-	local destination = origin
-		+ lean * randomRange(PARK_LEAN_MIN, PARK_LEAN_MAX)
-		+ Vector3.new(randomRange(-40, 40), randomRange(class.apexLow, class.apexHigh), randomRange(-30, 30))
+	local heading = if towardPark.Magnitude > 1 then towardPark.Unit else Vector3.zAxis
+	-- Each shell picks its own bearing across the lake and its own ceiling, so
+	-- the sky fills out into a fan instead of stacking over one spot.
+	local bearing = CFrame.Angles(0, math.rad(randomRange(-BEARING_SPREAD, BEARING_SPREAD)), 0)
+	local lean = bearing:VectorToWorldSpace(heading)
+	local apex = randomRange(class.apexLow, class.apexHigh) * randomRange(APEX_JITTER_LOW, APEX_JITTER_HIGH)
+	local destination = origin + lean * randomRange(PARK_LEAN_MIN, PARK_LEAN_MAX) + Vector3.new(0, apex, 0)
 
 	-- Muzzle flash and smoke at the tube, so the launch is visibly the source.
 	local muzzle = makeNeonPart(

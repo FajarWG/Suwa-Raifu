@@ -1,44 +1,63 @@
 --!strict
 
--- MovementController: hold Shift to run on desktop, or hold the on-screen
--- Sprint button on touch devices. While seated in a vehicle the same control
--- becomes a speed boost, since phones have no Shift key either way.
+-- One sprint control for the whole game.
+--
+-- On foot it raises WalkSpeed and widens the FOV. Seated in any driver seat —
+-- bicycle, Fune, speedboat — the same control becomes the vehicle boost and
+-- goes to the server over a remote, because an attribute set on the client
+-- never replicates upwards.
+--
+-- Keyboard has Shift, gamepad has L2, and touch devices get a real on-screen
+-- SPRINT button: they have no Shift to hold, so without it phone players had
+-- no way to go fast at all.
 
 local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
 local UserInputService = game:GetService('UserInputService')
-local ProximityPromptService = game:GetService('ProximityPromptService')
+local Workspace = game:GetService('Workspace')
+
+local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 
 local WALK_SPEED = 16
-local RUN_SPEED = 32
+local SPRINT_SPEED = 28
+local DEFAULT_FOV = 70
+local SPRINT_FOV = 78
 
 local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
 local currentHumanoid: Humanoid? = nil
 local sprinting = false
+local boostSent = false
+local sprintButton: TextButton? = nil
 
 local MovementController = {}
 
-local function vehicleControl()
-	-- Resolved lazily: both controllers are loaded by the same runner pass.
-	local module = script.Parent:FindFirstChild('VehicleControlController')
-	return if module then require(module) :: any else nil
+local IDLE_COLOR = Color3.fromRGB(38, 44, 56)
+local ACTIVE_COLOR = Color3.fromRGB(226, 142, 58)
+
+-- Only ever announce a change, so holding the button does not spend the
+-- player's remote rate limit on identical messages.
+local function pushBoost(value: boolean)
+	if boostSent == value then
+		return
+	end
+	boostSent = value
+	RemoteController.fire('VehicleBoost', value)
 end
 
-local function applySpeed()
+local function applySprint()
 	local humanoid = currentHumanoid
-	if not humanoid then
+	if not humanoid or humanoid.Health <= 0 then
 		return
 	end
 
 	if humanoid.SeatPart then
-		-- Seated: the same control becomes the vehicle boost. This has to go
-		-- over a remote; a client-set attribute never reaches the server.
-		local control = vehicleControl()
-		if control then
-			control.setBoost(sprinting)
-		end
+		pushBoost(sprinting)
 		return
 	end
-	humanoid.WalkSpeed = if sprinting then RUN_SPEED else WALK_SPEED
+
+	pushBoost(false)
+	humanoid.WalkSpeed = if sprinting then SPRINT_SPEED else WALK_SPEED
 end
 
 local function setSprinting(value: boolean)
@@ -46,15 +65,20 @@ local function setSprinting(value: boolean)
 		return
 	end
 	sprinting = value
-	applySpeed()
+	if sprintButton then
+		sprintButton.BackgroundColor3 = if value then ACTIVE_COLOR else IDLE_COLOR
+	end
+	applySprint()
 end
 
--- Touch devices get a real button; there is no Shift to hold.
-local function buildTouchButton()
+--=============================================================================
+-- Touch sprint button
+--=============================================================================
+
+local function buildSprintButton()
 	if not UserInputService.TouchEnabled then
 		return
 	end
-
 	local playerGui = player:WaitForChild('PlayerGui')
 	if playerGui:FindFirstChild('SuwaSprintGui') then
 		return
@@ -68,43 +92,50 @@ local function buildTouchButton()
 	local button = Instance.new('TextButton')
 	button.Name = 'SprintButton'
 	button.AnchorPoint = Vector2.new(1, 1)
-	-- Clear of the jump button, which sits at the bottom-right on touch.
-	button.Position = UDim2.new(1, -30, 1, -180)
-	button.Size = UDim2.new(0, 96, 0, 96)
-	button.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
-	button.BackgroundTransparency = 0.25
-	button.Text = 'SPRINT'
+	-- Sits above and left of the default touch jump button.
+	button.Position = UDim2.new(1, -34, 1, -196)
+	button.Size = UDim2.new(0, 88, 0, 88)
+	button.BackgroundColor3 = IDLE_COLOR
+	button.BackgroundTransparency = 0.15
 	button.Font = Enum.Font.GothamBold
-	button.TextSize = 15
+	button.TextSize = 13
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Text = 'SPRINT'
 	button.AutoButtonColor = false
 	button.Parent = gui
+	sprintButton = button
 
 	local corner = Instance.new('UICorner')
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = button
 
 	local stroke = Instance.new('UIStroke')
-	stroke.Color = Color3.fromRGB(255, 190, 120)
-	stroke.Thickness = 2
-	stroke.Transparency = 0.3
+	stroke.Color = Color3.fromRGB(255, 210, 160)
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.4
 	stroke.Parent = button
 
-	local function press()
-		setSprinting(true)
-		button.BackgroundColor3 = Color3.fromRGB(80, 62, 34)
-		stroke.Transparency = 0
-	end
-	local function release()
-		setSprinting(false)
-		button.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
-		stroke.Transparency = 0.3
-	end
+	-- Held, not toggled: press and hold to keep going fast, the same as Shift.
+	button.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			setSprinting(true)
+		end
+	end)
+	button.InputEnded:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			setSprinting(false)
+		end
+	end)
+end
 
-	button.MouseButton1Down:Connect(press)
-	button.MouseButton1Up:Connect(release)
-	button.MouseLeave:Connect(release)
-	button.TouchLongPress:Connect(press)
+--=============================================================================
+
+local function executeJump()
+	local humanoid = currentHumanoid
+	if not humanoid or humanoid.SeatPart or humanoid.Health <= 0 then
+		return
+	end
+	humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 end
 
 local function hookCharacter(character: Model)
@@ -113,26 +144,32 @@ local function hookCharacter(character: Model)
 		return
 	end
 	currentHumanoid = humanoid
-	applySpeed()
+	boostSent = false
+	humanoid.UseJumpPower = true
+	humanoid.JumpPower = 50
+	applySprint()
 
-	-- Hide prompts while seated so they do not overlap the ride.
-	local function syncPrompts()
-		ProximityPromptService.Enabled = humanoid.SeatPart == nil
-		-- Re-apply, since seated and walking use the control differently.
-		applySpeed()
-	end
-	humanoid:GetPropertyChangedSignal('SeatPart'):Connect(syncPrompts)
-	syncPrompts()
+	humanoid:GetPropertyChangedSignal('SeatPart'):Connect(function()
+		if not humanoid.SeatPart then
+			humanoid.UseJumpPower = true
+			humanoid.JumpPower = 50
+		end
+		applySprint()
+	end)
 
 	humanoid.Died:Connect(function()
-		sprinting = false
+		setSprinting(false)
 		currentHumanoid = nil
-		ProximityPromptService.Enabled = true
 	end)
 end
 
+function MovementController.isSprinting(): boolean
+	return sprinting
+end
+
 function MovementController.init()
-	buildTouchButton()
+	camera = Workspace.CurrentCamera
+	buildSprintButton()
 
 	if player.Character then
 		hookCharacter(player.Character)
@@ -143,14 +180,36 @@ function MovementController.init()
 		if processed then
 			return
 		end
-		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		if
+			input.KeyCode == Enum.KeyCode.LeftShift
+			or input.KeyCode == Enum.KeyCode.RightShift
+			or input.KeyCode == Enum.KeyCode.ButtonL2
+		then
 			setSprinting(true)
+		elseif input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.Q then
+			executeJump()
 		end
 	end)
 
 	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		if
+			input.KeyCode == Enum.KeyCode.LeftShift
+			or input.KeyCode == Enum.KeyCode.RightShift
+			or input.KeyCode == Enum.KeyCode.ButtonL2
+		then
 			setSprinting(false)
+		end
+	end)
+
+	RunService.RenderStepped:Connect(function()
+		local humanoid = currentHumanoid
+		if not humanoid or humanoid.SeatPart or not camera then
+			return
+		end
+		local moving = humanoid.MoveDirection.Magnitude > 0.1
+		local target = if sprinting and moving then SPRINT_FOV else DEFAULT_FOV
+		if math.abs(camera.FieldOfView - target) > 0.1 then
+			camera.FieldOfView += (target - camera.FieldOfView) * 0.15
 		end
 	end)
 end
