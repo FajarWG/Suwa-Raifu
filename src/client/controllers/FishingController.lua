@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UserInputService = game:GetService('UserInputService')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
 local FishingData = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Fishing'))
 
 local FishingController = {}
@@ -134,6 +135,7 @@ local function buildGui()
 	statusPanel.Visible = false
 	statusPanel.Parent = gui
 	corner(statusPanel, 14)
+	UIScaling.fit(statusPanel)
 	statusLabel = makeText(statusPanel, 'Status', UDim2.fromOffset(16, 10), UDim2.new(1, -32, 0, 42), '', 20)
 
 	reelButton = Instance.new('TextButton')
@@ -142,7 +144,7 @@ local function buildGui()
 	reelButton.Position = UDim2.new(0.5, 0, 1, -10)
 	reelButton.Size = UDim2.fromOffset(210, 42)
 	reelButton.BackgroundColor3 = Color3.fromRGB(224, 151, 44)
-	reelButton.Text = 'REEL NOW!  [SPACE]'
+	reelButton.Text = if UIScaling.isTouch() then 'REEL NOW!' else 'REEL NOW!  [SPACE]'
 	reelButton.TextColor3 = Color3.fromRGB(34, 29, 23)
 	reelButton.Font = Enum.Font.GothamBold
 	reelButton.TextSize = 18
@@ -164,6 +166,7 @@ local function buildGui()
 	resultModal.Visible = false
 	resultModal.Parent = gui
 	corner(resultModal, 18)
+	UIScaling.fit(resultModal)
 	resultTitle = makeText(resultModal, 'Title', UDim2.fromOffset(18, 12), UDim2.new(1, -36, 0, 46), 'Catch', 25)
 	resultTitle.TextColor3 = Color3.fromRGB(41, 65, 69)
 

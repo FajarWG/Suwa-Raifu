@@ -8,8 +8,13 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 
 local Remotes = require(ReplicatedStorage:WaitForChild('Shared'):WaitForChild('remotes'))
 
+-- Named distinctly (not just "Remotes"): a third-party asset in this game
+-- (the Emote Dance & Sync system) already owns a ReplicatedStorage.Remotes
+-- folder of its own. Two siblings sharing that name make WaitForChild('Remotes')
+-- ambiguous, and it was resolving to the wrong one -- every remote lookup on
+-- the client silently missed.
 local remotesFolder = Instance.new('Folder')
-remotesFolder.Name = 'Remotes'
+remotesFolder.Name = 'SuwaRemotes'
 remotesFolder.Parent = ReplicatedStorage
 
 local events: { [string]: RemoteEvent } = {}

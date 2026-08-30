@@ -3,26 +3,11 @@
 -- Rider-side bicycle controls, the on-mount help card, and the wheel spin.
 --
 --   W A S D   ride and steer (VehicleSeat handles this natively)
---   Shift     sprint boost (MovementController owns this control, on foot and
---             in the saddle alike, so touch devices get the same button)
+--   Shift     sprint boost (MovementController owns this control)
 --   Space/Q   bunny hop — lifts the front wheel
 --   E / X     get off
 --
--- Hop and dismount go through ContextActionService rather than raw input, for
--- one reason: Roblox unseats a character the moment it receives a jump. Binding
--- CharacterJump here swallows that jump and turns it into a hop instead, which
--- is why hopping used to work only every other try — half the time the jump got
--- through first and stood the rider up.
---
--- The wheels are spun here rather than on the server because Motor6D.Transform
--- is not replicated: the server can turn a wheel all it likes and every client
--- still draws it dead straight. Each client rolls every bike it can see, which
--- costs no bandwidth and works for other players' bikes too.
---
--- Speed comes from how far the wheel actually moved since the last frame, not
--- from AssemblyLinearVelocity. That property is only maintained by whichever
--- peer is simulating the assembly and reads as roughly zero everywhere else —
--- which is why the wheels barely turned when the server held the reins.
+-- On mobile (touch devices), dedicated buttons appear for HOP and GET OFF.
 
 local ContextActionService = game:GetService('ContextActionService')
 local Players = game:GetService('Players')
@@ -31,6 +16,7 @@ local TweenService = game:GetService('TweenService')
 local UserInputService = game:GetService('UserInputService')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
 
 local player = Players.LocalPlayer
 
@@ -38,12 +24,13 @@ local BicycleController = {}
 
 local HOP_ACTION = 'SuwaBikeHop'
 local DISMOUNT_ACTION = 'SuwaBikeDismount'
-local CARD_SECONDS = 6
+local CARD_SECONDS = 5
 
 local currentSeat: VehicleSeat? = nil
 local currentHumanoid: Humanoid? = nil
 local mountedAt = 0
 local screenGui: ScreenGui? = nil
+local mobileBikeGui: ScreenGui? = nil
 local dismissThread: thread? = nil
 
 type WheelState = {
@@ -57,6 +44,10 @@ type WheelState = {
 
 local wheels: { [Motor6D]: WheelState } = {}
 
+local function isTouchDevice(): boolean
+	return UserInputService.TouchEnabled or UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+end
+
 local KEY_ROWS = {
 	{ key = 'W A S D', desc = 'Ride & steer  ・  走る・曲がる' },
 	{ key = 'Shift', desc = 'Sprint boost  ・  ダッシュ' },
@@ -66,9 +57,9 @@ local KEY_ROWS = {
 
 local TOUCH_ROWS = {
 	{ key = 'Joystick', desc = 'Ride & steer  ・  走る・曲がる' },
-	{ key = 'SPRINT', desc = 'Sprint boost  ・  ダッシュ' },
-	{ key = 'HOP', desc = 'Bunny hop  ・  ジャンプ' },
-	{ key = 'GET OFF', desc = 'Get off  ・  降りる' },
+	{ key = 'BOOST ⚡', desc = 'Pedal fast  ・  ダッシュ' },
+	{ key = 'HOP 🐇', desc = 'Bunny hop  ・  ジャンプ' },
+	{ key = 'GET OFF 🚲', desc = 'Get off  ・  降りる' },
 }
 
 --=============================================================================
@@ -108,7 +99,7 @@ end
 local function showCard()
 	hideCard()
 	local playerGui = player:WaitForChild('PlayerGui')
-	local rows = if UserInputService.TouchEnabled then TOUCH_ROWS else KEY_ROWS
+	local rows = if isTouchDevice() then TOUCH_ROWS else KEY_ROWS
 
 	local gui = Instance.new('ScreenGui')
 	gui.Name = 'SuwaBicycleHelp'
@@ -120,7 +111,7 @@ local function showCard()
 	local card = Instance.new('Frame')
 	card.Name = 'Card'
 	card.AnchorPoint = Vector2.new(0.5, 1)
-	card.Position = UDim2.new(0.5, 0, 1, -28)
+	card.Position = if isTouchDevice() then UDim2.new(0.5, 0, 1, -118) else UDim2.new(0.5, 0, 1, -28)
 	card.Size = UDim2.new(0, 420, 0, 44 + #rows * 26)
 	card.BackgroundColor3 = Color3.fromRGB(22, 26, 34)
 	card.BackgroundTransparency = 1
@@ -136,6 +127,7 @@ local function showCard()
 	stroke.Thickness = 1.5
 	stroke.Transparency = 1
 	stroke.Parent = card
+	UIScaling.fit(card)
 
 	local labels: { TextLabel } = {}
 
@@ -213,8 +205,6 @@ local function registerWheel(motor: Motor6D)
 	end
 	local model = motor:FindFirstAncestorOfClass('Model')
 	local seat = model and model:FindFirstChildWhichIsA('VehicleSeat', true)
-	-- The seat is the bike's forward reference: it decides whether the wheels
-	-- roll forwards or backwards for the direction of travel.
 	if not seat then
 		return
 	end
@@ -229,8 +219,6 @@ local function registerWheel(motor: Motor6D)
 	}
 end
 
--- Anything faster than this is a teleport, not a bike, and would snap the
--- wheel round several times in one frame.
 local MAX_ROLL_SPEED = 200
 
 local function rollWheels(delta: number)
@@ -245,7 +233,6 @@ local function rollWheels(delta: number)
 		state.last = position
 
 		local speed = travel.Magnitude / math.max(delta, 1 / 240)
-		-- A parked bike is anchored and still; skip it rather than jittering.
 		if speed < 0.2 or speed > MAX_ROLL_SPEED then
 			continue
 		end
@@ -257,25 +244,114 @@ local function rollWheels(delta: number)
 end
 
 --=============================================================================
--- Actions
+-- Actions & Mobile Touch Buttons
 --=============================================================================
+
+local function triggerHop()
+	RemoteController.fire('VehicleHop')
+end
 
 local function dismount()
 	local humanoid = currentHumanoid
 	if not humanoid or not currentSeat then
 		return
 	end
-	-- A dismount in the same frame as the mount just undoes the prompt press.
 	if os.clock() - mountedAt < 0.35 then
 		return
 	end
 	humanoid.Sit = false
 end
 
+local function buildMobileBikeButtons()
+	if not isTouchDevice() then
+		return
+	end
+	if mobileBikeGui then
+		mobileBikeGui:Destroy()
+		mobileBikeGui = nil
+	end
+
+	local playerGui = player:WaitForChild('PlayerGui')
+	local gui = Instance.new('ScreenGui')
+	gui.Name = 'SuwaMobileBikeGui'
+	gui.ResetOnSpawn = false
+	gui.Parent = playerGui
+	mobileBikeGui = gui
+
+	-- 1. Hop Button (Bunny Hop)
+	local hopBtn = Instance.new('TextButton')
+	hopBtn.Name = 'HopButton'
+	hopBtn.AnchorPoint = Vector2.new(1, 1)
+	hopBtn.Position = UDim2.new(1, -120, 1, -190)
+	hopBtn.Size = UDim2.new(0, 84, 0, 84)
+	hopBtn.BackgroundColor3 = Color3.fromRGB(36, 120, 190)
+	hopBtn.BackgroundTransparency = 0.15
+	hopBtn.Font = Enum.Font.GothamBold
+	hopBtn.TextSize = 13
+	hopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	hopBtn.Text = 'HOP 🐇'
+	hopBtn.AutoButtonColor = true
+	hopBtn.Parent = gui
+
+	local hopCorner = Instance.new('UICorner')
+	hopCorner.CornerRadius = UDim.new(1, 0)
+	hopCorner.Parent = hopBtn
+
+	local hopStroke = Instance.new('UIStroke')
+	hopStroke.Color = Color3.fromRGB(150, 210, 255)
+	hopStroke.Thickness = 1.5
+	hopStroke.Transparency = 0.3
+	hopStroke.Parent = hopBtn
+
+	UIScaling.fit(hopBtn, 1.2)
+
+	hopBtn.MouseButton1Click:Connect(function()
+		triggerHop()
+	end)
+
+	-- 2. Dismount Button (Get Off)
+	local dismountBtn = Instance.new('TextButton')
+	dismountBtn.Name = 'DismountButton'
+	dismountBtn.AnchorPoint = Vector2.new(1, 1)
+	dismountBtn.Position = UDim2.new(1, -120, 1, -290)
+	dismountBtn.Size = UDim2.new(0, 94, 0, 48)
+	dismountBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 50)
+	dismountBtn.BackgroundTransparency = 0.12
+	dismountBtn.Font = Enum.Font.GothamBold
+	dismountBtn.TextSize = 12
+	dismountBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	dismountBtn.Text = 'GET OFF 🚲'
+	dismountBtn.AutoButtonColor = true
+	dismountBtn.Parent = gui
+
+	local dismountCorner = Instance.new('UICorner')
+	dismountCorner.CornerRadius = UDim.new(0, 10)
+	dismountCorner.Parent = dismountBtn
+
+	local dismountStroke = Instance.new('UIStroke')
+	dismountStroke.Color = Color3.fromRGB(255, 140, 140)
+	dismountStroke.Thickness = 1.5
+	dismountStroke.Transparency = 0.3
+	dismountStroke.Parent = dismountBtn
+
+	UIScaling.fit(dismountBtn, 1.1)
+
+	dismountBtn.MouseButton1Click:Connect(function()
+		dismount()
+	end)
+end
+
+local function removeMobileBikeButtons()
+	if mobileBikeGui then
+		mobileBikeGui:Destroy()
+		mobileBikeGui = nil
+	end
+end
+
 local function bindControls()
 	ContextActionService:BindAction(HOP_ACTION, function(_, state: Enum.UserInputState)
 		if state == Enum.UserInputState.Begin then
-			RemoteController.fire('VehicleHop')
+			triggerHop()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.Space, Enum.KeyCode.Q, Enum.KeyCode.ButtonA, Enum.PlayerActions.CharacterJump)
@@ -287,17 +363,13 @@ local function bindControls()
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.E, Enum.KeyCode.X, Enum.KeyCode.ButtonB)
 
-	if UserInputService.TouchEnabled then
-		ContextActionService:SetTitle(HOP_ACTION, 'HOP')
-		ContextActionService:SetPosition(HOP_ACTION, UDim2.new(1, -150, 1, -196))
-		ContextActionService:SetTitle(DISMOUNT_ACTION, 'GET OFF')
-		ContextActionService:SetPosition(DISMOUNT_ACTION, UDim2.new(1, -150, 1, -100))
-	end
+	buildMobileBikeButtons()
 end
 
 local function unbindControls()
 	ContextActionService:UnbindAction(HOP_ACTION)
 	ContextActionService:UnbindAction(DISMOUNT_ACTION)
+	removeMobileBikeButtons()
 end
 
 --=============================================================================
@@ -309,7 +381,6 @@ local function isBicycleSeat(seat: BasePart?): boolean
 	if seat:GetAttribute('SuwaBicycle') then
 		return true
 	end
-	-- Fallback for any bike the server has not rigged yet.
 	local model = seat:FindFirstAncestorOfClass('Model')
 	while model do
 		local name = model.Name:lower()
@@ -327,8 +398,6 @@ local function onSeatChanged(humanoid: Humanoid)
 	if isBicycleSeat(seat) then
 		currentSeat = seat :: VehicleSeat
 		mountedAt = os.clock()
-		-- Roblox stands a seated character up on any jump input. The hop needs
-		-- that input, so the state goes away for as long as the ride lasts.
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 		bindControls()
 		showCard()
@@ -374,7 +443,6 @@ function BicycleController.init()
 	end
 	workspace.DescendantAdded:Connect(function(descendant)
 		if descendant:IsA('Motor6D') then
-			-- The server sets the wheel attributes just after parenting it.
 			task.defer(registerWheel, descendant)
 		end
 	end)

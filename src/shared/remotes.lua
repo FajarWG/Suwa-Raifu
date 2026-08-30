@@ -36,6 +36,8 @@ local Remotes: RemoteDefinitions = {
 		'VehicleBoost',
 		'VehicleHop',
 		'ProfileUpdated',
+		'SetStatus',
+		'CarryRelease',
 	},
 	functions = {
 		'GetProfile',

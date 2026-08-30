@@ -18,6 +18,9 @@ export type GameConfig = {
 	-- Remote rate limit (calls per second per player)
 	remoteRateLimit: number,
 
+	-- Status text shown above a player's head
+	statusMaxLength: number,
+
 	-- DataStore
 	dataStoreName: string,
 	profileKeyPrefix: string,
@@ -41,6 +44,7 @@ local Config: GameConfig = {
 	maxHunger = 100,
 
 	remoteRateLimit = 10,
+	statusMaxLength = 20,
 
 	dataStoreName = 'SuwaLife_Profiles',
 	profileKeyPrefix = 'player_',

@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UserInputService = game:GetService('UserInputService')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
 local FishingData = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Fishing'))
 
 local InventoryController = {}
@@ -157,24 +158,52 @@ local function buildGui()
 	gui.DisplayOrder = 25
 	gui.Parent = playerGui
 
+	local touch = UIScaling.isTouch()
+
 	local bagButton = Instance.new('TextButton')
-	bagButton.Position = UDim2.new(0, 18, 1, -70)
-	bagButton.Size = UDim2.fromOffset(126, 48)
-	bagButton.BackgroundColor3 = Color3.fromRGB(75, 104, 85)
-	bagButton.Text = '🎒  Bag  [B]'
-	bagButton.TextColor3 = Color3.new(1, 1, 1)
+	if touch then
+		-- Bottom-left is where Roblox puts the movement thumbstick, so on phones
+		-- the bag lives in the top-right corner dock instead.
+		bagButton.AnchorPoint = Vector2.new(1, 0)
+		bagButton.Position = UDim2.new(1, -14, 0, 14)
+		bagButton.Size = UDim2.fromOffset(88, 46)
+		bagButton.Text = '🎒 Bag'
+	else
+		bagButton.AnchorPoint = Vector2.new(0, 1)
+		bagButton.Position = UDim2.new(0, 18, 1, -22)
+		bagButton.Size = UDim2.fromOffset(126, 48)
+		bagButton.Text = '🎒  Bag  [B]'
+	end
+	bagButton.BackgroundColor3 = Color3.fromRGB(30, 36, 48)
+	bagButton.BackgroundTransparency = 0.2
+	bagButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	bagButton.Font = Enum.Font.GothamBold
-	bagButton.TextSize = 17
+	bagButton.TextSize = 14
 	bagButton.Parent = gui
-	corner(bagButton, 11)
+	corner(bagButton, 12)
+
+	local bagStroke = Instance.new('UIStroke')
+	bagStroke.Color = Color3.fromRGB(130, 160, 200)
+	bagStroke.Thickness = 1
+	bagStroke.Transparency = 0.4
+	bagStroke.Parent = bagButton
+
+	UIScaling.fit(bagButton, 1.1)
 
 	bagPanel = Instance.new('Frame')
-	bagPanel.Position = UDim2.new(0, 18, 0.5, -245)
+	if touch then
+		bagPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+		bagPanel.Position = UDim2.fromScale(0.5, 0.5)
+	else
+		bagPanel.AnchorPoint = Vector2.new(0, 0.5)
+		bagPanel.Position = UDim2.new(0, 18, 0.5, 0)
+	end
 	bagPanel.Size = UDim2.fromOffset(440, 470)
 	bagPanel.BackgroundColor3 = Color3.fromRGB(248, 244, 232)
 	bagPanel.Visible = false
 	bagPanel.Parent = gui
 	corner(bagPanel, 15)
+	UIScaling.fit(bagPanel)
 	yenLabel = textLabel(bagPanel, 'Bag', UDim2.new(1, -70, 0, 52), 20)
 	yenLabel.Position = UDim2.fromOffset(16, 0)
 
@@ -220,6 +249,7 @@ local function buildGui()
 	shopPanel.Visible = false
 	shopPanel.Parent = gui
 	corner(shopPanel, 15)
+	UIScaling.fit(shopPanel)
 	shopList = shopPanel
 	shopTitle = textLabel(shopPanel, 'Shop', UDim2.new(1, -70, 0, 52), 21)
 	shopTitle.Position = UDim2.fromOffset(16, 0)
@@ -249,6 +279,7 @@ local function buildGui()
 	toast.Visible = false
 	toast.Parent = gui
 	corner(toast, 10)
+	UIScaling.fit(toast)
 end
 
 function InventoryController.init()
