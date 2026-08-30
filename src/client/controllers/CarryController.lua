@@ -10,6 +10,7 @@ local UserInputService = game:GetService('UserInputService')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
+local UIDock = require(script.Parent:WaitForChild('UIDock'))
 
 local player = Players.LocalPlayer
 
@@ -19,16 +20,31 @@ local RELEASE_ACTION = 'SuwaCarryRelease'
 local PROMPT_NAME = 'CarryPrompt'
 
 local hintGui: ScreenGui? = nil
-
-local function isTouchDevice(): boolean
-	return UserInputService.TouchEnabled or UserInputService:GetLastInputType() == Enum.UserInputType.Touch
-end
+local dropButton: TextButton? = nil
 
 local function releaseCarry()
 	RemoteController.fire('CarryRelease')
 end
 
 local function setHintVisible(visible: boolean)
+	if UIScaling.isTouch() then
+		-- Mobile Touch Button to drop/release carried player — the shared
+		-- bottom stack's context slot (same spot GET OFF uses when seated).
+		if visible and not dropButton then
+			local dropBtn = UIDock.contextPill('RELEASE', Color3.fromRGB(190, 50, 50))
+			dropBtn.Name = 'DropButton'
+			dropButton = dropBtn
+
+			dropBtn.MouseButton1Click:Connect(function()
+				releaseCarry()
+			end)
+		end
+		if dropButton then
+			dropButton.Visible = visible
+		end
+		return
+	end
+
 	if visible and not hintGui then
 		local playerGui = player:WaitForChild('PlayerGui')
 		local gui = Instance.new('ScreenGui')
@@ -37,55 +53,22 @@ local function setHintVisible(visible: boolean)
 		gui.Parent = playerGui
 		hintGui = gui
 
-		if isTouchDevice() then
-			-- Mobile Touch Button to drop/release carried player
-			local dropBtn = Instance.new('TextButton')
-			dropBtn.Name = 'DropButton'
-			dropBtn.AnchorPoint = Vector2.new(1, 1)
-			dropBtn.Position = UDim2.new(1, -24, 1, -290)
-			dropBtn.Size = UDim2.new(0, 100, 0, 52)
-			dropBtn.BackgroundColor3 = Color3.fromRGB(195, 55, 55)
-			dropBtn.BackgroundTransparency = 0.12
-			dropBtn.TextColor3 = Color3.new(1, 1, 1)
-			dropBtn.Font = Enum.Font.GothamBold
-			dropBtn.TextSize = 13
-			dropBtn.Text = 'RELEASE 🤝'
-			dropBtn.AutoButtonColor = true
-			dropBtn.Parent = gui
+		-- Desktop Hint
+		local label = Instance.new('TextLabel')
+		label.AnchorPoint = Vector2.new(0.5, 1)
+		label.Position = UDim2.new(0.5, 0, 1, -150)
+		label.Size = UDim2.new(0, 260, 0, 32)
+		label.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+		label.BackgroundTransparency = 0.18
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.Font = Enum.Font.GothamBold
+		label.TextScaled = true
+		label.Text = 'Press X to let go  ・  降ろす'
+		label.Parent = gui
 
-			local corner = Instance.new('UICorner')
-			corner.CornerRadius = UDim.new(0, 12)
-			corner.Parent = dropBtn
-
-			local stroke = Instance.new('UIStroke')
-			stroke.Color = Color3.fromRGB(255, 150, 150)
-			stroke.Thickness = 1.5
-			stroke.Transparency = 0.3
-			stroke.Parent = dropBtn
-
-			UIScaling.fit(dropBtn, 1.2)
-
-			dropBtn.MouseButton1Click:Connect(function()
-				releaseCarry()
-			end)
-		else
-			-- Desktop Hint
-			local label = Instance.new('TextLabel')
-			label.AnchorPoint = Vector2.new(0.5, 1)
-			label.Position = UDim2.new(0.5, 0, 1, -150)
-			label.Size = UDim2.new(0, 260, 0, 32)
-			label.BackgroundColor3 = Color3.fromRGB(25, 42, 49)
-			label.BackgroundTransparency = 0.18
-			label.TextColor3 = Color3.new(1, 1, 1)
-			label.Font = Enum.Font.GothamBold
-			label.TextScaled = true
-			label.Text = 'Press X to let go  ・  降ろす'
-			label.Parent = gui
-
-			local corner = Instance.new('UICorner')
-			corner.CornerRadius = UDim.new(0, 8)
-			corner.Parent = label
-		end
+		local corner = Instance.new('UICorner')
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = label
 	elseif not visible and hintGui then
 		hintGui:Destroy()
 		hintGui = nil

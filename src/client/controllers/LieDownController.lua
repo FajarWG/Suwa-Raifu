@@ -1,6 +1,7 @@
 --!strict
 
 -- Clean, Natural Lie-Down & Relaxation System (Terlentang & Tengkurap)
+-- Positioned cleanly in the unified Top-Right Dock.
 -- Cycles through 2 relaxation poses:
 --   1. Lay on Back (Terlentang) - Lying face-up looking at sky / fireworks
 --   2. Lay on Stomach (Tengkurap) - Lying face-down resting comfortably
@@ -10,13 +11,13 @@ local Players = game:GetService('Players')
 local UserInputService = game:GetService('UserInputService')
 local Workspace = game:GetService('Workspace')
 
-local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
+local UIDock = require(script.Parent:WaitForChild('UIDock'))
 
 local player = Players.LocalPlayer
 
 local LieDownController = {}
 
-local IDLE_TEXT = '✨ Lay Down'
+local IDLE_TEXT = 'Lay Down'
 
 type PoseInfo = {
 	pitch: number,
@@ -45,10 +46,6 @@ local currentPose: string? = nil
 local standingCFrame: CFrame? = nil
 local chillFacing: CFrame? = nil
 local button: TextButton? = nil
-
-local function isTouchDevice(): boolean
-	return UserInputService.TouchEnabled or UserInputService:GetLastInputType() == Enum.UserInputType.Touch
-end
 
 local MOVE_KEYS = {
 	[Enum.KeyCode.W] = true,
@@ -84,7 +81,7 @@ local function standUp()
 	chillFacing = nil
 	if button then
 		button.Text = IDLE_TEXT
-		button.BackgroundColor3 = Color3.fromRGB(30, 36, 48)
+		button.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	end
 end
 
@@ -152,41 +149,15 @@ local function buildButton()
 	gui.ResetOnSpawn = false
 	gui.Parent = playerGui
 
-	local touch = isTouchDevice()
-
-	local btn = Instance.new('TextButton')
+	-- 1. Top-Right Dock Button
+	local btn = UIDock.pillButton(
+		if currentPose and POSES[currentPose] then POSES[currentPose].nextButtonText else IDLE_TEXT,
+		1
+	)
 	btn.Name = 'LieDownButton'
-	if touch then
-		btn.AnchorPoint = Vector2.new(1, 0)
-		btn.Position = UDim2.new(1, -14, 0, 110)
-		btn.Size = UDim2.new(0, 94, 0, 36)
-	else
-		btn.AnchorPoint = Vector2.new(0, 0)
-		btn.Position = UDim2.new(0, 120, 0, 64)
-		btn.Size = UDim2.new(0, 96, 0, 36)
-	end
-	btn.BackgroundColor3 = Color3.fromRGB(30, 36, 48)
-	btn.BackgroundTransparency = 0.2
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 12
-	btn.TextColor3 = Color3.fromRGB(240, 244, 255)
-	btn.Text = if currentPose and POSES[currentPose] then POSES[currentPose].nextButtonText else IDLE_TEXT
-	btn.AutoButtonColor = true
 	btn.ZIndex = 2
-	btn.Parent = gui
+	btn.Parent = UIDock.getTopRightRow()
 	button = btn
-
-	local corner = Instance.new('UICorner')
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = btn
-
-	local stroke = Instance.new('UIStroke')
-	stroke.Color = Color3.fromRGB(120, 150, 190)
-	stroke.Thickness = 1
-	stroke.Transparency = 0.4
-	stroke.Parent = btn
-
-	UIScaling.fit(btn, 1.1)
 
 	btn.MouseButton1Click:Connect(toggle)
 end
@@ -199,7 +170,7 @@ local function hookCharacter(character: Model)
 	currentRoot = character:FindFirstChild('HumanoidRootPart') :: BasePart?
 	if button then
 		button.Text = IDLE_TEXT
-		button.BackgroundColor3 = Color3.fromRGB(30, 36, 48)
+		button.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	end
 
 	if currentHumanoid then
@@ -214,12 +185,6 @@ end
 
 function LieDownController.init()
 	buildButton()
-
-	UserInputService.LastInputTypeChanged:Connect(function(lastInputType)
-		if lastInputType == Enum.UserInputType.Touch then
-			buildButton()
-		end
-	end)
 
 	if player.Character then
 		hookCharacter(player.Character)

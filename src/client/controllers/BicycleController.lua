@@ -5,9 +5,9 @@
 --   W A S D   ride and steer (VehicleSeat handles this natively)
 --   Shift     sprint boost (MovementController owns this control)
 --   Space/Q   bunny hop — lifts the front wheel
---   E / X     get off
+--   E / X     get off (MovementController manages the universal dismount button)
 --
--- On mobile (touch devices), dedicated buttons appear for HOP and GET OFF.
+-- On mobile (touch devices), HOP appears cleanly beside Sprint in the action zone.
 
 local ContextActionService = game:GetService('ContextActionService')
 local Players = game:GetService('Players')
@@ -17,6 +17,7 @@ local UserInputService = game:GetService('UserInputService')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
+local UIDock = require(script.Parent:WaitForChild('UIDock'))
 
 local player = Players.LocalPlayer
 
@@ -30,8 +31,8 @@ local currentSeat: VehicleSeat? = nil
 local currentHumanoid: Humanoid? = nil
 local mountedAt = 0
 local screenGui: ScreenGui? = nil
-local mobileBikeGui: ScreenGui? = nil
 local dismissThread: thread? = nil
+local hopButton: TextButton? = nil
 
 type WheelState = {
 	collider: BasePart,
@@ -44,10 +45,6 @@ type WheelState = {
 
 local wheels: { [Motor6D]: WheelState } = {}
 
-local function isTouchDevice(): boolean
-	return UserInputService.TouchEnabled or UserInputService:GetLastInputType() == Enum.UserInputType.Touch
-end
-
 local KEY_ROWS = {
 	{ key = 'W A S D', desc = 'Ride & steer  ・  走る・曲がる' },
 	{ key = 'Shift', desc = 'Sprint boost  ・  ダッシュ' },
@@ -57,9 +54,9 @@ local KEY_ROWS = {
 
 local TOUCH_ROWS = {
 	{ key = 'Joystick', desc = 'Ride & steer  ・  走る・曲がる' },
-	{ key = 'BOOST ⚡', desc = 'Pedal fast  ・  ダッシュ' },
-	{ key = 'HOP 🐇', desc = 'Bunny hop  ・  ジャンプ' },
-	{ key = 'GET OFF 🚲', desc = 'Get off  ・  降りる' },
+	{ key = 'BOOST', desc = 'Pedal fast  ・  ダッシュ' },
+	{ key = 'HOP', desc = 'Bunny hop  ・  ジャンプ' },
+	{ key = 'GET OFF', desc = 'Get off  ・  降りる' },
 }
 
 --=============================================================================
@@ -99,7 +96,7 @@ end
 local function showCard()
 	hideCard()
 	local playerGui = player:WaitForChild('PlayerGui')
-	local rows = if isTouchDevice() then TOUCH_ROWS else KEY_ROWS
+	local rows = if UIScaling.isTouch() then TOUCH_ROWS else KEY_ROWS
 
 	local gui = Instance.new('ScreenGui')
 	gui.Name = 'SuwaBicycleHelp'
@@ -111,9 +108,9 @@ local function showCard()
 	local card = Instance.new('Frame')
 	card.Name = 'Card'
 	card.AnchorPoint = Vector2.new(0.5, 1)
-	card.Position = if isTouchDevice() then UDim2.new(0.5, 0, 1, -118) else UDim2.new(0.5, 0, 1, -28)
-	card.Size = UDim2.new(0, 420, 0, 44 + #rows * 26)
-	card.BackgroundColor3 = Color3.fromRGB(22, 26, 34)
+	card.Position = if UIScaling.isTouch() then UDim2.new(0.5, 0, 1, -118) else UDim2.new(0.5, 0, 1, -28)
+	card.Size = UDim2.new(0, 400, 0, 44 + #rows * 24)
+	card.BackgroundColor3 = Color3.fromRGB(20, 24, 32)
 	card.BackgroundTransparency = 1
 	card.BorderSizePixel = 0
 	card.Parent = gui
@@ -124,7 +121,7 @@ local function showCard()
 
 	local stroke = Instance.new('UIStroke')
 	stroke.Color = Color3.fromRGB(255, 190, 120)
-	stroke.Thickness = 1.5
+	stroke.Thickness = 1.2
 	stroke.Transparency = 1
 	stroke.Parent = card
 	UIScaling.fit(card)
@@ -133,28 +130,28 @@ local function showCard()
 
 	local title = Instance.new('TextLabel')
 	title.Name = 'Title'
-	title.Position = UDim2.new(0, 16, 0, 10)
-	title.Size = UDim2.new(1, -32, 0, 22)
+	title.Position = UDim2.new(0, 16, 0, 8)
+	title.Size = UDim2.new(1, -32, 0, 20)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
+	title.TextSize = 13
 	title.TextColor3 = Color3.fromRGB(255, 214, 150)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.TextTransparency = 1
-	title.Text = '🚲  MAMACHARI BICYCLE  ・  ママチャリ'
+	title.Text = 'MAMACHARI BICYCLE  ・  ママチャリ'
 	title.Parent = card
 	table.insert(labels, title)
 
 	for index, row in rows do
-		local y = 36 + (index - 1) * 26
+		local y = 32 + (index - 1) * 24
 
 		local key = Instance.new('TextLabel')
 		key.Position = UDim2.new(0, 16, 0, y)
-		key.Size = UDim2.new(0, 112, 0, 20)
-		key.BackgroundColor3 = Color3.fromRGB(40, 44, 52)
+		key.Size = UDim2.new(0, 106, 0, 18)
+		key.BackgroundColor3 = Color3.fromRGB(36, 40, 48)
 		key.BackgroundTransparency = 1
 		key.Font = Enum.Font.GothamBold
-		key.TextSize = 11
+		key.TextSize = 10
 		key.TextColor3 = Color3.fromRGB(240, 210, 170)
 		key.Text = row.key
 		key.Parent = card
@@ -165,11 +162,11 @@ local function showCard()
 		keyCorner.Parent = key
 
 		local desc = Instance.new('TextLabel')
-		desc.Position = UDim2.new(0, 140, 0, y)
-		desc.Size = UDim2.new(1, -156, 0, 20)
+		desc.Position = UDim2.new(0, 130, 0, y)
+		desc.Size = UDim2.new(1, -146, 0, 18)
 		desc.BackgroundTransparency = 1
 		desc.Font = Enum.Font.Gotham
-		desc.TextSize = 12
+		desc.TextSize = 11
 		desc.TextColor3 = Color3.fromRGB(226, 232, 240)
 		desc.TextXAlignment = Enum.TextXAlignment.Left
 		desc.TextTransparency = 1
@@ -179,7 +176,7 @@ local function showCard()
 	end
 
 	local info = TweenInfo.new(0.3)
-	TweenService:Create(card, info, { BackgroundTransparency = 0.12 }):Play()
+	TweenService:Create(card, info, { BackgroundTransparency = 0.15 }):Play()
 	TweenService:Create(stroke, info, { Transparency = 0.3 }):Play()
 	for _, label in labels do
 		TweenService:Create(label, info, {
@@ -244,7 +241,7 @@ local function rollWheels(delta: number)
 end
 
 --=============================================================================
--- Actions & Mobile Touch Buttons
+-- Actions & Mobile Touch Buttons (Hop Only - Dismount managed by MovementController)
 --=============================================================================
 
 local function triggerHop()
@@ -263,88 +260,29 @@ local function dismount()
 end
 
 local function buildMobileBikeButtons()
-	if not isTouchDevice() then
+	if not UIScaling.isTouch() then
 		return
 	end
-	if mobileBikeGui then
-		mobileBikeGui:Destroy()
-		mobileBikeGui = nil
+	if hopButton then
+		hopButton.Visible = true
+		return
 	end
 
-	local playerGui = player:WaitForChild('PlayerGui')
-	local gui = Instance.new('ScreenGui')
-	gui.Name = 'SuwaMobileBikeGui'
-	gui.ResetOnSpawn = false
-	gui.Parent = playerGui
-	mobileBikeGui = gui
-
-	-- 1. Hop Button (Bunny Hop)
-	local hopBtn = Instance.new('TextButton')
+	-- Hop Button — leftmost slot in the shared bottom action row, so it sits
+	-- neatly beside MovementController's Sprint/Boost button.
+	local hopBtn = UIDock.roundButton('HOP', 1, Color3.fromRGB(32, 100, 175))
 	hopBtn.Name = 'HopButton'
-	hopBtn.AnchorPoint = Vector2.new(1, 1)
-	hopBtn.Position = UDim2.new(1, -120, 1, -190)
-	hopBtn.Size = UDim2.new(0, 84, 0, 84)
-	hopBtn.BackgroundColor3 = Color3.fromRGB(36, 120, 190)
-	hopBtn.BackgroundTransparency = 0.15
-	hopBtn.Font = Enum.Font.GothamBold
-	hopBtn.TextSize = 13
-	hopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	hopBtn.Text = 'HOP 🐇'
-	hopBtn.AutoButtonColor = true
-	hopBtn.Parent = gui
-
-	local hopCorner = Instance.new('UICorner')
-	hopCorner.CornerRadius = UDim.new(1, 0)
-	hopCorner.Parent = hopBtn
-
-	local hopStroke = Instance.new('UIStroke')
-	hopStroke.Color = Color3.fromRGB(150, 210, 255)
-	hopStroke.Thickness = 1.5
-	hopStroke.Transparency = 0.3
-	hopStroke.Parent = hopBtn
-
-	UIScaling.fit(hopBtn, 1.2)
+	hopBtn.Parent = UIDock.getBottomActionRow()
+	hopButton = hopBtn
 
 	hopBtn.MouseButton1Click:Connect(function()
 		triggerHop()
 	end)
-
-	-- 2. Dismount Button (Get Off)
-	local dismountBtn = Instance.new('TextButton')
-	dismountBtn.Name = 'DismountButton'
-	dismountBtn.AnchorPoint = Vector2.new(1, 1)
-	dismountBtn.Position = UDim2.new(1, -120, 1, -290)
-	dismountBtn.Size = UDim2.new(0, 94, 0, 48)
-	dismountBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 50)
-	dismountBtn.BackgroundTransparency = 0.12
-	dismountBtn.Font = Enum.Font.GothamBold
-	dismountBtn.TextSize = 12
-	dismountBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	dismountBtn.Text = 'GET OFF 🚲'
-	dismountBtn.AutoButtonColor = true
-	dismountBtn.Parent = gui
-
-	local dismountCorner = Instance.new('UICorner')
-	dismountCorner.CornerRadius = UDim.new(0, 10)
-	dismountCorner.Parent = dismountBtn
-
-	local dismountStroke = Instance.new('UIStroke')
-	dismountStroke.Color = Color3.fromRGB(255, 140, 140)
-	dismountStroke.Thickness = 1.5
-	dismountStroke.Transparency = 0.3
-	dismountStroke.Parent = dismountBtn
-
-	UIScaling.fit(dismountBtn, 1.1)
-
-	dismountBtn.MouseButton1Click:Connect(function()
-		dismount()
-	end)
 end
 
 local function removeMobileBikeButtons()
-	if mobileBikeGui then
-		mobileBikeGui:Destroy()
-		mobileBikeGui = nil
+	if hopButton then
+		hopButton.Visible = false
 	end
 end
 

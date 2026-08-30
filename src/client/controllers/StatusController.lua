@@ -1,13 +1,13 @@
 --!strict
 
--- Sleek Status button + popup with glassmorphic styling and mobile safe positioning.
--- Positioned safely away from the mobile thumbstick.
+-- Sleek Status button + popup in the unified Top-Right Dock.
 
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local UserInputService = game:GetService('UserInputService')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
+local UIDock = require(script.Parent:WaitForChild('UIDock'))
 local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
 local Config = require(ReplicatedStorage.Shared:WaitForChild('constants'):WaitForChild('Config'))
 
@@ -16,10 +16,6 @@ local player = Players.LocalPlayer
 local StatusController = {}
 
 local MAX_LENGTH = Config.statusMaxLength
-
-local function isTouchDevice(): boolean
-	return UserInputService.TouchEnabled or UserInputService:GetLastInputType() == Enum.UserInputType.Touch
-end
 
 local function buildGui()
 	local playerGui = player:WaitForChild('PlayerGui')
@@ -33,56 +29,22 @@ local function buildGui()
 	gui.ResetOnSpawn = false
 	gui.Parent = playerGui
 
-	local touch = isTouchDevice()
-
-	local button = Instance.new('TextButton')
+	-- 1. Top-Right Dock Button
+	local button = UIDock.pillButton('Status', 2)
 	button.Name = 'StatusButton'
-	if touch then
-		-- Placed at top-right dock (below bag) so it never clashes with left joystick
-		button.AnchorPoint = Vector2.new(1, 0)
-		button.Position = UDim2.new(1, -14, 0, 68)
-		button.Size = UDim2.new(0, 88, 0, 36)
-	else
-		button.AnchorPoint = Vector2.new(0, 0)
-		button.Position = UDim2.new(0, 16, 0, 64)
-		button.Size = UDim2.new(0, 96, 0, 36)
-	end
-	button.BackgroundColor3 = Color3.fromRGB(30, 36, 48)
-	button.BackgroundTransparency = 0.2
-	button.Font = Enum.Font.GothamBold
-	button.TextSize = 12
-	button.TextColor3 = Color3.fromRGB(240, 244, 255)
-	button.Text = '💬 Status'
-	button.AutoButtonColor = true
 	button.ZIndex = 2
-	button.Parent = gui
+	button.Parent = UIDock.getTopRightRow()
 
-	local buttonCorner = Instance.new('UICorner')
-	buttonCorner.CornerRadius = UDim.new(0, 10)
-	buttonCorner.Parent = button
-
-	local buttonStroke = Instance.new('UIStroke')
-	buttonStroke.Color = Color3.fromRGB(120, 150, 190)
-	buttonStroke.Thickness = 1
-	buttonStroke.Transparency = 0.4
-	buttonStroke.Parent = button
-
-	UIScaling.fit(button, 1.1)
-
+	-- 2. Popup Panel
 	local panel = Instance.new('Frame')
 	panel.Name = 'Panel'
-	if touch then
-		panel.AnchorPoint = Vector2.new(1, 0)
-		panel.Position = UDim2.new(1, -14, 0, 110)
-	else
-		panel.AnchorPoint = Vector2.new(0, 0)
-		panel.Position = UDim2.new(0, 16, 0, 106)
-	end
-	panel.Size = UDim2.new(0, 260, 0, 106)
+	panel.AnchorPoint = Vector2.new(1, 0)
+	panel.Position = UDim2.new(1, -16, 0, 58)
+	panel.Size = UDim2.new(0, 270, 0, 108)
 	panel.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	panel.BackgroundTransparency = 0.08
 	panel.Visible = false
-	panel.ZIndex = 5
+	panel.ZIndex = 15
 	panel.Parent = gui
 
 	local panelCorner = Instance.new('UICorner')
@@ -115,7 +77,7 @@ local function buildGui()
 	textBox.TextSize = 13
 	textBox.ClearTextOnFocus = false
 	textBox.Text = ''
-	textBox.ZIndex = 6
+	textBox.ZIndex = 16
 	textBox.Parent = panel
 
 	local inputCorner = Instance.new('UICorner')
@@ -132,7 +94,7 @@ local function buildGui()
 	counter.TextColor3 = Color3.fromRGB(160, 175, 195)
 	counter.TextXAlignment = Enum.TextXAlignment.Right
 	counter.Text = `0 / {MAX_LENGTH}`
-	counter.ZIndex = 6
+	counter.ZIndex = 16
 	counter.Parent = panel
 
 	local buttonRow = Instance.new('Frame')
@@ -140,7 +102,7 @@ local function buildGui()
 	buttonRow.Size = UDim2.new(1, 0, 0, 30)
 	buttonRow.Position = UDim2.new(0, 0, 0, 56)
 	buttonRow.BackgroundTransparency = 1
-	buttonRow.ZIndex = 6
+	buttonRow.ZIndex = 16
 	buttonRow.Parent = panel
 
 	local setBtn = Instance.new('TextButton')
@@ -151,7 +113,7 @@ local function buildGui()
 	setBtn.Font = Enum.Font.GothamBold
 	setBtn.TextSize = 12
 	setBtn.Text = 'Set Status'
-	setBtn.ZIndex = 6
+	setBtn.ZIndex = 16
 	setBtn.Parent = buttonRow
 	local setCorner = Instance.new('UICorner')
 	setCorner.CornerRadius = UDim.new(0, 6)
@@ -166,7 +128,7 @@ local function buildGui()
 	clearBtn.Font = Enum.Font.GothamBold
 	clearBtn.TextSize = 12
 	clearBtn.Text = 'Clear'
-	clearBtn.ZIndex = 6
+	clearBtn.ZIndex = 16
 	clearBtn.Parent = buttonRow
 	local clearCorner = Instance.new('UICorner')
 	clearCorner.CornerRadius = UDim.new(0, 6)
@@ -208,11 +170,6 @@ end
 
 function StatusController.init()
 	buildGui()
-	UserInputService.LastInputTypeChanged:Connect(function(lastInputType)
-		if lastInputType == Enum.UserInputType.Touch then
-			buildGui()
-		end
-	end)
 end
 
 return StatusController

@@ -1,10 +1,11 @@
 --!strict
 
--- Unified Mobile Controls & Movement Controller (English & Japanese)
+-- Unified Movement & Vehicle Boost Controller
 -- Handles:
---   - Sprint on foot (Shift on PC / "SPRINT 🏃" on Mobile)
---   - Boost in vehicle (Shift on PC / "BOOST ⚡" on Mobile)
---   - Universal Dismount when seated (X on PC / "GET OFF 🚪" on Mobile)
+--   - Sprint on foot (Shift on PC / "SPRINT" circle button on Mobile)
+--   - Boost in vehicle (Shift on PC / "BOOST" circle button on Mobile)
+--   - Universal Dismount when seated (X on PC / "GET OFF" on Mobile)
+--   - Responsive across PC/Laptop, Mac, Mobile, and Tablets via UIDock.
 
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
@@ -13,6 +14,7 @@ local Workspace = game:GetService('Workspace')
 
 local RemoteController = require(script.Parent:WaitForChild('RemoteController'))
 local UIScaling = require(script.Parent:WaitForChild('UIScaling'))
+local UIDock = require(script.Parent:WaitForChild('UIDock'))
 
 local WALK_SPEED = 16
 local SPRINT_SPEED = 28
@@ -27,17 +29,12 @@ local boostSent = false
 
 local sprintButton: TextButton? = nil
 local dismountButton: TextButton? = nil
-local mobileGui: ScreenGui? = nil
 
 local MovementController = {}
 
-local IDLE_COLOR = Color3.fromRGB(38, 44, 56)
+local IDLE_COLOR = Color3.fromRGB(24, 28, 38)
 local ACTIVE_COLOR = Color3.fromRGB(226, 142, 58)
 local DISMOUNT_COLOR = Color3.fromRGB(190, 50, 50)
-
-local function isTouchDevice(): boolean
-	return UserInputService.TouchEnabled or UserInputService:GetLastInputType() == Enum.UserInputType.Touch
-end
 
 local function pushBoost(value: boolean)
 	if boostSent == value then
@@ -53,10 +50,10 @@ local function updateButtonStates()
 
 	if sprintButton then
 		if isSeated then
-			sprintButton.Text = 'BOOST ⚡'
-			sprintButton.BackgroundColor3 = if sprinting then ACTIVE_COLOR else Color3.fromRGB(48, 54, 72)
+			sprintButton.Text = 'BOOST'
+			sprintButton.BackgroundColor3 = if sprinting then ACTIVE_COLOR else Color3.fromRGB(40, 48, 68)
 		else
-			sprintButton.Text = 'SPRINT 🏃'
+			sprintButton.Text = 'SPRINT'
 			sprintButton.BackgroundColor3 = if sprinting then ACTIVE_COLOR else IDLE_COLOR
 		end
 	end
@@ -64,8 +61,7 @@ local function updateButtonStates()
 	if dismountButton then
 		dismountButton.Visible = isSeated == true
 		if isSeated and humanoid and humanoid.SeatPart then
-			local isBike = humanoid.SeatPart:GetAttribute('SuwaBicycle') or humanoid.SeatPart.Name:lower():find('bike') ~= nil
-			dismountButton.Text = if isBike then 'GET OFF 🚲' else 'GET OFF 🚪'
+			dismountButton.Text = 'GET OFF'
 		end
 	end
 end
@@ -106,48 +102,24 @@ local function dismountCurrentSeat()
 end
 
 --=============================================================================
--- Mobile UI Builder
+-- Mobile UI Builder (Touch Devices Only)
 --=============================================================================
 
 local function buildMobileUI()
-	local playerGui = player:WaitForChild('PlayerGui')
-	if playerGui:FindFirstChild('SuwaMobileMovementGui') then
+	if not UIScaling.isTouch() then
 		return
 	end
 
-	local gui = Instance.new('ScreenGui')
-	gui.Name = 'SuwaMobileMovementGui'
-	gui.ResetOnSpawn = false
-	gui.Parent = playerGui
-	mobileGui = gui
+	if sprintButton then
+		return
+	end
 
-	-- 1. Sprint / Boost Button
-	local button = Instance.new('TextButton')
+	-- 1. Sprint / Boost Circular Action Button — rightmost slot in the shared
+	-- bottom action row, right next to BicycleController's Hop button.
+	local button = UIDock.roundButton('SPRINT', 2, IDLE_COLOR)
 	button.Name = 'SprintButton'
-	button.AnchorPoint = Vector2.new(1, 1)
-	button.Position = UDim2.new(1, -24, 1, -190)
-	button.Size = UDim2.new(0, 84, 0, 84)
-	button.BackgroundColor3 = IDLE_COLOR
-	button.BackgroundTransparency = 0.15
-	button.Font = Enum.Font.GothamBold
-	button.TextSize = 13
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.Text = 'SPRINT 🏃'
-	button.AutoButtonColor = false
-	button.Parent = gui
+	button.Parent = UIDock.getBottomActionRow()
 	sprintButton = button
-
-	local corner = Instance.new('UICorner')
-	corner.CornerRadius = UDim.new(1, 0)
-	corner.Parent = button
-
-	local stroke = Instance.new('UIStroke')
-	stroke.Color = Color3.fromRGB(255, 210, 160)
-	stroke.Thickness = 1.5
-	stroke.Transparency = 0.3
-	stroke.Parent = button
-
-	UIScaling.fit(button, 1.2)
 
 	button.InputBegan:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -160,34 +132,12 @@ local function buildMobileUI()
 		end
 	end)
 
-	-- 2. Universal Dismount Button (visible when seated)
-	local exitBtn = Instance.new('TextButton')
+	-- 2. Universal Dismount Button — the shared bottom stack's context slot,
+	-- which sits above the action row only while it's Visible.
+	local exitBtn = UIDock.contextPill('GET OFF', DISMOUNT_COLOR)
 	exitBtn.Name = 'DismountButton'
-	exitBtn.AnchorPoint = Vector2.new(1, 1)
-	exitBtn.Position = UDim2.new(1, -24, 1, -290)
-	exitBtn.Size = UDim2.new(0, 94, 0, 48)
-	exitBtn.BackgroundColor3 = DISMOUNT_COLOR
-	exitBtn.BackgroundTransparency = 0.12
-	exitBtn.Font = Enum.Font.GothamBold
-	exitBtn.TextSize = 12
-	exitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	exitBtn.Text = 'GET OFF 🚪'
 	exitBtn.Visible = false
-	exitBtn.AutoButtonColor = true
-	exitBtn.Parent = gui
 	dismountButton = exitBtn
-
-	local exitCorner = Instance.new('UICorner')
-	exitCorner.CornerRadius = UDim.new(0, 10)
-	exitCorner.Parent = exitBtn
-
-	local exitStroke = Instance.new('UIStroke')
-	exitStroke.Color = Color3.fromRGB(255, 140, 140)
-	exitStroke.Thickness = 1.5
-	exitStroke.Transparency = 0.3
-	exitStroke.Parent = exitBtn
-
-	UIScaling.fit(exitBtn, 1.1)
 
 	exitBtn.MouseButton1Click:Connect(function()
 		dismountCurrentSeat()
@@ -241,12 +191,12 @@ end
 function MovementController.init()
 	camera = Workspace.CurrentCamera
 
-	if isTouchDevice() then
+	if UIScaling.isTouch() then
 		buildMobileUI()
 	end
 
 	UserInputService.LastInputTypeChanged:Connect(function(lastInputType)
-		if lastInputType == Enum.UserInputType.Touch and not mobileGui then
+		if lastInputType == Enum.UserInputType.Touch and not sprintButton then
 			buildMobileUI()
 		end
 	end)
