@@ -163,10 +163,10 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	groundCheck.FilterType = Enum.RaycastFilterType.Exclude
 	groundCheck.FilterDescendantsInstances = { rootPart:FindFirstAncestorWhichIsA('Model') :: Instance }
 
-	-- Boats glide and take a while to answer the helm; bikes respond sharply.
-	local baseSpeed = if onWater then 40 else 34
-	local turnSpeed = if onWater then 1.0 else 1.9
-	local responsiveness = if onWater then 0.03 else 0.12
+	-- Boats glide with smooth acceleration; bikes respond sharply.
+	local baseSpeed = if onWater then 45 else 34
+	local turnSpeed = if onWater then 1.4 else 1.9
+	local responsiveness = if onWater then 0.08 else 0.12
 
 	local spin = 0
 	activeDrives[seat] = RunService.Heartbeat:Connect(function(delta)
@@ -225,7 +225,7 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 
 		local currentRot = angular.AngularVelocity
 		local targetRotY = -steer * turnSpeed
-		angular.AngularVelocity = Vector3.new(0, currentRot.Y + (targetRotY - currentRot.Y) * 0.1, 0)
+		angular.AngularVelocity = Vector3.new(0, currentRot.Y + (targetRotY - currentRot.Y) * 0.15, 0)
 	end)
 end
 
@@ -256,6 +256,16 @@ local function rigVehicle(model: Model)
 	-- Water craft float; anything sitting on land is treated as a land vehicle.
 	local onWater = boundingCFrame.Position.Y < 6
 
+	local COLLISION_PARTS: { [string]: boolean } = {
+		BoatHullRoot = true,
+		DeckWalkCollision = true,
+		RoofWalkCollision = true,
+		SlideSlopeCollision = true,
+		SlideEntryCollision = true,
+		SlideExitCollision = true,
+		ClimbableLadder = true,
+	}
+
 	-- Creator Store props hold themselves together with Anchored rather than
 	-- welds, so weld everything to the root before unanchoring or the model
 	-- collapses into loose parts the moment it is freed.
@@ -266,6 +276,14 @@ local function rigVehicle(model: Model)
 	for _, part in model:GetDescendants() do
 		if part:IsA('BasePart') and part ~= rootPart then
 			part.Anchored = false
+			if onWater then
+				part.Massless = true
+				if not COLLISION_PARTS[part.Name] then
+					part.CanCollide = false
+				else
+					part.CanCollide = true
+				end
+			end
 			if looksLikeWheel(part) then
 				-- Drop any existing joint, or the motor fights it.
 				for _, joint in part:GetChildren() do
@@ -303,7 +321,7 @@ local function rigVehicle(model: Model)
 		end
 	end
 	rootPart.Anchored = false
-	rootPart.CustomPhysicalProperties = PhysicalProperties.new(0.15, 0.3, 0.5)
+	rootPart.CustomPhysicalProperties = PhysicalProperties.new(0.12, 0.3, 0.5)
 
 	-- Keep it upright. A bike with no rider falls over instantly otherwise.
 	local stability = Instance.new('Attachment')
@@ -318,18 +336,23 @@ local function rigVehicle(model: Model)
 	align.AlignType = Enum.AlignType.PrimaryAxisParallel
 	align.PrimaryAxisOnly = true -- free to turn, locked against tipping
 	align.PrimaryAxis = Vector3.yAxis
-	align.RigidityEnabled = true
+	if onWater then
+		align.RigidityEnabled = false
+		align.MaxTorque = 500000
+		align.Responsiveness = 30
+	else
+		align.RigidityEnabled = true
+	end
 	align.Parent = rootPart
 
-	local existingDriver: VehicleSeat? = nil
+	local driverSeatsFound: { VehicleSeat } = {}
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA('VehicleSeat') then
-			existingDriver = descendant
-			break
+			table.insert(driverSeatsFound, descendant)
 		end
 	end
 
-	if not existingDriver then
+	if #driverSeatsFound == 0 then
 		local seat = Instance.new('VehicleSeat')
 		seat.Name = 'SuwaDriveSeat'
 		seat.Size = Vector3.new(1.6, 0.2, 1.6)
@@ -343,20 +366,30 @@ local function rigVehicle(model: Model)
 		weld.Part0 = seat
 		weld.Part1 = rootPart
 		weld.Parent = seat
-		existingDriver = seat
+		table.insert(driverSeatsFound, seat)
 	end
 
 	model:SetAttribute('SuwaRigged', true)
 
-	local driver = existingDriver :: VehicleSeat
-	setupSeat(driver, model.Name)
-	driver:GetPropertyChangedSignal('Occupant'):Connect(function()
-		if driver.Occupant then
-			startDriving(driver, rootPart, onWater, wheels)
-		else
-			stopDriving(driver, rootPart)
-		end
-	end)
+	for _, driver in driverSeatsFound do
+		setupSeat(driver, model.Name)
+		driver:GetPropertyChangedSignal('Occupant'):Connect(function()
+			if driver.Occupant then
+				local rider = Players:GetPlayerFromCharacter(driver.Occupant.Parent)
+				if rider then
+					pcall(function()
+						rootPart:SetNetworkOwner(rider)
+					end)
+				end
+				startDriving(driver, rootPart, onWater, wheels)
+			else
+				stopDriving(driver, rootPart)
+				pcall(function()
+					rootPart:SetNetworkOwner(nil)
+				end)
+			end
+		end)
+	end
 end
 
 --=============================================================================
@@ -364,7 +397,6 @@ end
 local function collectVehicleModels(): { Model }
 	local found: { Model } = {}
 	local seen: { [Model]: boolean } = {}
-
 	local function consider(model: Model)
 		if not seen[model] then
 			seen[model] = true
@@ -380,16 +412,7 @@ local function collectVehicleModels(): { Model }
 		elseif descendant:IsA('Folder') and VEHICLE_FOLDERS[descendant.Name] then
 			for _, child in descendant:GetChildren() do
 				if child:IsA('Model') then
-					-- Creator Store packs often nest the real vehicle one level
-					-- deeper inside a wrapper model.
-					local inner = nil
-					for _, grandchild in child:GetChildren() do
-						if grandchild:IsA('Model') then
-							inner = grandchild
-							break
-						end
-					end
-					consider(inner or child)
+					consider(child)
 				end
 			end
 		end
@@ -425,7 +448,17 @@ function VehicleInteractionService.init()
 		elseif descendant:IsA('Model') and isInsideVehicleFolder(descendant) then
 			task.delay(0.5, function()
 				if descendant.Parent then
-					rigVehicle(descendant)
+					local targetModel: Model = descendant
+					while targetModel.Parent and targetModel.Parent ~= workspace do
+						if targetModel.Parent:IsA('Folder') and VEHICLE_FOLDERS[targetModel.Parent.Name] then
+							break
+						elseif targetModel.Parent:IsA('Model') then
+							targetModel = targetModel.Parent
+						else
+							break
+						end
+					end
+					rigVehicle(targetModel)
 				end
 			end)
 		end
