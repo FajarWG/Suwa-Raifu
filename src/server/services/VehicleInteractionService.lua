@@ -68,6 +68,116 @@ end
 -- Seat prompts
 --=============================================================================
 
+local function isActualVehicleSeat(seat: Seat | VehicleSeat): boolean
+	local nameLower = seat.Name:lower()
+	if nameLower:find('swing') or nameLower:find('ayun') then
+		return false
+	end
+	if
+		nameLower:find('bench')
+		or nameLower:find('chair')
+		or nameLower:find('armseat')
+		or nameLower:find('stool')
+		or nameLower:find('toilet')
+		or nameLower:find('ferris')
+		or nameLower:find('basket')
+		or nameLower:find('merry')
+		or nameLower:find('carousel')
+		or nameLower:find('happy')
+	then
+		return false
+	end
+
+	local owner = seat:FindFirstAncestorWhichIsA('Model')
+	if not owner then
+		return seat:IsA('VehicleSeat')
+	end
+
+	local ownerLower = owner.Name:lower()
+	if
+		ownerLower:find('swing')
+		or ownerLower:find('ayun')
+		or ownerLower:find('bench')
+		or ownerLower:find('chair')
+		or ownerLower:find('arena')
+		or ownerLower:find('table')
+		or ownerLower:find('ferris')
+		or ownerLower:find('merry')
+	then
+		return false
+	end
+
+	if
+		owner:GetAttribute('Vehicle')
+		or owner:GetAttribute('SuwaRigged')
+		or owner:GetAttribute('SuwaBicycle')
+		or isInsideVehicleFolder(owner)
+		or owner:FindFirstAncestor('LakeCrafts')
+		or owner:FindFirstAncestor('Vehicles')
+	then
+		return true
+	end
+
+	if
+		ownerLower:find('boat')
+		or ownerLower:find('bike')
+		or ownerLower:find('bicycle')
+		or ownerLower:find('fune')
+		or ownerLower:find('ship')
+		or ownerLower:find('car')
+		or ownerLower:find('craft')
+		or ownerLower:find('kayak')
+		or ownerLower:find('canoe')
+		or ownerLower:find('swan')
+		or ownerLower:find('duck')
+		or ownerLower:find('jetski')
+	then
+		return true
+	end
+
+	return seat:IsA('VehicleSeat')
+end
+
+local function getSeatActionAndObject(seat: Seat | VehicleSeat, rawObjectText: string): (string, string)
+	local nameLower = seat.Name:lower()
+	local owner = seat:FindFirstAncestorWhichIsA('Model')
+	local ownerLower = if owner then owner.Name:lower() else ''
+
+	if nameLower:find('swing') or ownerLower:find('swing') or nameLower:find('ayun') or ownerLower:find('ayun') then
+		return 'Swing', 'Swings'
+	end
+
+	if isActualVehicleSeat(seat) then
+		local cleanName = if owner then owner.Name else 'Vehicle'
+		local cleanLower = cleanName:lower()
+		if cleanLower:find('fune') or cleanLower:find('boat') then
+			cleanName = 'Boat'
+		elseif cleanLower:find('bike') or cleanLower:find('bicycle') then
+			cleanName = 'Bicycle'
+		elseif cleanLower:find('swan') then
+			cleanName = 'Swan Boat'
+		elseif cleanLower:find('jetski') then
+			cleanName = 'Jet Ski'
+		end
+		return 'Ride', cleanName
+	end
+
+	-- Default furniture / seating
+	local cleanObj = if owner then owner.Name else 'Seat'
+	local objLower = cleanObj:lower()
+	if objLower:find('bench') then
+		cleanObj = 'Bench'
+	elseif objLower:find('chair') then
+		cleanObj = 'Chair'
+	elseif objLower:find('basket') or ownerLower:find('ferris') then
+		cleanObj = 'Ferris Wheel'
+	elseif objLower:find('happy') then
+		cleanObj = 'Spring Rider'
+	end
+
+	return 'Sit', cleanObj
+end
+
 -- Every seat starts disabled, so touching it does nothing. The prompt is the
 -- only way in, and the seat is re-disabled the moment the rider leaves.
 local function setupSeat(seat: Seat | VehicleSeat, objectText: string)
@@ -76,12 +186,12 @@ local function setupSeat(seat: Seat | VehicleSeat, objectText: string)
 	end
 
 	seat.Disabled = true
-	local isDriver = seat:IsA('VehicleSeat')
+	local actionText, cleanObject = getSeatActionAndObject(seat, objectText)
 
 	local prompt = Instance.new('ProximityPrompt')
-	prompt.Name = 'RidePrompt'
-	prompt.ActionText = if isDriver then 'Ride' else 'Sit'
-	prompt.ObjectText = objectText
+	prompt.Name = if actionText == 'Ride' then 'RidePrompt' else 'SitPrompt'
+	prompt.ActionText = actionText
+	prompt.ObjectText = cleanObject
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
 	prompt.RequiresLineOfSight = false

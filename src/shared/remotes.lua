@@ -37,6 +37,7 @@ local Remotes: RemoteDefinitions = {
 		'VehicleHop',
 		'ProfileUpdated',
 		'SetStatus',
+		'ClearStatus',
 		'CarryRelease',
 	},
 	functions = {

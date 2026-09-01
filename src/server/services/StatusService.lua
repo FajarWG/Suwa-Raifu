@@ -16,12 +16,18 @@ local StatusService = {}
 
 local TAG_NAME = 'SuwaStatusTag'
 local pending: { [Player]: number } = {} -- request stamp, so a slow filter never clobbers a newer one
+local currentStatus: { [Player]: string } = {}
 
 local function clearTag(character: Model)
 	local head = character:FindFirstChild('Head')
 	local existing = head and head:FindFirstChild(TAG_NAME)
 	if existing then
 		existing:Destroy()
+	end
+	for _, desc in character:GetDescendants() do
+		if desc:IsA('BillboardGui') and desc.Name == TAG_NAME then
+			desc:Destroy()
+		end
 	end
 end
 
@@ -58,22 +64,22 @@ end
 
 local function applyStatus(player: Player, filtered: string)
 	local character = player.Character
-	if not character then
-		return
-	end
 	if filtered == '' then
-		clearTag(character)
+		currentStatus[player] = nil
+		if character then
+			clearTag(character)
+		end
 	else
-		buildTag(character, filtered)
+		currentStatus[player] = filtered
+		if character then
+			buildTag(character, filtered)
+		end
 	end
 end
 
 local function setStatus(player: Player, rawText: unknown)
-	if typeof(rawText) ~= 'string' then
-		return
-	end
-
-	local trimmed = rawText:gsub('^%s+', ''):gsub('%s+$', '')
+	local text = if typeof(rawText) == 'string' then rawText else ''
+	local trimmed = text:gsub('^%s+', ''):gsub('%s+$', '')
 
 	-- #trimmed counts bytes, not characters: a Japanese/CJK status is ~3
 	-- bytes per character, so byte-based truncation used to slice a
@@ -120,9 +126,30 @@ end
 
 function StatusService.init()
 	RemoteRegistry.registerEvent('SetStatus', setStatus)
+	RemoteRegistry.registerEvent('ClearStatus', function(player: Player)
+		setStatus(player, '')
+	end)
+
+	local function hookPlayer(player: Player)
+		player.CharacterAdded:Connect(function(character)
+			local status = currentStatus[player]
+			if status and status ~= '' then
+				local head = character:WaitForChild('Head', 5)
+				if head and currentStatus[player] == status then
+					buildTag(character, status)
+				end
+			end
+		end)
+	end
+
+	for _, player in Players:GetPlayers() do
+		hookPlayer(player)
+	end
+	Players.PlayerAdded:Connect(hookPlayer)
 
 	Players.PlayerRemoving:Connect(function(player)
 		pending[player] = nil
+		currentStatus[player] = nil
 	end)
 end
 

@@ -1,6 +1,7 @@
 --!strict
 
 -- Sleek Status button + popup in the unified Top-Right Dock.
+-- Fully responsive across PC, Laptop, Tablet, and Mobile Touchscreens.
 
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
@@ -32,6 +33,7 @@ local function buildGui()
 	-- 1. Top-Right Dock Button
 	local button = UIDock.pillButton('Status', 2)
 	button.Name = 'StatusButton'
+	button.Active = true
 	button.ZIndex = 2
 	button.Parent = UIDock.getTopRightRow()
 
@@ -40,10 +42,11 @@ local function buildGui()
 	panel.Name = 'Panel'
 	panel.AnchorPoint = Vector2.new(1, 0)
 	panel.Position = UDim2.new(1, -16, 0, 58)
-	panel.Size = UDim2.new(0, 270, 0, 108)
+	panel.Size = UDim2.new(0, 280, 0, 120)
 	panel.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	panel.BackgroundTransparency = 0.08
 	panel.Visible = false
+	panel.Active = true
 	panel.ZIndex = 15
 	panel.Parent = gui
 
@@ -62,16 +65,16 @@ local function buildGui()
 	local padding = Instance.new('UIPadding')
 	padding.PaddingTop = UDim.new(0, 10)
 	padding.PaddingBottom = UDim.new(0, 10)
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
 	padding.Parent = panel
 
 	local textBox = Instance.new('TextBox')
 	textBox.Name = 'Input'
-	textBox.Size = UDim2.new(1, 0, 0, 34)
+	textBox.Size = UDim2.new(1, 0, 0, 36)
 	textBox.BackgroundColor3 = Color3.fromRGB(38, 44, 58)
 	textBox.TextColor3 = Color3.new(1, 1, 1)
-	textBox.PlaceholderText = 'Enter your status message...'
+	textBox.PlaceholderText = 'Enter status (or leave empty to clear)...'
 	textBox.PlaceholderColor3 = Color3.fromRGB(160, 170, 185)
 	textBox.Font = Enum.Font.Gotham
 	textBox.TextSize = 13
@@ -84,10 +87,15 @@ local function buildGui()
 	inputCorner.CornerRadius = UDim.new(0, 8)
 	inputCorner.Parent = textBox
 
+	local inputPadding = Instance.new('UIPadding')
+	inputPadding.PaddingLeft = UDim.new(0, 8)
+	inputPadding.PaddingRight = UDim.new(0, 8)
+	inputPadding.Parent = textBox
+
 	local counter = Instance.new('TextLabel')
 	counter.Name = 'Counter'
 	counter.Size = UDim2.new(1, 0, 0, 16)
-	counter.Position = UDim2.new(0, 0, 0, 38)
+	counter.Position = UDim2.new(0, 0, 0, 40)
 	counter.BackgroundTransparency = 1
 	counter.Font = Enum.Font.Gotham
 	counter.TextSize = 11
@@ -99,8 +107,8 @@ local function buildGui()
 
 	local buttonRow = Instance.new('Frame')
 	buttonRow.Name = 'Buttons'
-	buttonRow.Size = UDim2.new(1, 0, 0, 30)
-	buttonRow.Position = UDim2.new(0, 0, 0, 56)
+	buttonRow.Size = UDim2.new(1, 0, 0, 36)
+	buttonRow.Position = UDim2.new(0, 0, 0, 60)
 	buttonRow.BackgroundTransparency = 1
 	buttonRow.ZIndex = 16
 	buttonRow.Parent = panel
@@ -111,12 +119,14 @@ local function buildGui()
 	setBtn.BackgroundColor3 = Color3.fromRGB(56, 128, 92)
 	setBtn.TextColor3 = Color3.new(1, 1, 1)
 	setBtn.Font = Enum.Font.GothamBold
-	setBtn.TextSize = 12
+	setBtn.TextSize = 13
 	setBtn.Text = 'Set Status'
+	setBtn.Active = true
+	setBtn.AutoButtonColor = true
 	setBtn.ZIndex = 16
 	setBtn.Parent = buttonRow
 	local setCorner = Instance.new('UICorner')
-	setCorner.CornerRadius = UDim.new(0, 6)
+	setCorner.CornerRadius = UDim.new(0, 8)
 	setCorner.Parent = setBtn
 
 	local clearBtn = Instance.new('TextButton')
@@ -126,20 +136,26 @@ local function buildGui()
 	clearBtn.BackgroundColor3 = Color3.fromRGB(160, 60, 60)
 	clearBtn.TextColor3 = Color3.new(1, 1, 1)
 	clearBtn.Font = Enum.Font.GothamBold
-	clearBtn.TextSize = 12
+	clearBtn.TextSize = 13
 	clearBtn.Text = 'Clear'
+	clearBtn.Active = true
+	clearBtn.AutoButtonColor = true
 	clearBtn.ZIndex = 16
 	clearBtn.Parent = buttonRow
 	local clearCorner = Instance.new('UICorner')
-	clearCorner.CornerRadius = UDim.new(0, 6)
+	clearCorner.CornerRadius = UDim.new(0, 8)
 	clearCorner.Parent = clearBtn
 
-	button.MouseButton1Click:Connect(function()
+	local function togglePanel()
 		panel.Visible = not panel.Visible
 		if panel.Visible then
 			textBox:CaptureFocus()
+		else
+			textBox:ReleaseFocus()
 		end
-	end)
+	end
+
+	button.Activated:Connect(togglePanel)
 
 	textBox:GetPropertyChangedSignal('Text'):Connect(function()
 		local text = textBox.Text
@@ -153,18 +169,65 @@ local function buildGui()
 			else Color3.fromRGB(160, 175, 195)
 	end)
 
-	setBtn.MouseButton1Click:Connect(function()
+	local function doSetStatus()
+		textBox:ReleaseFocus()
 		local text = textBox.Text
-		if #text > 0 then
+		local trimmed = text:gsub('^%s+', ''):gsub('%s+$', '')
+		if trimmed == '' then
+			textBox.Text = ''
+			counter.Text = `0 / {MAX_LENGTH}`
+			counter.TextColor3 = Color3.fromRGB(160, 175, 195)
+			RemoteController.fire('ClearStatus')
+			RemoteController.fire('SetStatus', '')
+		else
 			RemoteController.fire('SetStatus', text)
 		end
 		panel.Visible = false
+	end
+
+	local function doClearStatus()
+		textBox:ReleaseFocus()
+		textBox.Text = ''
+		counter.Text = `0 / {MAX_LENGTH}`
+		counter.TextColor3 = Color3.fromRGB(160, 175, 195)
+		RemoteController.fire('ClearStatus')
+		RemoteController.fire('SetStatus', '')
+		panel.Visible = false
+	end
+
+	-- Use .Activated for cross-platform reliability on Mobile, Tablet & PC
+	setBtn.Activated:Connect(doSetStatus)
+	clearBtn.Activated:Connect(doClearStatus)
+
+	-- Also handle Enter / Return key on Mobile Keyboard
+	textBox.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			doSetStatus()
+		end
 	end)
 
-	clearBtn.MouseButton1Click:Connect(function()
-		RemoteController.fire('ClearStatus')
-		textBox.Text = ''
-		panel.Visible = false
+	-- Close popup when tapping outside on Mobile Touchscreen or Desktop Mouse
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not panel.Visible then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			local mousePos = input.Position
+			local panelPos = panel.AbsolutePosition
+			local panelSize = panel.AbsoluteSize
+			local btnPos = button.AbsolutePosition
+			local btnSize = button.AbsoluteSize
+
+			local insidePanel = (mousePos.X >= panelPos.X and mousePos.X <= panelPos.X + panelSize.X
+				and mousePos.Y >= panelPos.Y and mousePos.Y <= panelPos.Y + panelSize.Y)
+			local insideBtn = (mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X
+				and mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y)
+
+			if not insidePanel and not insideBtn then
+				textBox:ReleaseFocus()
+				panel.Visible = false
+			end
+		end
 	end)
 end
 

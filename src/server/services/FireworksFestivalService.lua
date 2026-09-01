@@ -1013,7 +1013,7 @@ local function attachConsole(base: BasePart)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = base
 
-	prompt.Triggered:Connect(function()
+	local function triggerShow()
 		if running then
 			return
 		end
@@ -1048,6 +1048,23 @@ local function attachConsole(base: BasePart)
 			prompt.Enabled = true
 			label.Text = `花火大会 • Ready ({formatRemaining(showDuration())})`
 		end)
+	end
+
+	prompt.Triggered:Connect(triggerShow)
+
+	-- Automated daily schedule: start show automatically at 20:30 JST
+	task.spawn(function()
+		local lastLaunchedDate = ''
+		while true do
+			task.wait(5)
+			local now = jstDate()
+			local dateKey = `{now.year}-{now.month}-{now.day}`
+			if now.hour == 20 and now.min == 30 and not running and lastLaunchedDate ~= dateKey then
+				lastLaunchedDate = dateKey
+				print(`[Fireworks] Starting automated 20:30 JST Lake Suwa fireworks show for {dateKey}!`)
+				triggerShow()
+			end
+		end
 	end)
 end
 
@@ -1064,3 +1081,4 @@ function FireworksFestivalService.init()
 end
 
 return FireworksFestivalService
+

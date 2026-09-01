@@ -180,16 +180,16 @@ function LakeWildlifeController.init()
 	local rayParamsLand = RaycastParams.new()
 	rayParamsLand.IgnoreWater = true
 
-	-- Grid step of 75 studs across X: -1180 to 1180, Z: -1220 to -220
-	for gx = -1180, 1180, 75 do
-		for gz = -1220, -220, 75 do
-			local waterHit = Workspace:Raycast(Vector3.new(gx, 60, gz), Vector3.new(0, -100, 0), rayParamsWater)
+	-- Grid step of 75 studs across X: -1200 to 1200, Z: -1250 to -200
+	for gx = -1200, 1200, 75 do
+		for gz = -1250, -200, 75 do
+			local waterHit = Workspace:Raycast(Vector3.new(gx, 120, gz), Vector3.new(0, -200, 0), rayParamsWater)
 			if waterHit and waterHit.Material == Enum.Material.Water then
-				local bedHit = Workspace:Raycast(Vector3.new(gx, waterHit.Position.Y - 0.5, gz), Vector3.new(0, -100, 0), rayParamsLand)
+				local bedHit = Workspace:Raycast(Vector3.new(gx, waterHit.Position.Y - 0.5, gz), Vector3.new(0, -120, 0), rayParamsLand)
 				local bedY = bedHit and bedHit.Position.Y or (waterHit.Position.Y - 37)
 				local depth = waterHit.Position.Y - bedY
 
-				if depth >= 3.5 then
+				if depth >= 3.0 then
 					local center = Vector3.new(gx + rng:NextNumber(-15, 15), 0, gz + rng:NextNumber(-15, 15))
 
 					if depth < 10 then
@@ -197,13 +197,13 @@ function LakeWildlifeController.init()
 						spawnSchool('Nishikigoi', center, rng:NextInteger(4, 6), rng:NextNumber(22, 35), -math.min(depth * 0.6, 5))
 					elseif depth < 24 then
 						-- Mid-depth waters: Wakasagi Smelt Schools
-						spawnSchool('Wakasagi', center, rng:NextInteger(10, 16), rng:NextNumber(40, 60), -math.min(depth * 0.55, 16))
+						spawnSchool('Wakasagi', center, rng:NextInteger(8, 14), rng:NextNumber(35, 55), -math.min(depth * 0.55, 16))
 					else
 						-- Deep Lakebed basin: Crucian Carp & Trout near bottom
 						spawnSchool('LakeCarp', center, rng:NextInteger(3, 5), rng:NextNumber(35, 55), bedY + rng:NextNumber(2.5, 5.0))
 						-- Also add a school of Wakasagi cruising above
 						if rng:NextNumber() > 0.4 then
-							spawnSchool('Wakasagi', center, rng:NextInteger(8, 14), rng:NextNumber(45, 65), -14)
+							spawnSchool('Wakasagi', center, rng:NextInteger(8, 14), rng:NextNumber(40, 60), -14)
 						end
 					end
 				end
@@ -217,7 +217,7 @@ function LakeWildlifeController.init()
 	-- 60 FPS SMOOTH LOOP WITH PROXIMITY LOD (Smooth animation everywhere nearby)
 	-- =========================================================================
 	local elapsed = 0
-	local MAX_VISIBLE_DIST = 380
+	local MAX_VISIBLE_DIST = 400
 	local MAX_VISIBLE_DIST_SQ = MAX_VISIBLE_DIST * MAX_VISIBLE_DIST
 
 	RunService.Heartbeat:Connect(function(delta: number)
@@ -227,7 +227,6 @@ function LakeWildlifeController.init()
 		local playerPos = hrp and hrp.Position or Vector3.new(0, 0, 0)
 
 		for _, fish in ipairs(activeFish) do
-			-- Advance orbit angle
 			fish.angle = (fish.angle + (fish.swimSpeed / fish.patrolRadius) * delta) % (math.pi * 2)
 
 			local orbitX = fish.homeCenter.X + math.cos(fish.angle) * fish.patrolRadius + fish.schoolOffset.X
@@ -237,12 +236,10 @@ function LakeWildlifeController.init()
 			local distSq = (targetPos.X - playerPos.X) * (targetPos.X - playerPos.X)
 				+ (targetPos.Z - playerPos.Z) * (targetPos.Z - playerPos.Z)
 
-			-- Only update full visual transformation if within viewing range (LOD optimization)
 			if distSq < MAX_VISIBLE_DIST_SQ then
 				local distToPlayer = math.sqrt(distSq)
 				local avoidFactor = 1.0
 
-				-- Player & Boat avoidance
 				if distToPlayer < 24 then
 					local awayX = targetPos.X - playerPos.X
 					local awayZ = targetPos.Z - playerPos.Z
