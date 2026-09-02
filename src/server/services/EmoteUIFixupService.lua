@@ -22,6 +22,8 @@ local StarterGui = game:GetService('StarterGui')
 local EmoteUIFixupService = {}
 
 local BUTTON_POSITION = UDim2.new(0, 16, 0, 70)
+-- Square, because the icon inside it is square. Also a comfortable tap target.
+local BUTTON_SIZE = 44
 local PANEL_GAP = 8
 
 function EmoteUIFixupService.init()
@@ -34,6 +36,14 @@ function EmoteUIFixupService.init()
 	if button and button:IsA('GuiObject') then
 		button.AnchorPoint = Vector2.new(0, 0)
 		button.Position = BUTTON_POSITION
+		-- The asset ships an 80x34 button around a square dancer icon, and its
+		-- ScaleType is Stretch, so the icon was squashed flat to fill that
+		-- letterbox. A square button plus Fit keeps whatever aspect ratio the
+		-- artwork actually has, instead of forcing it into the frame's.
+		button.Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE)
+		if button:IsA('ImageButton') then
+			button.ScaleType = Enum.ScaleType.Fit
+		end
 	end
 
 	local mainFrame = emoteGui:FindFirstChild('MainFrame')

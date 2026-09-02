@@ -1,11 +1,10 @@
 --!strict
 
--- Unified Movement, Vehicle Boost & Playground Swing Controller
+-- Unified Movement & Vehicle Boost Controller
 -- Handles:
 --   - Sprint on foot (Shift on PC / "SPRINT" circle button on Mobile)
 --   - Boost ONLY in actual vehicles (Shift on PC / "BOOST" circle button on Mobile)
---   - Interactive Swing pumping on Mobile ("SWING" circle button) and PC (W/S/Space)
---   - Hides action buttons when sitting on standard benches and chairs
+--   - Hides action buttons when sitting on swings, benches, chairs, or playground equipment
 --   - Universal Dismount when seated (X on PC / "GET OFF" or "STAND UP" on Mobile)
 --   - Fully responsive across PC/Laptop, Mac, Mobile, and Tablets via UIDock.
 
@@ -29,9 +28,6 @@ local currentHumanoid: Humanoid? = nil
 local sprinting = false
 local boostSent = false
 
-local isSwingingMobile = false
-local swingPumpConnection: RBXScriptConnection? = nil
-
 local sprintButton: TextButton? = nil
 local dismountButton: TextButton? = nil
 
@@ -39,7 +35,6 @@ local MovementController = {}
 
 local IDLE_COLOR = Color3.fromRGB(24, 28, 38)
 local ACTIVE_COLOR = Color3.fromRGB(226, 142, 58)
-local SWING_COLOR = Color3.fromRGB(48, 140, 96)
 local DISMOUNT_COLOR = Color3.fromRGB(190, 50, 50)
 
 local function isSwing(seat: (Seat | VehicleSeat)?): boolean
@@ -61,6 +56,7 @@ local function isSwing(seat: (Seat | VehicleSeat)?): boolean
 end
 
 -- Checks if a seat belongs to a legitimate drivable vehicle (Bike, Boat, Car, etc.)
+-- Swings, benches, picnic tables, and playground spring toys are NOT vehicles.
 local function isActualVehicle(seat: (Seat | VehicleSeat)?): boolean
 	if not seat then
 		return false
@@ -132,7 +128,6 @@ local function updateButtonStates()
 	local seatPart = humanoid and humanoid.SeatPart
 	local isSeated = humanoid ~= nil and seatPart ~= nil
 	local onVehicle = isSeated and isActualVehicle(seatPart)
-	local onSwing = isSeated and isSwing(seatPart)
 
 	if sprintButton then
 		if onVehicle then
@@ -140,13 +135,8 @@ local function updateButtonStates()
 			sprintButton.Visible = true
 			sprintButton.Text = 'BOOST'
 			sprintButton.BackgroundColor3 = if sprinting then ACTIVE_COLOR else Color3.fromRGB(40, 48, 68)
-		elseif onSwing then
-			-- Sitting on a swing: Show SWING button for mobile pumping
-			sprintButton.Visible = true
-			sprintButton.Text = 'SWING'
-			sprintButton.BackgroundColor3 = if isSwingingMobile then ACTIVE_COLOR else SWING_COLOR
 		elseif isSeated then
-			-- Sitting on a regular bench or chair: Hide button
+			-- Sitting on a swing, bench, or chair: Hide SPRINT/BOOST button completely
 			sprintButton.Visible = false
 		else
 			-- On foot: Show SPRINT button
@@ -162,53 +152,6 @@ local function updateButtonStates()
 			dismountButton.Text = if onVehicle then 'GET OFF' else 'STAND UP'
 		end
 	end
-end
-
-local function startSwingPump()
-	isSwingingMobile = true
-	updateButtonStates()
-
-	local humanoid = currentHumanoid
-	local seat = humanoid and humanoid.SeatPart
-	if seat and seat:IsA('VehicleSeat') then
-		local pumpDir = 1
-		local lastSwitch = tick()
-		if swingPumpConnection then
-			swingPumpConnection:Disconnect()
-		end
-		swingPumpConnection = RunService.Heartbeat:Connect(function()
-			if not isSwingingMobile or not currentHumanoid or currentHumanoid.SeatPart ~= seat then
-				if swingPumpConnection then
-					swingPumpConnection:Disconnect()
-					swingPumpConnection = nil
-				end
-				return
-			end
-			if tick() - lastSwitch > 0.75 then
-				pumpDir = -pumpDir
-				lastSwitch = tick()
-			end
-			pcall(function()
-				seat.ThrottleFloat = pumpDir
-			end)
-		end)
-	end
-end
-
-local function stopSwingPump()
-	isSwingingMobile = false
-	if swingPumpConnection then
-		swingPumpConnection:Disconnect()
-		swingPumpConnection = nil
-	end
-	local humanoid = currentHumanoid
-	local seat = humanoid and humanoid.SeatPart
-	if seat and seat:IsA('VehicleSeat') then
-		pcall(function()
-			seat.ThrottleFloat = 0
-		end)
-	end
-	updateButtonStates()
 end
 
 local function applySprint()
@@ -245,7 +188,6 @@ local function setSprinting(value: boolean)
 end
 
 local function dismountCurrentSeat()
-	stopSwingPump()
 	local humanoid = currentHumanoid
 	if humanoid and humanoid.SeatPart then
 		humanoid.Sit = false
@@ -265,7 +207,7 @@ local function buildMobileUI()
 		return
 	end
 
-	-- 1. Sprint / Boost / Swing Circular Action Button
+	-- 1. Sprint / Boost Circular Action Button
 	local button = UIDock.roundButton('SPRINT', 2, IDLE_COLOR)
 	button.Name = 'SprintButton'
 	button.Parent = UIDock.getBottomActionRow()
@@ -273,22 +215,12 @@ local function buildMobileUI()
 
 	button.InputBegan:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-			local humanoid = currentHumanoid
-			local seatPart = humanoid and humanoid.SeatPart
-			if seatPart and isSwing(seatPart) then
-				startSwingPump()
-			else
-				setSprinting(true)
-			end
+			setSprinting(true)
 		end
 	end)
 	button.InputEnded:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-			if isSwingingMobile then
-				stopSwingPump()
-			else
-				setSprinting(false)
-			end
+			setSprinting(false)
 		end
 	end)
 
@@ -329,7 +261,6 @@ local function hookCharacter(character: Model)
 
 	humanoid:GetPropertyChangedSignal('SeatPart'):Connect(function()
 		if not humanoid.SeatPart then
-			stopSwingPump()
 			humanoid.UseJumpPower = true
 			humanoid.JumpPower = 50
 		end
@@ -404,7 +335,6 @@ local function hookCharacter(character: Model)
 			trampolineConnection:Disconnect()
 			trampolineConnection = nil
 		end
-		stopSwingPump()
 		setSprinting(false)
 		currentHumanoid = nil
 		updateButtonStates()

@@ -20,6 +20,10 @@ local VehicleInteractionService = {}
 local VEHICLE_FOLDERS = { LakeCrafts = true }
 
 local activeDrives: { [BasePart]: RBXScriptConnection } = {}
+-- An abandoned boat/car is re-anchored after a grace period so it settles
+-- instead of drifting off unattended; keyed by the driver seat so a new
+-- rider cancels it and frees the vehicle again.
+local anchorTasks: { [VehicleSeat]: thread } = {}
 -- Client input arrives over remotes: attributes set on the client never
 -- replicate up to the server, so they cannot carry driver input.
 local boosting: { [Player]: boolean } = {}
@@ -115,7 +119,9 @@ local function isActualVehicleSeat(seat: Seat | VehicleSeat): boolean
 		or owner:FindFirstAncestor('LakeCrafts')
 		or owner:FindFirstAncestor('Vehicles')
 	then
-		return true
+		-- Only the seat that actually steers the vehicle is a "Ride"; the rest
+		-- of a boat's Seat instances are just passenger benches ("Sit").
+		return seat:IsA('VehicleSeat')
 	end
 
 	if
@@ -132,7 +138,7 @@ local function isActualVehicleSeat(seat: Seat | VehicleSeat): boolean
 		or ownerLower:find('duck')
 		or ownerLower:find('jetski')
 	then
-		return true
+		return seat:IsA('VehicleSeat')
 	end
 
 	return seat:IsA('VehicleSeat')
@@ -173,6 +179,10 @@ local function getSeatActionAndObject(seat: Seat | VehicleSeat, rawObjectText: s
 		cleanObj = 'Ferris Wheel'
 	elseif objLower:find('happy') then
 		cleanObj = 'Spring Rider'
+	elseif objLower:find('fune') or objLower:find('boat') then
+		cleanObj = 'Boat'
+	elseif objLower:find('bike') or objLower:find('bicycle') then
+		cleanObj = 'Bicycle'
 	end
 
 	return 'Sit', cleanObj
@@ -225,7 +235,7 @@ end
 -- Driving
 --=============================================================================
 
-local function stopDriving(seat: VehicleSeat, rootPart: BasePart?)
+local function stopDriving(seat: VehicleSeat, rootPart: BasePart?, onWater: boolean?)
 	local connection = activeDrives[seat]
 	if connection then
 		connection:Disconnect()
@@ -236,28 +246,66 @@ local function stopDriving(seat: VehicleSeat, rootPart: BasePart?)
 	if not rootPart then
 		return
 	end
-	for _, name in { 'DriveAttachment', 'DriveLV', 'DriveAV' } do
-		local existing = rootPart:FindFirstChild(name)
-		if existing then
-			existing:Destroy()
+	-- Destroy every match, not just the first: a vehicle that was rigged twice
+	-- ends up with two of each, and leaving one behind keeps driving the hull.
+	for _, child in rootPart:GetChildren() do
+		if child.Name == 'DriveAttachment' or child.Name == 'DriveLV' or child.Name == 'DriveAV' then
+			child:Destroy()
 		end
 	end
-	rootPart.AssemblyLinearVelocity = Vector3.new(0, rootPart.AssemblyLinearVelocity.Y, 0)
+	rootPart.AssemblyLinearVelocity = Vector3.zero
 	rootPart.AssemblyAngularVelocity = Vector3.zero
+
+	if onWater then
+		-- Park a boat the instant the driver stands up. The hull weighs less than
+		-- the people on it, so the rider's body dropping onto the deck shoves the
+		-- craft: any settling window at all is long enough for it to slide out
+		-- from under them. Return to the parked waterline, level it, and lock.
+		local parkedY = rootPart:GetAttribute('ParkedY')
+		local position = rootPart.Position
+		if typeof(parkedY) == 'number' then
+			position = Vector3.new(position.X, parkedY, position.Z)
+		end
+		local _, yaw, _ = rootPart.CFrame:ToOrientation()
+		rootPart.CFrame = CFrame.new(position) * CFrame.fromOrientation(0, yaw, 0)
+		rootPart.AssemblyLinearVelocity = Vector3.zero
+		rootPart.AssemblyAngularVelocity = Vector3.zero
+		rootPart.Anchored = true
+		return
+	end
+
+	-- Land vehicles keep a grace period: a bike abandoned mid-hop has to drop
+	-- back onto its wheels before it is pinned, or it freezes in the air.
+	local existingAnchor = anchorTasks[seat]
+	if existingAnchor then
+		task.cancel(existingAnchor)
+	end
+	anchorTasks[seat] = task.delay(1.5, function()
+		anchorTasks[seat] = nil
+		if not seat.Occupant then
+			rootPart.Anchored = true
+		end
+	end)
 end
 
 local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: boolean, wheels: { { motor: Motor6D, axis: Vector3, radius: number } })
 	local attachment = Instance.new('Attachment')
 	attachment.Name = 'DriveAttachment'
+	attachment.CFrame = rootPart.CFrame:ToObjectSpace(seat.CFrame)
 	attachment.Parent = rootPart
+
+	local targetWaterlineY = rootPart:GetAttribute('WaterlineY') or rootPart.Position.Y
+	if onWater and targetWaterlineY < 3.5 then
+		targetWaterlineY = 4.8
+	end
 
 	local linear = Instance.new('LinearVelocity')
 	linear.Name = 'DriveLV'
 	linear.Attachment0 = attachment
 	linear.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-	-- No force on Y: buoyancy holds boats up, gravity holds bikes down.
-	linear.MaxAxesForce = Vector3.new(500000, 0, 500000)
-	linear.RelativeTo = Enum.ActuatorRelativeTo.World
+	-- On water: full 3D force for buoyancy and crisp water steering; on land: XZ drive with gravity.
+	linear.MaxAxesForce = if onWater then Vector3.new(500000, 500000, 500000) else Vector3.new(500000, 0, 500000)
+	linear.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
 	linear.VectorVelocity = Vector3.zero
 	linear.Parent = rootPart
 
@@ -265,7 +313,7 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	angular.Name = 'DriveAV'
 	angular.Attachment0 = attachment
 	angular.MaxTorque = 500000
-	angular.RelativeTo = Enum.ActuatorRelativeTo.World
+	angular.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
 	angular.AngularVelocity = Vector3.zero
 	angular.Parent = rootPart
 
@@ -273,19 +321,20 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	groundCheck.FilterType = Enum.RaycastFilterType.Exclude
 	groundCheck.FilterDescendantsInstances = { rootPart:FindFirstAncestorWhichIsA('Model') :: Instance }
 
-	-- Boats glide with smooth acceleration; bikes respond sharply.
-	local baseSpeed = if onWater then 45 else 34
-	local turnSpeed = if onWater then 1.4 else 1.9
-	local responsiveness = if onWater then 0.08 else 0.12
+	-- Boats glide fast with smooth water response; bikes respond sharply.
+	local baseSpeed = if onWater then 55 else 34
+	local turnSpeed = if onWater then 2.2 else 1.9
+	local responsiveness = if onWater then 0.12 else 0.12
 
+	local currentForwardSpeed = 0
 	local spin = 0
+
 	activeDrives[seat] = RunService.Heartbeat:Connect(function(delta)
 		local occupant = seat.Occupant
 		local rider = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
-		local boost = if rider and boosting[rider] then 1.7 else 1
+		local boost = if rider and boosting[rider] then 1.8 else 1
 
-		-- Hop: kick the front up first, the way a rider lifts over a kerb. The
-		-- upright constraint has to release for a moment or the pitch is locked.
+		-- Hop on land vehicles
 		if rider and hopRequested[rider] then
 			hopRequested[rider] = false
 			local grounded = workspace:Raycast(
@@ -310,11 +359,11 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 				)
 			end
 		end
+
 		local throttle = seat.ThrottleFloat
 		local steer = seat.SteerFloat
 
-		-- Roll the wheels at the speed the vehicle is actually travelling, so
-		-- they never spin while stationary or skid while moving.
+		-- Roll the wheels if wheeled vehicle
 		if #wheels > 0 then
 			local velocity = rootPart.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
 			local direction = if rootPart.CFrame.LookVector:Dot(velocity) < 0 then -1 else 1
@@ -324,18 +373,28 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 			end
 		end
 
-		local target = seat.CFrame.LookVector * (throttle * baseSpeed * boost)
+		local targetSpeed = throttle * baseSpeed * boost
 		local lerp = if throttle == 0 then responsiveness * 0.5 else responsiveness
-		local current = linear.VectorVelocity
-		linear.VectorVelocity = Vector3.new(
-			current.X + (target.X - current.X) * lerp,
-			0,
-			current.Z + (target.Z - current.Z) * lerp
-		)
+		currentForwardSpeed = currentForwardSpeed + (targetSpeed - currentForwardSpeed) * lerp
 
-		local currentRot = angular.AngularVelocity
+		local yVel = 0
+		if onWater then
+			local currentY = rootPart.Position.Y
+			local bobbing = math.sin(tick() * 2.2) * 0.12
+			yVel = ((targetWaterlineY + bobbing) - currentY) * 7.5
+		end
+
+		-- -Z is forward in Attachment0 space
+		linear.VectorVelocity = Vector3.new(0, yVel, -currentForwardSpeed)
+
 		local targetRotY = -steer * turnSpeed
-		angular.AngularVelocity = Vector3.new(0, currentRot.Y + (targetRotY - currentRot.Y) * 0.15, 0)
+		local bankRoll = if onWater then -steer * 0.22 else 0
+
+		angular.AngularVelocity = Vector3.new(
+			0,
+			targetRotY,
+			bankRoll
+		)
 	end)
 end
 
@@ -351,6 +410,27 @@ local function isBicycle(model: Model): boolean
 	return name:find('bike') ~= nil or name:find('bicycle') ~= nil
 end
 
+local function isWaterVehicle(model: Model): boolean
+	if model:FindFirstAncestor('LakeCrafts') or (model.Parent and model.Parent.Name == 'LakeCrafts') then
+		return true
+	end
+	local name = model.Name:lower()
+	if
+		name:find('boat')
+		or name:find('fune')
+		or name:find('ship')
+		or name:find('craft')
+		or name:find('swan')
+		or name:find('duck')
+		or name:find('jetski')
+		or name:find('kayak')
+		or name:find('canoe')
+	then
+		return true
+	end
+	return false
+end
+
 local function rigVehicle(model: Model)
 	if model:GetAttribute('SuwaRigged') or isBicycle(model) then
 		return
@@ -362,9 +442,15 @@ local function rigVehicle(model: Model)
 		return
 	end
 
+	-- Claim the model before doing any work. init() and the DescendantAdded
+	-- watcher can both reach the same vehicle, and marking it only at the end
+	-- let both callers past this guard: that rigged everything twice, leaving
+	-- two AlignOrientations fighting over the hull and two Occupant listeners
+	-- racing to start and stop the same drive.
+	model:SetAttribute('SuwaRigged', true)
+
 	local boundingCFrame, size = model:GetBoundingBox()
-	-- Water craft float; anything sitting on land is treated as a land vehicle.
-	local onWater = boundingCFrame.Position.Y < 6
+	local onWater = isWaterVehicle(model)
 
 	local COLLISION_PARTS: { [string]: boolean } = {
 		BoatHullRoot = true,
@@ -374,7 +460,46 @@ local function rigVehicle(model: Model)
 		SlideEntryCollision = true,
 		SlideExitCollision = true,
 		ClimbableLadder = true,
+		-- Structural furniture the rider can walk into on Fune's lounge deck; kept
+		-- solid so people stop sinking into the couches/table/helm/railings, while
+		-- decorative trim (logos, gauges, speakers, decals) stays non-collide so it
+		-- doesn't snag movement, and the slide tube (Slide_Roof) stays untouched so
+		-- riders can still pass through it.
+		PortBow_Couch_Vinyl = true,
+		StbdBow_Couch_Vinyl = true,
+		PortStern_Couch_Vinyl_main = true,
+		StbdStern_Couch_VInyl = true,
+		PortBow_Couch_Baseboard = true,
+		StbdBow_Couch_Baseboard = true,
+		PortStern_Couch_Baseboard = true,
+		StbdStern_Couch_Baseboard = true,
+		Wall_Stern = true,
+		Table_Board = true,
+		Helm_Chair = true,
+		Helm_Dash = true,
+		Helm_Molding = true,
+		Deck_Guards = true,
+		Sink_cabinet = true,
+		-- Boat_Railing, Pontoons, *_Door_Railing and SkiRail are deliberately left
+		-- off this list: they're lattice/bar or curved-tube meshes, and Roblox's
+		-- default collision fidelity can fill in the gaps of a lattice into a
+		-- solid wall, or turn a curved pontoon tube into something a boarding
+		-- player bounces off instead of climbing over.
 	}
+
+	-- Some boats (Fune) are hand-rigged with dedicated invisible collision
+	-- boxes, so only those should stay solid and the detailed visual mesh can
+	-- go non-collide. Boats with no such parts (e.g. Speedboat) never shipped
+	-- collision boxes of their own, so blanket-disabling collision there would
+	-- leave the whole hull and deck walkable-through. Only take the whitelist
+	-- away from a boat that actually has it.
+	local hasCollisionParts = false
+	for _, part in model:GetDescendants() do
+		if part:IsA('BasePart') and part ~= rootPart and COLLISION_PARTS[part.Name] then
+			hasCollisionParts = true
+			break
+		end
+	end
 
 	-- Creator Store props hold themselves together with Anchored rather than
 	-- welds, so weld everything to the root before unanchoring or the model
@@ -388,10 +513,8 @@ local function rigVehicle(model: Model)
 			part.Anchored = false
 			if onWater then
 				part.Massless = true
-				if not COLLISION_PARTS[part.Name] then
-					part.CanCollide = false
-				else
-					part.CanCollide = true
+				if hasCollisionParts then
+					part.CanCollide = COLLISION_PARTS[part.Name] == true
 				end
 			end
 			if looksLikeWheel(part) then
@@ -431,7 +554,22 @@ local function rigVehicle(model: Model)
 		end
 	end
 	rootPart.Anchored = false
-	rootPart.CustomPhysicalProperties = PhysicalProperties.new(0.12, 0.3, 0.5)
+	-- A boat has to outweigh the people aboard, or a rider stepping onto the
+	-- deck shoves the whole hull out from under themselves. Still well under
+	-- water's density, so it keeps floating.
+	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
+		if onWater then 0.7 else 0.12,
+		0.3,
+		0.5
+	)
+
+	-- Clear anything a previous rig left behind, so a re-rig cannot stack a
+	-- second set of constraints onto the same hull.
+	for _, child in rootPart:GetChildren() do
+		if child.Name == 'StabilityAttachment' or child.Name == 'StabilityOrientation' then
+			child:Destroy()
+		end
+	end
 
 	-- Keep it upright. A bike with no rider falls over instantly otherwise.
 	local stability = Instance.new('Attachment')
@@ -446,13 +584,11 @@ local function rigVehicle(model: Model)
 	align.AlignType = Enum.AlignType.PrimaryAxisParallel
 	align.PrimaryAxisOnly = true -- free to turn, locked against tipping
 	align.PrimaryAxis = Vector3.yAxis
-	if onWater then
-		align.RigidityEnabled = false
-		align.MaxTorque = 500000
-		align.Responsiveness = 30
-	else
-		align.RigidityEnabled = true
-	end
+	-- Rigid for boats too. A springy upright constraint lets the hull pitch up
+	-- when it rides onto the shore, and past a certain angle nothing brings it
+	-- back -- that is how a boat ended up standing on its nose in the shallows.
+	-- Rigid leaves yaw free but makes pitch and roll impossible.
+	align.RigidityEnabled = true
 	align.Parent = rootPart
 
 	local driverSeatsFound: { VehicleSeat } = {}
@@ -479,12 +615,26 @@ local function rigVehicle(model: Model)
 		table.insert(driverSeatsFound, seat)
 	end
 
-	model:SetAttribute('SuwaRigged', true)
+	-- Nobody starts as the driver, so start parked: otherwise a vehicle that's
+	-- never been driven sits fully unanchored, and a passenger merely walking
+	-- into the now-solid furniture can nudge the whole thing adrift. The
+	-- Occupant listener below un-anchors it the moment someone actually drives.
+	--
+	-- Remember where the hull floats while parked too, so a boat always returns
+	-- to this exact waterline instead of freezing wherever the drive left it.
+	rootPart:SetAttribute('ParkedY', rootPart.Position.Y)
+	rootPart.Anchored = true
 
 	for _, driver in driverSeatsFound do
 		setupSeat(driver, model.Name)
 		driver:GetPropertyChangedSignal('Occupant'):Connect(function()
 			if driver.Occupant then
+				local existingAnchor = anchorTasks[driver]
+				if existingAnchor then
+					task.cancel(existingAnchor)
+					anchorTasks[driver] = nil
+				end
+				rootPart.Anchored = false
 				local rider = Players:GetPlayerFromCharacter(driver.Occupant.Parent)
 				if rider then
 					pcall(function()
@@ -493,7 +643,7 @@ local function rigVehicle(model: Model)
 				end
 				startDriving(driver, rootPart, onWater, wheels)
 			else
-				stopDriving(driver, rootPart)
+				stopDriving(driver, rootPart, onWater)
 				pcall(function()
 					rootPart:SetNetworkOwner(nil)
 				end)
