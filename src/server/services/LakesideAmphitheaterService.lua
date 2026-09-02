@@ -631,6 +631,30 @@ function LakesideAmphitheaterService.build(): string
 				local toGround = groundAt(230, -114, 6)
 				branchAshiyu.CFrame = CFrame.new(230, toGround + branchAshiyu.Size.Y / 2, -114)
 			end
+
+			local branchShelter = network:FindFirstChild('BranchRestShelter')
+			if branchShelter and branchShelter:IsA('BasePart') then
+				local toGround = groundAt(-60, -114, 6)
+				branchShelter.Size = Vector3.new(8, branchShelter.Size.Y, 20)
+				branchShelter.CFrame = CFrame.new(-60, toGround + branchShelter.Size.Y / 2, -114)
+			end
+		end
+
+		local infoFolder = park:FindFirstChild('ParkLightsAndInformation')
+		if infoFolder then
+			local info3 = infoFolder:FindFirstChild('ParkInformation3')
+			if info3 and info3:IsA('BasePart') then
+				info3.CFrame = CFrame.new(230, 7.7, -54)
+				local gui = info3:FindFirstChildWhichIsA('SurfaceGui')
+				local label = gui and gui:FindFirstChildWhichIsA('TextLabel')
+				if label then
+					label.Text = '諏訪湖畔 足湯'
+				end
+			end
+			local shelterSign = infoFolder:FindFirstChild('ParkInformation_Shelter')
+			if shelterSign and shelterSign:IsA('BasePart') then
+				shelterSign.CFrame = CFrame.new(-60, 7.7, -54)
+			end
 		end
 
 		park:SetAttribute('AmphitheaterSpaceCleared', true)
