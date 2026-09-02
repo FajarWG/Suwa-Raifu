@@ -122,7 +122,10 @@ local function buildRing(
 		if not (skipAisles and isAisle(degrees)) then
 			local radians = math.rad(degrees)
 			local height = topY - (GROUND_Y - 6)
-			local chord = 2 * midRadius * math.sin(math.rad(step) / 2) + 0.6
+			-- Barely any overlap on purpose. Neighbouring segments in a ring share
+			-- one top height, so a generous overlap put two coplanar faces in the
+			-- same place and the stone flickered with z-fighting.
+			local chord = 2 * midRadius * math.sin(math.rad(step) / 2) + 0.05
 			makePart(
 				name,
 				Vector3.new(depth + 0.4, height, chord),
@@ -284,11 +287,16 @@ local GATE_ANGLES = { 12, 168 }
 local function buildEntranceGate(parent: Instance)
 	local gateRadius = APRON_RADIUS + TIER_COUNT * TIER_DEPTH + 6
 
+	-- They stand on the grass berm, which is built here rather than sculpted, so
+	-- the terrain underneath is metres lower. Asking the ground for a height sank
+	-- them into the mound; the berm's own top is the surface they rest on.
+	local bermTopY = GROUND_Y + TIER_COUNT * TIER_RISE - 2.8 + 0.1
+
 	for _, angle in ipairs(GATE_ANGLES) do
 		local radians = math.rad(angle)
 		local gateX = CENTER_X + math.cos(radians) * gateRadius
 		local gateZ = CENTER_Z + math.sin(radians) * gateRadius
-		local baseY = groundAt(gateX, gateZ, GROUND_Y)
+		local baseY = bermTopY
 		-- Turned to face the stage, so the pair frames the bowl.
 		local facing = CFrame.lookAt(
 			Vector3.new(gateX, baseY, gateZ),
@@ -375,12 +383,15 @@ local function buildSeating(parent: Instance)
 				if index % 4 == 2 then
 					local seat = Instance.new('Seat')
 					seat.Name = 'TerraceSeat'
-					seat.Size = size
-					-- Turned to face the stage, so sitting looks at the performance.
+					-- A sitter faces the seat's LookVector, so the seat is aimed at
+					-- the stage and the bench length put on X instead. Rotating it
+					-- 90 degrees to reuse the arc geometry, as this first did, sat
+					-- everyone sideways looking along the row.
+					seat.Size = Vector3.new(chord, 1.3, 2.6)
 					seat.CFrame = CFrame.lookAt(
 						cframe.Position,
 						Vector3.new(CENTER_X, cframe.Position.Y, CENTER_Z)
-					) * CFrame.Angles(0, math.rad(90), 0)
+					)
 					seat.Color = BENCH
 					seat.Material = Enum.Material.Concrete
 					seat.Anchored = true
@@ -392,6 +403,76 @@ local function buildSeating(parent: Instance)
 				end
 			end
 		end
+	end
+end
+
+-- The mound is wide enough to swallow the park's main lakeside trail, which
+-- runs straight through at z=-125: with the berm reaching z=-112 the walk simply
+-- stopped at the grass on one side and resumed on the other. The trail is
+-- carried around the outside of the mound instead, with a stair over the rim
+-- that lands on the top row where the middle aisle already leads down.
+local function buildApproach(parent: Instance, park: Model)
+	local network = park:FindFirstChild('SuwaCobblestonePathwayNetwork')
+	local trail = network and network:FindFirstChild('LakesideTrail_Main', true)
+	if not trail or not trail:IsA('BasePart') then
+		return
+	end
+
+	local approach = Instance.new('Model')
+	approach.Name = 'BowlApproach'
+	approach.Parent = parent
+
+	local trailY = trail.Position.Y
+	local width = trail.Size.Z
+	local colour, material = trail.Color, trail.Material
+
+	local radius = 64
+	local fromDeg, toDeg, segments = 42, 138, 18
+	local step = (toDeg - fromDeg) / segments
+
+	for index = 0, segments - 1 do
+		local degrees = fromDeg + (index + 0.5) * step
+		local radians = math.rad(degrees)
+		local chord = 2 * radius * math.sin(math.rad(step) / 2) + 0.05
+		makePart(
+			'BypassPath',
+			Vector3.new(width, 0.25, chord),
+			CFrame.new(
+				CENTER_X + math.cos(radians) * radius,
+				trailY,
+				CENTER_Z + math.sin(radians) * radius
+			) * CFrame.Angles(0, -radians, 0),
+			colour,
+			material,
+			approach
+		)
+	end
+
+	-- Short stubs closing the gap back to the straight trail at either end.
+	for _, degrees in ipairs({ fromDeg, toDeg }) do
+		local radians = math.rad(degrees)
+		local x = CENTER_X + math.cos(radians) * radius
+		local z = CENTER_Z + math.sin(radians) * radius
+		makePart(
+			'BypassJoin',
+			Vector3.new(width, 0.25, math.abs(trail.Position.Z - z) + 4),
+			CFrame.new(x, trailY, (z + trail.Position.Z) / 2),
+			colour,
+			material,
+			approach
+		)
+	end
+
+	for _, entry in ipairs({ { 63.0, 6.9 }, { 59.5, 7.7 }, { 56.0, 8.5 }, { 52.5, 9.3 }, { 49.5, 10.0 } }) do
+		local stepRadius, topY = entry[1], entry[2]
+		makePart(
+			'ApproachStep',
+			Vector3.new(4.2, 2.2, width),
+			CFrame.new(CENTER_X, topY - 1.1, CENTER_Z + stepRadius),
+			CONCRETE,
+			Enum.Material.Concrete,
+			approach
+		)
 	end
 end
 
@@ -460,6 +541,7 @@ local function buildAmphitheater(park: Model): Model
 	buildAisleStairs(model)
 	buildEntranceGate(model)
 	buildSeating(model)
+	buildApproach(model, park)
 
 	return model
 end
@@ -510,24 +592,25 @@ local function clearBowlFootprint(park: Model)
 	return shifted
 end
 
-function LakesideAmphitheaterService.init()
-	-- Deferred so it runs once every service has had its turn: the park is
-	-- authored in this place, but on a fresh build LakesideParkService has to
-	-- create it first, and the runner's grounding sweep is deferred after this
-	-- point so relocated benches get re-seated on the ground they land on.
-	task.defer(function()
-		local park = Workspace:FindFirstChild('SuwaLakesidePark')
-		if not park or not park:IsA('Model') then
-			warn('[Amphitheater] SuwaLakesidePark missing; nothing built.')
-			return
-		end
+-- Synchronous so it can also be run straight from Studio's command bar in Edit
+-- mode, which is how the bowl gets committed to the place file instead of only
+-- existing while a server is running.
+function LakesideAmphitheaterService.build(): string
+	local park = Workspace:FindFirstChild('SuwaLakesidePark')
+	if not park or not park:IsA('Model') then
+		return '[Amphitheater] SuwaLakesidePark missing; nothing built.'
+	end
 
-		local existing = park:FindFirstChild(MODEL_NAME)
-		if existing then
-			existing:Destroy()
-		end
+	-- Same contract as LakesideParkService: if it is already standing, leave it
+	-- alone. The bowl is saved in the place, so rebuilding it every server start
+	-- would just churn 300 parts and undo any hand-tuning done since.
+	if park:FindFirstChild(MODEL_NAME) then
+		return '[Amphitheater] Already present; left as authored.'
+	end
 
-		local shifted = clearBowlFootprint(park)
+	local shifted = 0
+	if not park:GetAttribute('AmphitheaterSpaceCleared') then
+		shifted = clearBowlFootprint(park)
 
 		-- Open the lawn between the promenade and the bowl: the footbath and the
 		-- rest shelter both sat on the axis people now walk down to the stage.
@@ -540,14 +623,27 @@ function LakesideAmphitheaterService.init()
 			moveModel(shelter, -60, -95)
 		end
 
-		local model = buildAmphitheater(park)
-		local count = 0
-		for _, descendant in ipairs(model:GetDescendants()) do
-			if descendant:IsA('BasePart') then
-				count += 1
-			end
+		-- Marked so a later run never shoves the same pieces sideways twice.
+		park:SetAttribute('AmphitheaterSpaceCleared', true)
+	end
+
+	local model = buildAmphitheater(park)
+	local count = 0
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA('BasePart') then
+			count += 1
 		end
-		print(`[Amphitheater] Lakeside stage bowl built ({count} parts, {shifted} park pieces moved clear).`)
+	end
+	return `[Amphitheater] Lakeside stage bowl built ({count} parts, {shifted} park pieces moved clear).`
+end
+
+function LakesideAmphitheaterService.init()
+	-- Deferred so it runs once every service has had its turn: on a fresh build
+	-- LakesideParkService has to create the park first, and the runner's
+	-- grounding sweep is deferred after this point so relocated benches get
+	-- re-seated on the ground they land on.
+	task.defer(function()
+		print(LakesideAmphitheaterService.build())
 	end)
 end
 
