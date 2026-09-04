@@ -100,6 +100,28 @@ async function executeLuau(code, datamodel = 'Edit') {
   });
 }
 
+async function captureScreen(outputPath, cameraPos, lookAtPos) {
+  const fs = require('fs');
+  const studioId = await getActiveStudioId();
+  if (cameraPos && !Array.isArray(cameraPos)) cameraPos = Object.values(cameraPos);
+  if (lookAtPos && !Array.isArray(lookAtPos)) lookAtPos = Object.values(lookAtPos);
+  const args = {
+    studio_id: studioId,
+    capture_id: 'capture_' + Date.now()
+  };
+  if (cameraPos && lookAtPos) {
+    args.camera_position = cameraPos;
+    args.look_at_position = lookAtPos;
+  }
+  const res = await callMcpRaw('screen_capture', args);
+  const item = res?.content?.[0];
+  if (item && item.data) {
+    fs.writeFileSync(outputPath, Buffer.from(item.data, 'base64'));
+    return { success: true, path: outputPath };
+  }
+  throw new Error('Capture failed: ' + JSON.stringify(res));
+}
+
 async function main() {
   const action = process.argv[2] || 'exec';
   
@@ -112,6 +134,12 @@ async function main() {
   } else if (action === 'state') {
     const res = await getStudioState();
     console.log('Studio State:', JSON.stringify(res, null, 2));
+  } else if (action === 'capture') {
+    const out = process.argv[3] || '/tmp/capture.png';
+    const cam = process.argv[4] ? [parseFloat(process.argv[4]), parseFloat(process.argv[5]), parseFloat(process.argv[6])] : undefined;
+    const look = process.argv[7] ? [parseFloat(process.argv[7]), parseFloat(process.argv[8]), parseFloat(process.argv[9])] : undefined;
+    const res = await captureScreen(out, cam, look);
+    console.log('Captured screen to:', res.path);
   } else {
     const code = process.argv[3] || process.argv[2] || 'return "Hello from Studio"';
     const datamodel = process.argv[4] || 'Edit';
@@ -127,6 +155,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { callMcpRaw, getActiveStudioId, getStudioState, setPlayState, executeLuau };
+module.exports = { callMcpRaw, getActiveStudioId, getStudioState, setPlayState, executeLuau, captureScreen };
+
 
 

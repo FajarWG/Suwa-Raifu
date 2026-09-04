@@ -10,7 +10,7 @@
 --   2. Solid, flush aisle staircases with side cheek walls (zero holes/cavities).
 --   3. 100% functional Seats across all 4 tiers (every bench position is sittable).
 --   4. Smooth Roblox Terrain earthwork berm with no artificial plastic grass blocks.
---   5. Gapless cobblestone bypass path with generous segment overlaps and smooth fillets.
+--   5. Gapless cobblestone bypass path that terminates inside the main trail band.
 
 local Workspace = game:GetService('Workspace')
 
@@ -33,6 +33,7 @@ local ARC_START, ARC_END = -18, 198
 -- Radial staircases cut through the rings at fixed angles
 local AISLE_ANGLES = { 45, 90, 135 }
 local AISLE_HALF_WIDTH = 4.0 -- degrees on each side
+local STEPS_PER_TIER = 4
 
 local CONCRETE = Color3.fromRGB(178, 174, 164)
 local CONCRETE_DARK = Color3.fromRGB(140, 137, 129)
@@ -153,7 +154,9 @@ local function buildAisleStairs(parent: Instance)
 				local radius = innerRadius + (stepIndex - 0.5) * run
 				local topY = baseY + stepIndex * stepRise
 				local height = topY - (GROUND_Y - 4)
-				local stepWidth = 2 * (radius + run / 2) * math.sin(math.rad(AISLE_HALF_WIDTH + 0.3)) * 2 + 0.15
+				-- Chord across the full aisle at this radius; the extra 0.3 deg tucks
+				-- the tread edge under the cheek walls instead of into the seating.
+				local stepWidth = 2 * (radius + run / 2) * math.sin(math.rad(AISLE_HALF_WIDTH + 0.3)) + 0.15
 
 				makePart(
 					'AisleStep',
@@ -422,20 +425,29 @@ local function buildApproach(parent: Instance, park: Model)
 	approach.Parent = parent
 
 	local trailY = trail.Position.Y + 0.02
-	local width = 8.6
+	-- Match the main trail exactly so the merge has no lip and no wider ledge.
+	local width = trail.Size.Z
 	local colour, material = trail.Color, trail.Material
 
 	local radius = 64
-	local fromDeg, toDeg = 36, 144
-	local segments = 60
+
+	-- End the arc where it crosses the main trail, plus a short tuck so the end
+	-- caps finish underneath the trail band instead of dangling past it. No
+	-- separate join or fillet parts: those overlapped the trail at an identical
+	-- Y, which is what produced the z-fighting patches and the square blob.
+	local crossing = math.deg(math.asin(math.clamp((trail.Position.Z - CENTER_Z) / radius, -1, 1)))
+	local tuck = math.deg((width * 0.35) / radius)
+	local fromDeg, toDeg = crossing - tuck, 180 - crossing + tuck
+
+	local segments = math.max(24, math.ceil((toDeg - fromDeg) / 1.8))
 	local step = (toDeg - fromDeg) / segments
 
 	-- Gapless curved bypass trail around the outer mound
 	for index = 0, segments - 1 do
 		local degrees = fromDeg + (index + 0.5) * step
 		local radians = math.rad(degrees)
-		-- Generous overlap (+0.75) ensures 0 gaps on the outer curve
-		local chord = 2 * (radius + width / 2) * math.sin(math.rad(step) / 2) + 0.75
+		-- Slight overlap (+0.3) closes the seams without visible corner flare
+		local chord = 2 * (radius + width / 2) * math.sin(math.rad(step) / 2) + 0.3
 		makePart(
 			'BypassPath',
 			Vector3.new(width, 0.25, chord),
@@ -444,33 +456,6 @@ local function buildApproach(parent: Instance, park: Model)
 				trailY,
 				CENTER_Z + math.sin(radians) * radius
 			) * CFrame.Angles(0, -radians, 0),
-			colour,
-			material,
-			approach
-		)
-	end
-
-	-- Smooth transition joins merging into LakesideTrail_Main at Z = -125
-	for _, degrees in ipairs({ fromDeg, toDeg }) do
-		local radians = math.rad(degrees)
-		local endX = CENTER_X + math.cos(radians) * radius
-		local endZ = CENTER_Z + math.sin(radians) * radius
-		local trailZ = trail.Position.Z
-		local joinLength = math.abs(trailZ - endZ) + 4
-		local joinZ = (endZ + trailZ) / 2
-		makePart(
-			'BypassJoin',
-			Vector3.new(width + 1.2, 0.25, joinLength),
-			CFrame.new(endX, trailY, joinZ),
-			colour,
-			material,
-			approach
-		)
-		local dir = if endX > CENTER_X then -1 else 1
-		makePart(
-			'BypassFillet',
-			Vector3.new(width * 1.5, 0.25, width * 1.5),
-			CFrame.new(endX + dir * 3, trailY, trailZ),
 			colour,
 			material,
 			approach

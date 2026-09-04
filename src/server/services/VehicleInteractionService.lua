@@ -156,14 +156,16 @@ local function getSeatActionAndObject(seat: Seat | VehicleSeat, rawObjectText: s
 	if isActualVehicleSeat(seat) then
 		local cleanName = if owner then owner.Name else 'Vehicle'
 		local cleanLower = cleanName:lower()
-		if cleanLower:find('fune') or cleanLower:find('boat') then
-			cleanName = 'Boat'
-		elseif cleanLower:find('bike') or cleanLower:find('bicycle') then
-			cleanName = 'Bicycle'
-		elseif cleanLower:find('swan') then
+		-- Swan first: "SwanPedalBoat" contains "boat", so testing boat first
+		-- labelled the whole rental row as a plain Boat.
+		if cleanLower:find('swan') or cleanLower:find('duck') then
 			cleanName = 'Swan Boat'
 		elseif cleanLower:find('jetski') then
 			cleanName = 'Jet Ski'
+		elseif cleanLower:find('fune') or cleanLower:find('boat') then
+			cleanName = 'Boat'
+		elseif cleanLower:find('bike') or cleanLower:find('bicycle') then
+			cleanName = 'Bicycle'
 		end
 		return 'Ride', cleanName
 	end
@@ -177,8 +179,8 @@ local function getSeatActionAndObject(seat: Seat | VehicleSeat, rawObjectText: s
 		cleanObj = 'Chair'
 	elseif objLower:find('basket') or ownerLower:find('ferris') then
 		cleanObj = 'Ferris Wheel'
-	elseif objLower:find('happy') then
-		cleanObj = 'Spring Rider'
+	elseif objLower:find('swan') or objLower:find('duck') then
+		cleanObj = 'Swan Boat'
 	elseif objLower:find('fune') or objLower:find('boat') then
 		cleanObj = 'Boat'
 	elseif objLower:find('bike') or objLower:find('bicycle') then
@@ -232,6 +234,203 @@ local function setupSeat(seat: Seat | VehicleSeat, objectText: string)
 end
 
 --=============================================================================
+-- Water craft handling profiles
+--=============================================================================
+
+-- Every craft has to handle and sound like the thing it actually is. A swan
+-- pedal boat is driven by someone's legs: slow, quiet, and nothing but paddle
+-- wash. A speedboat has an outboard that revs. The Fune is a 33-stud excursion
+-- ship, so it needs a deep diesel that is audible from across the lake, and it
+-- takes real time to build up speed and turns like a bus.
+--
+-- accel/decel are studs per second squared, not lerp factors, so "gradual"
+-- means the same thing at any framerate: the Fune's 3.0 takes ten full seconds
+-- to reach its 30-stud cruise, exactly like a real boat leaving the pier.
+--
+-- On volume: the engine is the sound of the craft and the wash is only the bed
+-- underneath it, so every washVolume ceiling stays far below its engine's. They
+-- were briefly close to level and the result was a boat that sounded like
+-- running water with an engine somewhere behind it.
+export type CraftProfile = {
+	topSpeed: number,
+	reverseFactor: number,
+	accel: number,
+	decel: number,
+	turnSpeed: number,
+	boost: number,
+	engineSound: string?,
+	engineVolume: { number },
+	enginePitch: { number },
+	washSound: string?,
+	washVolume: { number },
+	washPitch: { number },
+	rollOff: { number },
+	bob: number,
+}
+
+local SWAN_PROFILE: CraftProfile = {
+	topSpeed = 16,
+	reverseFactor = 0.5,
+	accel = 5,
+	decel = 7,
+	turnSpeed = 1.0,
+	-- Sprint on a pedal boat is pedalling harder, not opening a throttle.
+	boost = 1.35,
+	-- No engine at all: this thing runs on legs.
+	engineSound = nil,
+	engineVolume = { 0, 0 },
+	enginePitch = { 1, 1 },
+	-- Nothing but water: a slow lapping slosh, which is all a paddle wheel
+	-- makes. (The swan model ships its own loop, but that asset is not shared
+	-- with this experience -- it only ever printed "not authorized".)
+	washSound = 'rbxassetid://9120570661',
+	washVolume = { 0.08, 0.40 },
+	washPitch = { 0.85, 1.15 },
+	rollOff = { 12, 80 },
+	bob = 0.10,
+}
+
+local SPEEDBOAT_PROFILE: CraftProfile = {
+	topSpeed = 52,
+	reverseFactor = 0.35,
+	accel = 11,
+	decel = 16,
+	turnSpeed = 1.5,
+	boost = 1.7,
+	engineSound = 'rbxassetid://9126002405',
+	engineVolume = { 0.90, 2.20 },
+	enginePitch = { 0.80, 1.45 },
+	washSound = 'rbxassetid://9126173719',
+	washVolume = { 0.08, 0.45 },
+	washPitch = { 0.90, 1.30 },
+	rollOff = { 25, 190 },
+	bob = 0.08,
+}
+
+local FUNE_PROFILE: CraftProfile = {
+	topSpeed = 30,
+	reverseFactor = 0.3,
+	accel = 3.0,
+	decel = 4.2,
+	turnSpeed = 0.7,
+	boost = 1.35,
+	engineSound = 'rbxassetid://9112780932',
+	-- Louder and pitched well below the speedboat: a big ship rumbles, it does
+	-- not whine, and the sound carries much further over open water.
+	engineVolume = { 1.40, 2.60 },
+	enginePitch = { 0.55, 0.90 },
+	washSound = 'rbxassetid://9126173719',
+	washVolume = { 0.15, 0.55 },
+	washPitch = { 0.70, 1.00 },
+	rollOff = { 45, 320 },
+	bob = 0.06,
+}
+
+local GENERIC_BOAT_PROFILE: CraftProfile = {
+	topSpeed = 38,
+	reverseFactor = 0.35,
+	accel = 7,
+	decel = 10,
+	turnSpeed = 1.2,
+	boost = 1.4,
+	engineSound = 'rbxassetid://9118729626',
+	engineVolume = { 0.80, 1.80 },
+	enginePitch = { 0.85, 1.25 },
+	washSound = 'rbxassetid://9126173719',
+	washVolume = { 0.08, 0.40 },
+	washPitch = { 0.90, 1.25 },
+	rollOff = { 22, 160 },
+	bob = 0.08,
+}
+
+local LAND_PROFILE: CraftProfile = {
+	topSpeed = 34,
+	reverseFactor = 0.5,
+	-- Land vehicles stay snappy; the gradual ramp is a boat thing.
+	accel = 26,
+	decel = 34,
+	turnSpeed = 1.9,
+	boost = 1.8,
+	engineSound = nil,
+	engineVolume = { 0, 0 },
+	enginePitch = { 1, 1 },
+	washSound = nil,
+	washVolume = { 0, 0 },
+	washPitch = { 1, 1 },
+	rollOff = { 20, 120 },
+	bob = 0,
+}
+
+local function isSwanCraft(nameLower: string): boolean
+	return nameLower:find('swan') ~= nil or nameLower:find('duck') ~= nil or nameLower:find('flamingo') ~= nil
+end
+
+local function profileFor(model: Model?, onWater: boolean): CraftProfile
+	if not onWater then
+		return LAND_PROFILE
+	end
+	local nameLower = if model then model.Name:lower() else ''
+	if isSwanCraft(nameLower) then
+		return SWAN_PROFILE
+	elseif nameLower:find('speedboat') or nameLower:find('jetski') then
+		return SPEEDBOAT_PROFILE
+	elseif nameLower:find('fune') or nameLower:find('ship') or nameLower:find('ferry') then
+		return FUNE_PROFILE
+	end
+	return GENERIC_BOAT_PROFILE
+end
+
+--=============================================================================
+-- Where the lake is
+--=============================================================================
+
+-- Only Terrain is in the filter, so piers, moored boats and props never answer the
+-- probe. The answer is strictly "is there open lake at this XZ, and where is
+-- its surface". Terrain water is flat, so one ray gives both.
+local WATER_PROBE = RaycastParams.new()
+WATER_PROBE.FilterType = Enum.RaycastFilterType.Include
+WATER_PROBE.FilterDescendantsInstances = { workspace.Terrain }
+WATER_PROBE.IgnoreWater = false
+
+local function waterSurfaceAt(x: number, z: number): number?
+	local hit = workspace:Raycast(Vector3.new(x, 120, z), Vector3.new(0, -260, 0), WATER_PROBE)
+	if hit and hit.Material == Enum.Material.Water then
+		return hit.Position.Y
+	end
+	return nil
+end
+
+local function makeLoop(rootPart: BasePart, name: string, soundId: string, profile: CraftProfile): Sound
+	local sound = Instance.new('Sound')
+	sound.Name = name
+	sound.SoundId = soundId
+	sound.Looped = true
+	sound.Volume = 0
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = profile.rollOff[1]
+	sound.RollOffMaxDistance = profile.rollOff[2]
+	sound.Parent = rootPart
+	sound:Play()
+	return sound
+end
+
+-- Nothing of the swan model's own effects is used. Its WaterPar attachment sits
+-- at rel X +13.15 on a hull that is 5.8 studs wide, so switching those emitters
+-- on sprayed a white blob into open water 13 studs off the beam, and its two
+-- bundled sound ids are not shared with this experience -- they only ever
+-- printed "not authorized". Keep them all off, including across a re-rig.
+local function setSwanAmbience(rootPart: BasePart, _on: boolean)
+	local wake = rootPart:FindFirstChild('WaterPar')
+	if wake then
+		for _, emitter in wake:GetChildren() do
+			if emitter:IsA('ParticleEmitter') then
+				emitter.Enabled = false
+			end
+		end
+	end
+end
+
+--=============================================================================
 -- Driving
 --=============================================================================
 
@@ -249,10 +448,20 @@ local function stopDriving(seat: VehicleSeat, rootPart: BasePart?, onWater: bool
 	-- Destroy every match, not just the first: a vehicle that was rigged twice
 	-- ends up with two of each, and leaving one behind keeps driving the hull.
 	for _, child in rootPart:GetChildren() do
-		if child.Name == 'DriveAttachment' or child.Name == 'DriveLV' or child.Name == 'DriveAV' then
+		if
+			child.Name == 'DriveAttachment'
+			or child.Name == 'DriveLV'
+			or child.Name == 'DriveAV'
+			or child.Name == 'BoatEngineSound'
+			or child.Name == 'BoatWashSound'
+			-- Legacy name from the first audio pass; still cleaned up so an
+			-- already-running server does not leave one droning on a moored hull.
+			or child.Name == 'BoatWaterSound'
+		then
 			child:Destroy()
 		end
 	end
+	setSwanAmbience(rootPart, false)
 	rootPart.AssemblyLinearVelocity = Vector3.zero
 	rootPart.AssemblyAngularVelocity = Vector3.zero
 
@@ -294,18 +503,43 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	attachment.CFrame = rootPart.CFrame:ToObjectSpace(seat.CFrame)
 	attachment.Parent = rootPart
 
-	local targetWaterlineY = rootPart:GetAttribute('WaterlineY') or rootPart.Position.Y
-	if onWater and targetWaterlineY < 3.5 then
-		targetWaterlineY = 4.8
+	local model = rootPart:FindFirstAncestorWhichIsA('Model')
+	local profile = profileFor(model, onWater)
+	local isSwan = onWater and isSwanCraft(if model then model.Name:lower() else '')
+
+	-- The waterline is wherever the map author left the hull floating. An older
+	-- pass wrote a WaterlineY that was really just the hull's half-height, which
+	-- is why boarding a Speedboat used to launch it five studs into the air.
+	-- ParkedY is captured from the actual parked pose, so trust that first.
+	local waterlineY = rootPart:GetAttribute('ParkedY')
+	if typeof(waterlineY) ~= 'number' then
+		waterlineY = rootPart:GetAttribute('WaterlineY')
+	end
+	if typeof(waterlineY) ~= 'number' then
+		waterlineY = rootPart.Position.Y
+	end
+	local targetWaterlineY: number = waterlineY :: number
+
+	local engineSound: Sound? = if profile.engineSound
+		then makeLoop(rootPart, 'BoatEngineSound', profile.engineSound, profile)
+		else nil
+	local washSound: Sound? = if profile.washSound
+		then makeLoop(rootPart, 'BoatWashSound', profile.washSound, profile)
+		else nil
+	if isSwan then
+		setSwanAmbience(rootPart, true)
 	end
 
 	local linear = Instance.new('LinearVelocity')
 	linear.Name = 'DriveLV'
 	linear.Attachment0 = attachment
 	linear.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-	-- On water: full 3D force for buoyancy and crisp water steering; on land: XZ drive with gravity.
+	-- Velocity is authored in world space so the shoreline push-back below can
+	-- be expressed as a plain world direction. On water we own the vertical
+	-- axis too (that is what keeps the hull pinned to the surface); on land
+	-- gravity keeps it, so the Y force limit stays at zero.
+	linear.RelativeTo = Enum.ActuatorRelativeTo.World
 	linear.MaxAxesForce = if onWater then Vector3.new(500000, 500000, 500000) else Vector3.new(500000, 0, 500000)
-	linear.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
 	linear.VectorVelocity = Vector3.zero
 	linear.Parent = rootPart
 
@@ -313,26 +547,30 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	angular.Name = 'DriveAV'
 	angular.Attachment0 = attachment
 	angular.MaxTorque = 500000
-	angular.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
+	angular.RelativeTo = Enum.ActuatorRelativeTo.World
 	angular.AngularVelocity = Vector3.zero
 	angular.Parent = rootPart
 
 	local groundCheck = RaycastParams.new()
 	groundCheck.FilterType = Enum.RaycastFilterType.Exclude
-	groundCheck.FilterDescendantsInstances = { rootPart:FindFirstAncestorWhichIsA('Model') :: Instance }
+	groundCheck.FilterDescendantsInstances = { model :: Instance }
 
-	-- Boats glide fast with smooth water response; bikes respond sharply.
-	local baseSpeed = if onWater then 55 else 34
-	local turnSpeed = if onWater then 2.2 else 1.9
-	local responsiveness = if onWater then 0.12 else 0.12
+	-- How far ahead the hull looks for shore. The near ring is roughly the bow
+	-- itself, so hitting it means "stop now"; the far ring is a full braking
+	-- distance out, so the boat eases off well before it would ground.
+	local hullReach = math.max(rootPart.Size.X, rootPart.Size.Z) * 0.5 + 3
+	local brakingReach = hullReach + math.max(12, profile.topSpeed * 0.75)
 
 	local currentForwardSpeed = 0
 	local spin = 0
+	-- Last spot the hull was confirmed floating, so a boat that somehow ends up
+	-- over land has somewhere to crawl back to instead of sitting stranded.
+	local lastWaterPoint = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
 
 	activeDrives[seat] = RunService.Heartbeat:Connect(function(delta)
 		local occupant = seat.Occupant
 		local rider = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
-		local boost = if rider and boosting[rider] then 1.8 else 1
+		local boost = if rider and boosting[rider] then profile.boost else 1
 
 		-- Hop on land vehicles
 		if rider and hopRequested[rider] then
@@ -373,28 +611,110 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 			end
 		end
 
-		local targetSpeed = throttle * baseSpeed * boost
-		local lerp = if throttle == 0 then responsiveness * 0.5 else responsiveness
-		currentForwardSpeed = currentForwardSpeed + (targetSpeed - currentForwardSpeed) * lerp
+		local position = rootPart.Position
+		local forward = seat.CFrame.LookVector * Vector3.new(1, 0, 1)
+		forward = if forward.Magnitude > 1e-3 then forward.Unit else Vector3.zAxis
 
-		local yVel = 0
-		if onWater then
-			local currentY = rootPart.Position.Y
-			local bobbing = math.sin(tick() * 2.2) * 0.12
-			yVel = ((targetWaterlineY + bobbing) - currentY) * 7.5
+		-- Reverse is always a crawl; no boat backs up at cruising speed.
+		local desired = throttle * profile.topSpeed * boost
+		if desired < 0 then
+			desired = math.max(desired, -profile.topSpeed * profile.reverseFactor)
 		end
 
-		-- -Z is forward in Attachment0 space
-		linear.VectorVelocity = Vector3.new(0, yVel, -currentForwardSpeed)
+		local shorePush = Vector3.zero
+		if onWater then
+			-- Rule one: the lake is the whole world. Look along the direction of
+			-- travel and refuse to drive the hull up the bank. Easing off at the
+			-- braking ring means the boat slows to a stop short of the shore
+			-- instead of ramming it and climbing out of the water.
+			local travel = if currentForwardSpeed < -0.05 then -forward else forward
+			-- The cap starts at whatever the throttle is asking for, boost
+			-- included. Seeding it with topSpeed instead silently cancelled
+			-- boost on every water craft, since the clamp below would undo it.
+			local speedCap = math.max(math.abs(desired), math.abs(currentForwardSpeed))
+			local brakingPoint = position + travel * brakingReach
+			if waterSurfaceAt(brakingPoint.X, brakingPoint.Z) == nil then
+				speedCap = profile.topSpeed * 0.3
+			end
+			local hullPoint = position + travel * hullReach
+			if waterSurfaceAt(hullPoint.X, hullPoint.Z) == nil then
+				speedCap = 0
+			end
 
-		local targetRotY = -steer * turnSpeed
-		local bankRoll = if onWater then -steer * 0.22 else 0
+			if math.abs(desired) > speedCap then
+				desired = math.sign(desired) * speedCap
+			end
+			if math.abs(currentForwardSpeed) > speedCap then
+				-- Bleed off rather than snap: a hard stop reads as a collision and
+				-- throws the rider around.
+				local bled = math.abs(currentForwardSpeed) - profile.decel * 2.5 * delta
+				currentForwardSpeed = math.sign(currentForwardSpeed) * math.max(speedCap, bled)
+			end
 
-		angular.AngularVelocity = Vector3.new(
-			0,
-			targetRotY,
-			bankRoll
-		)
+			-- Rule two: if the hull ever does end up over land, walk it back to
+			-- the last spot it was floating instead of leaving it beached.
+			local here = waterSurfaceAt(position.X, position.Z)
+			if here then
+				lastWaterPoint = Vector3.new(position.X, 0, position.Z)
+			else
+				local back = lastWaterPoint - Vector3.new(position.X, 0, position.Z)
+				if back.Magnitude > 0.5 then
+					shorePush = back.Unit * 8
+				end
+			end
+		end
+
+		-- Gradual, framerate-independent throttle response: the ramp is a real
+		-- acceleration in studs/s^2, so a boat leaves the pier the way a boat
+		-- does and never snaps to full speed.
+		local closing = math.abs(desired) > math.abs(currentForwardSpeed) and desired * currentForwardSpeed >= 0
+		local rate = if closing then profile.accel else profile.decel
+		currentForwardSpeed += math.clamp(desired - currentForwardSpeed, -rate * delta, rate * delta)
+
+		local velocity = forward * currentForwardSpeed + shorePush
+
+		if onWater then
+			-- Rule three: pinned to the surface. This is a velocity actuator, so
+			-- the correction decays exponentially with no overshoot, and the
+			-- clamp stops a big error from turning into a launch.
+			local bobbing = math.sin(tick() * 2.2) * profile.bob
+			local yError = (targetWaterlineY + bobbing) - position.Y
+			velocity += Vector3.new(0, math.clamp(yError * 5, -14, 14), 0)
+
+			-- A hull thrown clear of the water by a collision cannot be recovered
+			-- with velocity alone; put it back on the waterline directly.
+			if math.abs(yError) > 8 then
+				local _, yaw, _ = rootPart.CFrame:ToOrientation()
+				rootPart.CFrame = CFrame.new(position.X, targetWaterlineY, position.Z)
+					* CFrame.fromOrientation(0, yaw, 0)
+				rootPart.AssemblyLinearVelocity = Vector3.zero
+				rootPart.AssemblyAngularVelocity = Vector3.zero
+			end
+
+			local speedRatio = math.clamp(math.abs(currentForwardSpeed) / profile.topSpeed, 0, 1)
+			local function ease(sound: Sound?, volume: { number }, pitch: { number })
+				if not sound or not sound.Parent then
+					return
+				end
+				local targetVolume = volume[1] + (volume[2] - volume[1]) * speedRatio
+				local targetPitch = pitch[1] + (pitch[2] - pitch[1]) * speedRatio
+				sound.Volume += (targetVolume - sound.Volume) * 0.12
+				sound.PlaybackSpeed += (targetPitch - sound.PlaybackSpeed) * 0.12
+			end
+			ease(engineSound, profile.engineVolume, profile.enginePitch)
+			ease(washSound, profile.washVolume, profile.washPitch)
+		end
+
+		linear.VectorVelocity = velocity
+
+		-- A boat steers with water flowing over its rudder, so it barely turns
+		-- when it is barely moving and never pirouettes on the spot.
+		local bite = math.clamp(math.abs(currentForwardSpeed) / (profile.topSpeed * 0.35), 0, 1)
+		local steerAuthority = if onWater then 0.12 + 0.88 * bite else 1
+		local direction = if currentForwardSpeed < -0.05 then -1 else 1
+		-- No banking roll: StabilityOrientation is rigid, so a roll command only
+		-- fights it, and that fight is what made the hull judder.
+		angular.AngularVelocity = Vector3.new(0, -steer * profile.turnSpeed * steerAuthority * direction, 0)
 	end)
 end
 
@@ -517,7 +837,9 @@ local function rigVehicle(model: Model)
 					part.CanCollide = COLLISION_PARTS[part.Name] == true
 				end
 			end
-			if looksLikeWheel(part) then
+			-- Only land vehicles have road wheels. A boat's helm is a disc too,
+			-- and treating it as a wheel spun the helm at road speed.
+			if not onWater and looksLikeWheel(part) then
 				-- Drop any existing joint, or the motor fights it.
 				for _, joint in part:GetChildren() do
 					if joint:IsA('WeldConstraint') or joint:IsA('Weld') or joint:IsA('Motor6D') then
@@ -557,10 +879,15 @@ local function rigVehicle(model: Model)
 	-- A boat has to outweigh the people aboard, or a rider stepping onto the
 	-- deck shoves the whole hull out from under themselves. Still well under
 	-- water's density, so it keeps floating.
+	-- Elasticity is zero, with a weight high enough to win against whatever the
+	-- surface it hits is made of. Half-elastic hulls are why boats used to
+	-- trampoline off piers and off each other.
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
 		if onWater then 0.7 else 0.12,
-		0.3,
-		0.5
+		if onWater then 0.4 else 0.3,
+		0,
+		1,
+		if onWater then 100 else 1
 	)
 
 	-- Clear anything a previous rig left behind, so a re-rig cannot stack a
@@ -623,6 +950,12 @@ local function rigVehicle(model: Model)
 	-- Remember where the hull floats while parked too, so a boat always returns
 	-- to this exact waterline instead of freezing wherever the drive left it.
 	rootPart:SetAttribute('ParkedY', rootPart.Position.Y)
+	if onWater then
+		-- Overwrite, never read: an earlier pass stored the hull's half-height
+		-- here instead of a waterline, so a Speedboat launched five studs into
+		-- the air the moment anyone sat in it. The parked pose is the truth.
+		rootPart:SetAttribute('WaterlineY', rootPart.Position.Y)
+	end
 	rootPart.Anchored = true
 
 	for _, driver in driverSeatsFound do

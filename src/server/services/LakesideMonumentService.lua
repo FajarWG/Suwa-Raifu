@@ -33,14 +33,17 @@ local TICK_COUNT = 24
 
 local SPIRE_HEIGHT = 56
 local SPIRE_SEGMENTS = 14
-local SPIRE_BASE_RADIUS = 2.3
-local SPIRE_GAP = 2.7
-local SPIRE_TILT = 2
+local SPIRE_BASE_RADIUS = 2.0
+local SPIRE_GAP = 3.6
+local SPIRE_TILT = 1.2
+-- The real pair are not twins: every reference photo shows one blade standing
+-- visibly shorter than the other, not two identical steeples.
+local SPIRE_HEIGHT_SCALE_SHORT = 0.85
 
 local PALE = Color3.fromRGB(226, 223, 214)
 local MID_GREY = Color3.fromRGB(150, 148, 143)
 local DARK_GREY = Color3.fromRGB(86, 86, 88)
-local STEEL = Color3.fromRGB(232, 234, 238)
+local STEEL = Color3.fromRGB(238, 241, 245)
 local PROMENADE_RED = Color3.fromRGB(150, 78, 62)
 local STONE = Color3.fromRGB(178, 174, 166)
 
@@ -99,10 +102,11 @@ end
 -- Roblox has no cone primitive, so each steeple is a stack of cylinders whose
 -- radius runs out to almost nothing. Fourteen segments is enough that the taper
 -- reads as a smooth needle at the distance you ever see it from.
-local function buildSpire(parent: Instance, offsetX: number, tiltDegrees: number)
+local function buildSpire(parent: Instance, offsetX: number, tiltDegrees: number, heightScale: number)
+	local height = SPIRE_HEIGHT * heightScale
 	local base = CFrame.new(CENTER_X + offsetX, GROUND_Y + 0.6, CENTER_Z)
 		* CFrame.Angles(0, 0, math.rad(tiltDegrees))
-	local segmentHeight = SPIRE_HEIGHT / SPIRE_SEGMENTS
+	local segmentHeight = height / SPIRE_SEGMENTS
 
 	for index = 0, SPIRE_SEGMENTS - 1 do
 		local lower = index / SPIRE_SEGMENTS
@@ -120,7 +124,7 @@ local function buildSpire(parent: Instance, offsetX: number, tiltDegrees: number
 		)
 		segment.Shape = Enum.PartType.Cylinder
 		-- Mirror finish: the real pair reflects the lake and the sky.
-		segment.Reflectance = 0.55
+		segment.Reflectance = 0.85
 	end
 end
 
@@ -255,8 +259,8 @@ function LakesideMonumentService.build(): string
 
 	buildPromenade(model)
 	buildPlaza(model)
-	buildSpire(model, -SPIRE_GAP, -SPIRE_TILT)
-	buildSpire(model, SPIRE_GAP, SPIRE_TILT)
+	buildSpire(model, -SPIRE_GAP, -SPIRE_TILT, SPIRE_HEIGHT_SCALE_SHORT)
+	buildSpire(model, SPIRE_GAP, SPIRE_TILT, 1)
 	buildBollards(model)
 
 	local count = 0
