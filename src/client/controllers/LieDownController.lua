@@ -8,6 +8,7 @@
 --   3. Stand Up - Returns to standing orientation
 
 local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
 local UserInputService = game:GetService('UserInputService')
 local Workspace = game:GetService('Workspace')
 
@@ -85,6 +86,44 @@ local function standUp()
 	end
 end
 
+local function isPlayerBusy(humanoid: Humanoid, character: Model): boolean
+	if humanoid.Health <= 0 then
+		return true
+	end
+
+	-- 1. Sitting or in any seat / vehicle
+	local isSeated = humanoid.Sit
+		or (humanoid.SeatPart ~= nil)
+		or (character:FindFirstChild("SeatWeld") ~= nil)
+		or (character:FindFirstChild("SitWeld") ~= nil)
+	if isSeated then
+		return true
+	end
+
+	-- 2. Humanoid state (Swimming, Climbing, Dead)
+	local state = humanoid:GetState()
+	if state == Enum.HumanoidStateType.Swimming
+		or state == Enum.HumanoidStateType.Climbing
+		or state == Enum.HumanoidStateType.Seated
+		or state == Enum.HumanoidStateType.Dead then
+		return true
+	end
+
+	-- 3. Swimming in water material
+	if humanoid.FloorMaterial == Enum.Material.Water then
+		return true
+	end
+
+	-- 4. Sleeping in bed or riding vehicle attributes
+	if character:GetAttribute("Sleeping") == true
+		or character:GetAttribute("Riding") == true
+		or character:GetAttribute("Driving") == true then
+		return true
+	end
+
+	return false
+end
+
 local function enterPose(poseName: string)
 	local humanoid = currentHumanoid
 	local root = currentRoot
@@ -93,6 +132,10 @@ local function enterPose(poseName: string)
 	end
 
 	local character = humanoid.Parent :: Model
+	if isPlayerBusy(humanoid, character) then
+		return
+	end
+
 	local pose = POSES[poseName]
 	if not pose then
 		return
@@ -162,6 +205,32 @@ local function buildButton()
 	btn.MouseButton1Click:Connect(toggle)
 end
 
+local function updateVisibility()
+	if not button then
+		return
+	end
+	local humanoid = currentHumanoid
+	local character = if humanoid then humanoid.Parent :: Model? else nil
+
+	if not humanoid or not character or humanoid.Health <= 0 then
+		button.Visible = false
+		if currentPose then
+			standUp()
+		end
+		return
+	end
+
+	local busy = isPlayerBusy(humanoid, character)
+	if busy then
+		button.Visible = false
+		if currentPose then
+			standUp()
+		end
+	else
+		button.Visible = true
+	end
+end
+
 local function hookCharacter(character: Model)
 	currentPose = nil
 	standingCFrame = nil
@@ -173,14 +242,46 @@ local function hookCharacter(character: Model)
 		button.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	end
 
-	if currentHumanoid then
-		(currentHumanoid :: Humanoid).Died:Connect(function()
+	local hum = currentHumanoid
+	if hum then
+		hum.Died:Connect(function()
 			currentPose = nil
 			standingCFrame = nil
 			chillFacing = nil
 			currentHumanoid = nil
+			updateVisibility()
 		end)
+
+		hum.Seated:Connect(function()
+			updateVisibility()
+		end)
+
+		hum.StateChanged:Connect(function()
+			updateVisibility()
+		end)
+
+		hum:GetPropertyChangedSignal('Sit'):Connect(updateVisibility)
+		hum:GetPropertyChangedSignal('SeatPart'):Connect(updateVisibility)
+		hum:GetPropertyChangedSignal('FloorMaterial'):Connect(updateVisibility)
 	end
+
+	character:GetAttributeChangedSignal('Sleeping'):Connect(updateVisibility)
+	character:GetAttributeChangedSignal('Riding'):Connect(updateVisibility)
+	character:GetAttributeChangedSignal('Driving'):Connect(updateVisibility)
+
+	character.ChildAdded:Connect(function(child)
+		if child.Name:find('Seat') or child.Name:find('Weld') then
+			updateVisibility()
+		end
+	end)
+
+	character.ChildRemoved:Connect(function(child)
+		if child.Name:find('Seat') or child.Name:find('Weld') then
+			updateVisibility()
+		end
+	end)
+
+	updateVisibility()
 end
 
 function LieDownController.init()
@@ -190,6 +291,21 @@ function LieDownController.init()
 		hookCharacter(player.Character)
 	end
 	player.CharacterAdded:Connect(hookCharacter)
+
+	-- Periodic watcher to guarantee state changes are always caught (e.g. entering water without state trigger)
+	task.spawn(function()
+		while true do
+			task.wait(0.3)
+			updateVisibility()
+		end
+	end)
+
+	-- Auto stand-up when player moves (virtual joystick on mobile or keyboard on PC)
+	RunService.Heartbeat:Connect(function()
+		if currentPose and currentHumanoid and currentHumanoid.MoveDirection.Magnitude > 0.05 then
+			standUp()
+		end
+	end)
 
 	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
 		if processed or not currentPose then

@@ -115,6 +115,25 @@ local function isActualVehicle(seat: (Seat | VehicleSeat)?): boolean
 	return false
 end
 
+-- Checks if a seat specifically belongs to a bicycle
+local function isBicycleSeat(seat: (Seat | VehicleSeat)?): boolean
+	if not seat or not seat:IsA('VehicleSeat') then
+		return false
+	end
+	if seat:GetAttribute('SuwaBicycle') then
+		return true
+	end
+	local model = seat:FindFirstAncestorOfClass('Model')
+	while model do
+		local name = model.Name:lower()
+		if model:GetAttribute('ParkBike') or model:GetAttribute('SuwaBicycle') or name:find('bike') or name:find('bicycle') or name:find('sepeda') then
+			return true
+		end
+		model = model:FindFirstAncestorOfClass('Model')
+	end
+	return false
+end
+
 local function pushBoost(value: boolean)
 	if boostSent == value then
 		return
@@ -128,6 +147,7 @@ local function updateButtonStates()
 	local seatPart = humanoid and humanoid.SeatPart
 	local isSeated = humanoid ~= nil and seatPart ~= nil
 	local onVehicle = isSeated and isActualVehicle(seatPart)
+	local onBicycle = isSeated and isBicycleSeat(seatPart)
 
 	if sprintButton then
 		if onVehicle then
@@ -147,9 +167,11 @@ local function updateButtonStates()
 	end
 
 	if dismountButton then
-		dismountButton.Visible = isSeated == true
-		if isSeated then
-			dismountButton.Text = if onVehicle then 'GET OFF' else 'STAND UP'
+		-- Mobile Get Off button: ONLY used for bicycles as requested.
+		-- All other seats (boats, benches, chairs, swings, etc.) do NOT show Get Off / Stand Up.
+		dismountButton.Visible = onBicycle == true
+		if onBicycle then
+			dismountButton.Text = 'GET OFF'
 		end
 	end
 end

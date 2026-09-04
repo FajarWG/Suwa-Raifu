@@ -287,7 +287,7 @@ local SWAN_PROFILE: CraftProfile = {
 	washVolume = { 0.08, 0.40 },
 	washPitch = { 0.85, 1.15 },
 	rollOff = { 12, 80 },
-	bob = 0.10,
+	bob = 0.05,
 }
 
 local SPEEDBOAT_PROFILE: CraftProfile = {
@@ -800,6 +800,9 @@ local function rigVehicle(model: Model)
 		Helm_Molding = true,
 		Deck_Guards = true,
 		Sink_cabinet = true,
+		-- Swan Boat collision parts: only the cockpit floor and hull bottom are solid
+		CockpitSole = true,
+		Bottom = true,
 		-- Boat_Railing, Pontoons, *_Door_Railing and SkiRail are deliberately left
 		-- off this list: they're lattice/bar or curved-tube meshes, and Roblox's
 		-- default collision fidelity can fill in the gaps of a lattice into a
@@ -807,8 +810,8 @@ local function rigVehicle(model: Model)
 		-- player bounces off instead of climbing over.
 	}
 
-	-- Some boats (Fune) are hand-rigged with dedicated invisible collision
-	-- boxes, so only those should stay solid and the detailed visual mesh can
+	-- Some boats (Fune, Swan boats) are hand-rigged with dedicated collision
+	-- parts, so only those should stay solid and the detailed visual mesh can
 	-- go non-collide. Boats with no such parts (e.g. Speedboat) never shipped
 	-- collision boxes of their own, so blanket-disabling collision there would
 	-- leave the whole hull and deck walkable-through. Only take the whitelist
@@ -876,6 +879,10 @@ local function rigVehicle(model: Model)
 		end
 	end
 	rootPart.Anchored = false
+	rootPart.Massless = false
+	if rootPart.Name == 'HumanoidRootPart' or rootPart.Transparency >= 0.95 then
+		rootPart.CanCollide = false
+	end
 	-- A boat has to outweigh the people aboard, or a rider stepping onto the
 	-- deck shoves the whole hull out from under themselves. Still well under
 	-- water's density, so it keeps floating.

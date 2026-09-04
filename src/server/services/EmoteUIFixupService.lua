@@ -48,10 +48,7 @@ function EmoteUIFixupService.init()
 
 	local mainFrame = emoteGui:FindFirstChild('MainFrame')
 	if mainFrame and mainFrame:IsA('GuiObject') then
-		-- AbsoluteSize is a client-only computed value and is meaningless on a
-		-- server-held StarterGui template, so the gap is measured off the
-		-- button's serialized Size instead.
-		local buttonHeight = if button and button:IsA('GuiObject') then button.Size.Y.Offset else 34
+		local buttonHeight = if button and button:IsA('GuiObject') then button.Size.Y.Offset else 44
 		mainFrame.AnchorPoint = Vector2.new(0, 0)
 		mainFrame.Position = UDim2.new(
 			BUTTON_POSITION.X.Scale,
@@ -59,6 +56,20 @@ function EmoteUIFixupService.init()
 			BUTTON_POSITION.Y.Scale,
 			BUTTON_POSITION.Y.Offset + buttonHeight + PANEL_GAP
 		)
+		mainFrame.Size = UDim2.new(0, 250, 0, 310)
+		mainFrame.ClipsDescendants = true
+
+		local emoteList = mainFrame:FindFirstChild('EmoteList')
+		if emoteList and emoteList:IsA('ScrollingFrame') then
+			emoteList.Position = UDim2.new(0, 10, 0, 120)
+			emoteList.Size = UDim2.new(1, -20, 1, -128)
+			emoteList.ClipsDescendants = true
+			emoteList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+			emoteList.CanvasSize = UDim2.new(0, 0, 0, 0)
+			emoteList.ScrollBarThickness = 6
+			emoteList.ScrollingDirection = Enum.ScrollingDirection.Y
+			emoteList.ElasticBehavior = Enum.ElasticBehavior.Always
+		end
 	end
 end
 

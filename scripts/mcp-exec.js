@@ -32,7 +32,14 @@ async function callMcpRaw(toolName, args = {}) {
       // console.error('[MCP Stderr]:', d.toString());
     });
 
+    // Timeout
+    const killTimer = setTimeout(() => {
+      child.kill();
+    }, 15000);
+    killTimer.unref();
+
     child.on('close', () => {
+      clearTimeout(killTimer);
       if (error) reject(new Error(JSON.stringify(error)));
       else if (result) resolve(result);
       else reject(new Error('No response received from StudioMCP'));
@@ -47,7 +54,7 @@ async function callMcpRaw(toolName, args = {}) {
     }) + '\n');
 
     // 2. Call tool
-    setTimeout(() => {
+    const callTimer = setTimeout(() => {
       child.stdin.write(JSON.stringify({
         jsonrpc: '2.0',
         id: 2,
@@ -58,11 +65,7 @@ async function callMcpRaw(toolName, args = {}) {
         }
       }) + '\n');
     }, 250);
-
-    // Timeout
-    setTimeout(() => {
-      child.kill();
-    }, 15000);
+    callTimer.unref();
   });
 }
 
@@ -141,8 +144,12 @@ async function main() {
     const res = await captureScreen(out, cam, look);
     console.log('Captured screen to:', res.path);
   } else {
-    const code = process.argv[3] || process.argv[2] || 'return "Hello from Studio"';
-    const datamodel = process.argv[4] || 'Edit';
+    let code = process.argv[2];
+    let datamodel = process.argv[3] || 'Edit';
+    if (action === 'exec') {
+      code = process.argv[3];
+      datamodel = process.argv[4] || 'Edit';
+    }
     const res = await executeLuau(code, datamodel);
     console.log(JSON.stringify(res, null, 2));
   }

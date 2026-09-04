@@ -898,11 +898,20 @@ local function formatRemaining(seconds: number): string
 	return string.format('%02d:%02d', minutes, seconds % 60)
 end
 
+local DEFAULT_DAY_CLOCK_TIME = 17.55
+
 -- A real hanabi taikai runs after dark, and the stars simply do not read
 -- against a bright sky. Dusk is eased in for the show and restored after.
-local function fadeSkyToNight(): number
+local function fadeSkyToNight(instant: boolean?): number
 	local before = Lighting.ClockTime
-	TweenService:Create(Lighting, TweenInfo.new(6, Enum.EasingStyle.Sine), { ClockTime = SHOW_CLOCK_TIME }):Play()
+	if math.abs(before - SHOW_CLOCK_TIME) < 0.1 then
+		before = DEFAULT_DAY_CLOCK_TIME
+	end
+	if instant then
+		Lighting.ClockTime = SHOW_CLOCK_TIME
+	else
+		TweenService:Create(Lighting, TweenInfo.new(6, Enum.EasingStyle.Sine), { ClockTime = SHOW_CLOCK_TIME }):Play()
+	end
 	return before
 end
 
@@ -1013,7 +1022,7 @@ local function attachConsole(base: BasePart)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = base
 
-	local function triggerShow()
+	local function triggerShow(startOffsetSecs: any)
 		if running then
 			return
 		end
@@ -1024,9 +1033,15 @@ local function attachConsole(base: BasePart)
 		end
 		running = true
 		prompt.Enabled = false
-		local skyBefore = fadeSkyToNight()
+
 		local duration = showDuration()
-		local startedAt = os.clock()
+		local offset = 0
+		if typeof(startOffsetSecs) == 'number' then
+			offset = math.clamp(startOffsetSecs, 0, duration)
+		end
+
+		local skyBefore = fadeSkyToNight(offset > 0)
+		local startedAt = os.clock() - offset
 		local finishAt = startedAt + duration
 		task.spawn(function()
 			while running and os.clock() < finishAt do
@@ -1050,20 +1065,35 @@ local function attachConsole(base: BasePart)
 		end)
 	end
 
-	prompt.Triggered:Connect(triggerShow)
+	prompt.Triggered:Connect(function()
+		triggerShow(0)
+	end)
 
-	-- Automated daily schedule: start show automatically at 20:30 JST
+	-- Automated daily schedule: start show automatically at 20:30 JST.
+	-- If a server starts or players join mid-show (e.g. at 20:31 or 20:35),
+	-- the show immediately resumes with night sky and exact remaining time!
 	task.spawn(function()
 		local lastLaunchedDate = ''
 		while true do
-			task.wait(5)
 			local now = jstDate()
-			local dateKey = `{now.year}-{now.month}-{now.day}`
-			if now.hour == 20 and now.min == 30 and not running and lastLaunchedDate ~= dateKey then
-				lastLaunchedDate = dateKey
-				print(`[Fireworks] Starting automated 20:30 JST Lake Suwa fireworks show for {dateKey}!`)
-				triggerShow()
+			local dateKey = string.format('%04d-%02d-%02d', now.year, now.month, now.day)
+			local currentSecs = now.hour * 3600 + now.min * 60 + now.sec
+			local showStartSecs = 20 * 3600 + 30 * 60 -- 20:30:00 JST (73800s)
+			local duration = showDuration()
+			local showEndSecs = showStartSecs + duration
+
+			local isWindowActive = (currentSecs >= showStartSecs and currentSecs < showEndSecs)
+
+			if isWindowActive then
+				if not running and lastLaunchedDate ~= dateKey then
+					lastLaunchedDate = dateKey
+					local elapsed = currentSecs - showStartSecs
+					print(string.format('[Fireworks] Auto-starting/resuming 20:30 JST Lake Suwa fireworks show for %s (elapsed: %ds, remaining: %ds)!', dateKey, elapsed, duration - elapsed))
+					triggerShow(elapsed)
+				end
 			end
+
+			task.wait(2)
 		end
 	end)
 end
