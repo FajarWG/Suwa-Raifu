@@ -50,6 +50,19 @@ local function clearRows(container: Instance)
 	end
 end
 
+local currentShopId: string? = nil
+
+local function getItemName(id: string): string
+	if FishingData.itemNames and FishingData.itemNames[id] then
+		return FishingData.itemNames[id]
+	end
+	local words = {}
+	for word in id:gmatch('[^_]+') do
+		table.insert(words, word:sub(1, 1):upper() .. word:sub(2):lower())
+	end
+	return table.concat(words, ' ')
+end
+
 local function makeInventoryRow(category: string, id: string, name: string, count: number, order: number)
 	local row = Instance.new('Frame')
 	row.Name = 'InventoryRow'
@@ -65,7 +78,6 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	action.AnchorPoint = Vector2.new(1, 0.5)
 	action.Position = UDim2.new(1, -8, 0.5, 0)
 	action.Size = UDim2.fromOffset(108, 34)
-	action.BackgroundColor3 = Color3.fromRGB(58, 92, 68)
 	action.TextColor3 = Color3.new(1, 1, 1)
 	action.Font = Enum.Font.GothamBold
 	action.TextSize = 13
@@ -76,12 +88,21 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 		action.Text = 'Sell'
 		action.BackgroundColor3 = Color3.fromRGB(156, 92, 44)
 		action.Activated:Connect(function()
-			RemoteController.fire('SellFish', id)
+			RemoteController.fire('InventoryAction', {
+				action = 'sell',
+				category = 'fish',
+				id = id,
+			})
 		end)
 	else
 		action.Text = 'Take Out'
+		action.BackgroundColor3 = Color3.fromRGB(48, 98, 68)
 		action.Activated:Connect(function()
-			RemoteController.fire('EquipItem', id)
+			RemoteController.fire('InventoryAction', {
+				action = 'equip',
+				category = 'item',
+				id = id,
+			})
 			bagPanel.Visible = false
 		end)
 	end
@@ -96,7 +117,8 @@ local function makeShopRow(item: any, order: number)
 	row.Parent = shopList
 	corner(row, 8)
 
-	local label = textLabel(row, `{item.name}   ¥{item.price}`, UDim2.new(1, -120, 1, 0), 15)
+	local priceText = if not item.price or item.price == 0 then 'FREE (無料)' else `¥{item.price}`
+	local label = textLabel(row, `{item.name}   {priceText}`, UDim2.new(1, -120, 1, 0), 15)
 	label.Position = UDim2.fromOffset(12, 0)
 
 	local buy = Instance.new('TextButton')
@@ -104,7 +126,7 @@ local function makeShopRow(item: any, order: number)
 	buy.Position = UDim2.new(1, -8, 0.5, 0)
 	buy.Size = UDim2.fromOffset(92, 34)
 	buy.BackgroundColor3 = Color3.fromRGB(48, 88, 62)
-	buy.Text = 'Buy'
+	buy.Text = if not item.price or item.price == 0 then 'Get' else 'Buy'
 	buy.TextColor3 = Color3.new(1, 1, 1)
 	buy.Font = Enum.Font.GothamBold
 	buy.TextSize = 14
@@ -112,7 +134,10 @@ local function makeShopRow(item: any, order: number)
 	corner(buy, 6)
 
 	buy.Activated:Connect(function()
-		RemoteController.fire('BuyItem', item.id)
+		RemoteController.fire('ShopBuy', {
+			shopId = currentShopId or 'island_festival',
+			itemId = item.id,
+		})
 	end)
 end
 
@@ -129,25 +154,32 @@ end
 local function renderInventory(data: any)
 	latestSnapshot = data
 	clearRows(bagList)
-	yenLabel.Text = `Bag   (¥{data.yen or 0})`
+	yenLabel.Text = `Bag   (¥{data.yen or 999999})`
 
 	local order = 1
 	for id, item in pairs(data.items or {}) do
-		local name = if FishingData.Items[id] then FishingData.Items[id].name else id
-		makeInventoryRow('item', id, name, item.count or 1, order)
-		order += 1
+		local count = if typeof(item) == 'number' then item else (item.count or 1)
+		if count > 0 then
+			local name = getItemName(id)
+			makeInventoryRow('item', id, name, count, order)
+			order += 1
+		end
 	end
 	for id, count in pairs(data.fish or {}) do
-		local name = if FishingData.Fish[id] then FishingData.Fish[id].name else id
-		makeInventoryRow('fish', id, name, count, order)
-		order += 1
+		if count > 0 then
+			local name = if FishingData.fish and FishingData.fish[id] then FishingData.fish[id].name else id
+			makeInventoryRow('fish', id, name, count, order)
+			order += 1
+		end
 	end
 end
 
 local function renderShop(data: any)
 	clearRows(shopList)
-	shopTitle.Text = `{data.title or 'Shop'}   (Your Yen: ¥{data.yen or 0})`
-	for order, item in ipairs(data.catalog or {}) do
+	currentShopId = data.id or 'island_festival'
+	shopTitle.Text = `{data.title or data.name or 'Shop'}   (Unlimited Yen)`
+	local items = data.catalog or data.items or {}
+	for order, item in ipairs(items) do
 		makeShopRow(item, order)
 	end
 	shopPanel.Visible = true
@@ -214,6 +246,8 @@ local function buildGui()
 	bagList.BackgroundTransparency = 1
 	bagList.BorderSizePixel = 0
 	bagList.ScrollBarThickness = 6
+	bagList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	bagList.CanvasSize = UDim2.new(0, 0, 0, 0)
 	bagList.ZIndex = 11
 	bagList.Parent = bagPanel
 	local layout = Instance.new('UIListLayout')
@@ -235,7 +269,7 @@ local function buildGui()
 	shopPanel = Instance.new('Frame')
 	shopPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	shopPanel.Position = UDim2.fromScale(0.5, 0.5)
-	shopPanel.Size = UDim2.fromOffset(480, 320)
+	shopPanel.Size = UDim2.fromOffset(480, 420)
 	shopPanel.BackgroundColor3 = Color3.fromRGB(248, 244, 232)
 	shopPanel.Visible = false
 	shopPanel.ZIndex = 10
@@ -248,10 +282,26 @@ local function buildGui()
 	shopStroke.Thickness = 1.5
 	shopStroke.Parent = shopPanel
 
-	shopList = shopPanel
 	shopTitle = textLabel(shopPanel, 'Shop', UDim2.new(1, -70, 0, 52), 21)
 	shopTitle.Position = UDim2.fromOffset(16, 0)
 	shopTitle.ZIndex = 11
+
+	shopList = Instance.new('ScrollingFrame')
+	shopList.Name = 'ShopList'
+	shopList.Position = UDim2.fromOffset(12, 56)
+	shopList.Size = UDim2.new(1, -24, 1, -68)
+	shopList.BackgroundTransparency = 1
+	shopList.BorderSizePixel = 0
+	shopList.ScrollBarThickness = 6
+	shopList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	shopList.CanvasSize = UDim2.new(0, 0, 0, 0)
+	shopList.ZIndex = 11
+	shopList.Parent = shopPanel
+
+	local shopLayout = Instance.new('UIListLayout')
+	shopLayout.Padding = UDim.new(0, 6)
+	shopLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	shopLayout.Parent = shopList
 
 	local closeShop = Instance.new('TextButton')
 	closeShop.AnchorPoint = Vector2.new(1, 0)
@@ -273,7 +323,7 @@ local function buildGui()
 	toast = Instance.new('TextLabel')
 	toast.AnchorPoint = Vector2.new(0.5, 0)
 	toast.Position = UDim2.new(0.5, 0, 0, 70)
-	toast.Size = UDim2.fromOffset(320, 38)
+	toast.Size = UDim2.fromOffset(340, 42)
 	toast.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	toast.BackgroundTransparency = 0.15
 	toast.TextColor3 = Color3.fromRGB(255, 235, 170)
@@ -309,22 +359,38 @@ function InventoryController.init()
 		end
 	end)
 
-	RemoteController.onEvent('InventorySnapshot', function(data)
+	local function onInventoryUpdate(data)
 		latestSnapshot = data
 		if bagPanel and bagPanel.Visible then
 			renderInventory(data)
 		end
-	end)
+	end
+
+	RemoteController.onEvent('InventoryUpdated', onInventoryUpdate)
+	RemoteController.onEvent('InventorySnapshot', onInventoryUpdate)
 
 	RemoteController.onEvent('OpenShop', function(data)
 		renderShop(data)
 	end)
 
-	RemoteController.onEvent('InventoryToast', function(message)
-		showToast(message)
+	RemoteController.onEvent('ShopResult', function(success, message)
+		if message then
+			showToast(message)
+		end
 	end)
 
-	RemoteController.fire('RequestInventory')
+	RemoteController.onEvent('InventoryToast', function(message)
+		if message then
+			showToast(message)
+		end
+	end)
+
+	task.spawn(function()
+		local snapshot = RemoteController.invoke('GetInventory')
+		if snapshot then
+			latestSnapshot = snapshot
+		end
+	end)
 end
 
 return InventoryController

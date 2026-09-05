@@ -92,52 +92,21 @@ light.Range = 28
 light.Shadows = true
 light.Parent = embers
 
--- Flame & Smoke Emitters
-local flame = Instance.new("ParticleEmitter")
-flame.Name = "Flames"
-flame.Texture = "rbxassetid://58542624"
-flame.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 80)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 100, 20)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 0))
-})
-flame.Size = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 1.4),
-    NumberSequenceKeypoint.new(0.6, 2.2),
-    NumberSequenceKeypoint.new(1, 0.2)
-})
-flame.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.1),
-    NumberSequenceKeypoint.new(0.7, 0.3),
-    NumberSequenceKeypoint.new(1, 1.0)
-})
-flame.Lifetime = NumberRange.new(0.6, 1.1)
-flame.Rate = 42
-flame.Speed = NumberRange.new(3.5, 6.0)
-flame.SpreadAngle = Vector2.new(18, 18)
-flame.EmissionDirection = Enum.NormalId.Top
-flame.LightEmission = 0.95
-flame.Parent = embers
+-- Native Roblox Fire & Smoke (Guaranteed to render & roar without external asset texture dependency)
+local fire = Instance.new("Fire")
+fire.Name = "BlazingFire"
+fire.Size = 8.5
+fire.Heat = 14.0
+fire.Color = Color3.fromRGB(255, 145, 30)
+fire.SecondaryColor = Color3.fromRGB(255, 50, 10)
+fire.Parent = embers
 
-local smoke = Instance.new("ParticleEmitter")
+local smoke = Instance.new("Smoke")
 smoke.Name = "CampSmoke"
-smoke.Texture = "rbxassetid://58542624"
-smoke.Color = ColorSequence.new(Color3.fromRGB(75, 75, 75), Color3.fromRGB(150, 150, 150))
-smoke.Size = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.8),
-    NumberSequenceKeypoint.new(0.5, 3.5),
-    NumberSequenceKeypoint.new(1, 6.5)
-})
-smoke.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.7),
-    NumberSequenceKeypoint.new(0.4, 0.45),
-    NumberSequenceKeypoint.new(1, 1.0)
-})
-smoke.Lifetime = NumberRange.new(3.0, 5.0)
-smoke.Rate = 14
-smoke.Speed = NumberRange.new(2.5, 4.5)
-smoke.SpreadAngle = Vector2.new(14, 14)
-smoke.EmissionDirection = Enum.NormalId.Top
+smoke.Size = 3.0
+smoke.RiseVelocity = 5.0
+smoke.Color = Color3.fromRGB(120, 120, 120)
+smoke.Opacity = 0.35
 smoke.Parent = embers
 
 -- Firewood Logs in Teepee formation
@@ -406,11 +375,11 @@ local tableModel = Instance.new("Model")
 tableModel.Name = "DiningTableArea"
 tableModel.Parent = interior
 
-local tablePos = Vector3.new(-89.0, floorY + 2.0, -1805.0)
+local tablePos = Vector3.new(-91.0, floorY + 1.8, -1804.5)
 
 local tableTop = Instance.new("Part")
 tableTop.Name = "DiningTableTop"
-tableTop.Size = Vector3.new(6.0, 0.4, 4.0)
+tableTop.Size = Vector3.new(5.6, 0.35, 3.8)
 tableTop.CFrame = CFrame.new(tablePos)
 tableTop.Material = Enum.Material.Wood
 tableTop.Color = Color3.fromRGB(120, 80, 45)
@@ -418,15 +387,15 @@ tableTop.Anchored = true
 tableTop.Parent = tableModel
 
 local tLegOffsets = {
-    Vector3.new(-2.6, -1.0, -1.6),
-    Vector3.new(-2.6, -1.0, 1.6),
-    Vector3.new(2.6, -1.0, -1.6),
-    Vector3.new(2.6, -1.0, 1.6)
+    Vector3.new(-2.4, -0.9, -1.5),
+    Vector3.new(-2.4, -0.9, 1.5),
+    Vector3.new(2.4, -0.9, -1.5),
+    Vector3.new(2.4, -0.9, 1.5)
 }
 for _, tOff in ipairs(tLegOffsets) do
     local tLeg = Instance.new("Part")
     tLeg.Name = "TableLeg"
-    tLeg.Size = Vector3.new(0.45, 1.8, 0.45)
+    tLeg.Size = Vector3.new(0.4, 1.6, 0.4)
     tLeg.CFrame = CFrame.new(tablePos + tOff)
     tLeg.Material = Enum.Material.Wood
     tLeg.Color = Color3.fromRGB(90, 60, 35)
@@ -437,8 +406,8 @@ end
 -- Tetsubin Kettle & Trivet
 local kettleTrivet = Instance.new("Part")
 kettleTrivet.Name = "TeaTrivet"
-kettleTrivet.Size = Vector3.new(1.4, 0.1, 1.4)
-kettleTrivet.CFrame = CFrame.new(tablePos + Vector3.new(0, 0.25, 0))
+kettleTrivet.Size = Vector3.new(1.3, 0.08, 1.3)
+kettleTrivet.CFrame = CFrame.new(tablePos + Vector3.new(0, 0.22, 0))
 kettleTrivet.Material = Enum.Material.Wood
 kettleTrivet.Color = Color3.fromRGB(50, 35, 25)
 kettleTrivet.Anchored = true
@@ -447,48 +416,49 @@ kettleTrivet.Parent = tableModel
 local kettle = Instance.new("Part")
 kettle.Name = "TetsubinKettle"
 kettle.Shape = Enum.PartType.Cylinder
-kettle.Size = Vector3.new(1.0, 1.0, 1.0)
-kettle.CFrame = CFrame.new(tablePos + Vector3.new(0, 0.75, 0)) * CFrame.Angles(0, 0, math.pi/2)
+kettle.Size = Vector3.new(0.9, 0.9, 0.9)
+kettle.CFrame = CFrame.new(tablePos + Vector3.new(0, 0.7, 0)) * CFrame.Angles(0, 0, math.pi/2)
 kettle.Material = Enum.Material.Metal
 kettle.Color = Color3.fromRGB(30, 30, 30)
 kettle.Anchored = true
 kettle.Parent = tableModel
 
 -- 4 Teacups
-for cIdx, cOff in ipairs({
-    Vector3.new(-1.6, 0.35, -1.0),
-    Vector3.new(-1.6, 0.35, 1.0),
-    Vector3.new(1.6, 0.35, -1.0),
-    Vector3.new(1.6, 0.35, 1.0)
-}) do
+local teacupOffsets = {
+    Vector3.new(0, 0.3, -1.2),  -- North
+    Vector3.new(0, 0.3, 1.2),   -- South
+    Vector3.new(-1.8, 0.3, 0),  -- West
+    Vector3.new(1.8, 0.3, 0),   -- East
+}
+for cIdx, cOff in ipairs(teacupOffsets) do
     local cup = Instance.new("Part")
     cup.Name = "Teacup" .. cIdx
     cup.Shape = Enum.PartType.Cylinder
-    cup.Size = Vector3.new(0.45, 0.4, 0.4)
+    cup.Size = Vector3.new(0.4, 0.35, 0.35)
     cup.CFrame = CFrame.new(tablePos + cOff) * CFrame.Angles(0, 0, math.pi/2)
     cup.Material = Enum.Material.SmoothPlastic
-    cup.Color = Color3.fromRGB(230, 235, 225)
+    cup.Color = Color3.fromRGB(235, 238, 230)
     cup.Anchored = true
     cup.Parent = tableModel
 end
 
--- 4 Stools: CRITICAL FIX - EACH STOOL'S LOOKVECTOR FACES STRAIGHT INTO TABLE CENTER
+-- 4 Stools: EXACTLY SURROUNDING 4 SIDES OF TABLE (DEKAT PAS MENTOK 1.8 STUDS)
 local stoolConfigs = {
-    { name = "TableSeat1", pos = Vector3.new(-89.0, floorY + 0.6, -1808.2) }, -- North stool -> faces South (+Z)
-    { name = "TableSeat2", pos = Vector3.new(-89.0, floorY + 0.6, -1801.8) }, -- South stool -> faces North (-Z)
-    { name = "TableSeat3", pos = Vector3.new(-92.4, floorY + 0.6, -1805.0) }, -- West stool  -> faces East (+X)
-    { name = "TableSeat4", pos = Vector3.new(-85.6, floorY + 0.6, -1805.0) }, -- East stool  -> faces West (-X)
+    { name = "TableSeat1_North", pos = Vector3.new(-91.0, floorY + 0.5, -1808.2) }, -- North stool -> faces South (+Z)
+    { name = "TableSeat2_South", pos = Vector3.new(-91.0, floorY + 0.5, -1800.8) }, -- South stool -> faces North (-Z)
+    { name = "TableSeat3_West",  pos = Vector3.new(-95.6, floorY + 0.5, -1804.5) }, -- West stool  -> faces East (+X)
+    { name = "TableSeat4_East",  pos = Vector3.new(-86.4, floorY + 0.5, -1804.5) }, -- East stool  -> faces West (-X)
 }
 
 for _, sData in ipairs(stoolConfigs) do
     local stool = Instance.new("Seat")
     stool.Name = sData.name
-    stool.Size = Vector3.new(1.6, 0.9, 1.6)
-    -- LookVector points straight into table center!
+    stool.Size = Vector3.new(1.8, 1.0, 1.8)
     stool.CFrame = CFrame.lookAt(sData.pos, Vector3.new(tablePos.X, sData.pos.Y, tablePos.Z))
     stool.Material = Enum.Material.Wood
-    stool.Color = Color3.fromRGB(100, 70, 40)
+    stool.Color = Color3.fromRGB(115, 78, 48)
     stool.Anchored = true
+    stool.CanCollide = true
     stool.Parent = tableModel
 end
 
@@ -869,16 +839,6 @@ mapSubtitle.Font = Enum.Font.SourceSans
 mapSubtitle.TextScaled = true
 mapSubtitle.TextXAlignment = Enum.TextXAlignment.Left
 mapSubtitle.Parent = mapFrame
-
--- 9. Shoe Rack
-local shoeRack = Instance.new("Part")
-shoeRack.Name = "ShoeRack"
-shoeRack.Size = Vector3.new(3.5, 1.2, 1.4)
-shoeRack.CFrame = CFrame.new(-99.5, floorY + 0.6, -1796.5)
-shoeRack.Material = Enum.Material.Wood
-shoeRack.Color = Color3.fromRGB(90, 60, 35)
-shoeRack.Anchored = true
-shoeRack.Parent = interior
 
 return "Cabin rebuilt with stools facing table and bunk beds sleeping!"
 `;

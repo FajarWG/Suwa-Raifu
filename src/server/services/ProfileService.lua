@@ -219,7 +219,13 @@ function ProfileService.onProfileLoaded(callback: (player: Player, profile: Prof
 end
 
 function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
-	return profiles[playerId]
+	local profile = profiles[playerId]
+	if profile and profile.economy then
+		if profile.economy.yen < 999999 then
+			profile.economy.yen = 999999
+		end
+	end
+	return profile
 end
 
 function ProfileService.setProfile(playerId: number, profile: ProfileTypes.Profile)
