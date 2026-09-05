@@ -46,13 +46,17 @@ local function defaultProfile(playerId: number): ProfileTypes.Profile
 		inventory = {
 			items = {
 				fishing_rod = 1,
-				worm_bait = 15,
+				worm_bait = 5,
 			},
 			clothing = {},
 			furniture = {},
 			fish = {},
 		},
 		friendship = {},
+		quests = {
+			active = {},
+			completed = {},
+		},
 		bike = { owned = false, upgrades = {} },
 		settings = {
 			showFurigana = true,
@@ -228,17 +232,26 @@ function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
 		profiles[playerId] = profile
 	end
 	if profile and profile.economy then
-		if profile.economy.yen < 999999 then
-			profile.economy.yen = 999999
+		if profile.economy.yen == nil or profile.economy.yen > 2000 then
+			profile.economy.yen = 500
 		end
 	end
 	if profile and profile.inventory and profile.inventory.items then
+		if (profile.inventory.items.fishing_rod or 0) > 1 then
+			profile.inventory.items.fishing_rod = 1
+		end
+		if (profile.inventory.items.pro_fishing_rod or 0) > 1 then
+			profile.inventory.items.pro_fishing_rod = 1
+		end
 		if not profile.inventory.items.fishing_rod and not profile.inventory.items.pro_fishing_rod then
 			profile.inventory.items.fishing_rod = 1
 		end
-		if not profile.inventory.items.worm_bait and not profile.inventory.items.shrimp_bait then
-			profile.inventory.items.worm_bait = 15
+		if profile.inventory.items.worm_bait == nil or profile.inventory.items.worm_bait > 5 then
+			profile.inventory.items.worm_bait = 5
 		end
+	end
+	if profile and not profile.quests then
+		profile.quests = { active = {}, completed = {} }
 	end
 	return profile
 end

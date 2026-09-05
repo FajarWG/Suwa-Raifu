@@ -51,6 +51,8 @@ local function clearRows(container: Instance)
 end
 
 local currentShopId: string? = nil
+local currentShopTitle: string = 'Shop'
+local currentShopData: any = nil
 
 local function getItemName(id: string): string
 	if FishingData.itemNames and FishingData.itemNames[id] then
@@ -87,8 +89,16 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	action.Parent = row
 	corner(action, 6)
 
+	local isDrink = id == 'ramune' or id == 'matcha_tea' or id == 'ice_coffee' or id == 'fisherman_tea'
+	local isFood = id == 'dango' or id == 'yakisoba' or id == 'taiyaki' or id == 'onigiri' or id == 'umeboshi_onigiri' or string.find(id, 'ice_cream') ~= nil or id == 'apple_sorbet'
+	local isBait = id == 'worm_bait' or id == 'shrimp_bait' or id == 'golden_lure'
+	local isRod = id == 'fishing_rod' or id == 'pro_fishing_rod'
+	local isJunk = id == 'old_boot' or id == 'empty_can'
+
 	if category == 'fish' then
-		action.Text = 'Sell'
+		local def = FishingData.fish and FishingData.fish[id]
+		local price = def and (def.baseValue or def.price) or 150
+		action.Text = `Sell (+¥{price})`
 		action.BackgroundColor3 = Color3.fromRGB(156, 92, 44)
 		action.Activated:Connect(function()
 			RemoteController.fire('InventoryAction', {
@@ -97,9 +107,58 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 				id = id,
 			})
 		end)
-	else
-		action.Text = 'Take Out'
+	elseif isJunk then
+		local price = if id == 'old_boot' then 5 else 3
+		action.Text = `Sell (+¥{price})`
+		action.BackgroundColor3 = Color3.fromRGB(130, 90, 60)
+		action.Activated:Connect(function()
+			RemoteController.fire('InventoryAction', {
+				action = 'sell',
+				category = 'item',
+				id = id,
+			})
+		end)
+	elseif isBait then
+		action.Text = 'Bait'
+		action.BackgroundColor3 = Color3.fromRGB(115, 125, 135)
+		action.AutoButtonColor = false
+		action.Active = false
+	elseif isFood then
+		action.Text = 'Eat'
+		action.BackgroundColor3 = Color3.fromRGB(48, 120, 75)
+		action.Activated:Connect(function()
+			RemoteController.fire('InventoryAction', {
+				action = 'equip',
+				category = 'item',
+				id = id,
+			})
+			bagPanel.Visible = false
+		end)
+	elseif isDrink then
+		action.Text = 'Drink'
+		action.BackgroundColor3 = Color3.fromRGB(38, 110, 125)
+		action.Activated:Connect(function()
+			RemoteController.fire('InventoryAction', {
+				action = 'equip',
+				category = 'item',
+				id = id,
+			})
+			bagPanel.Visible = false
+		end)
+	elseif isRod then
+		action.Text = 'Equip'
 		action.BackgroundColor3 = Color3.fromRGB(48, 98, 68)
+		action.Activated:Connect(function()
+			RemoteController.fire('InventoryAction', {
+				action = 'equip',
+				category = 'item',
+				id = id,
+			})
+			bagPanel.Visible = false
+		end)
+	else
+		action.Text = 'Use'
+		action.BackgroundColor3 = Color3.fromRGB(60, 95, 80)
 		action.Activated:Connect(function()
 			RemoteController.fire('InventoryAction', {
 				action = 'equip',
@@ -121,8 +180,13 @@ local function makeShopRow(item: any, order: number)
 	row.Parent = shopList
 	corner(row, 8)
 
-	local priceText = if not item.price or item.price == 0 then 'FREE (無料)' else `¥{item.price}`
-	local label = textLabel(row, `{item.name}   {priceText}`, UDim2.new(1, -120, 1, 0), 15)
+	local isFree = not item.price or item.price == 0
+	local isOwnedRod = (item.id == 'fishing_rod' or item.id == 'pro_fishing_rod') and (latestSnapshot and latestSnapshot.items and (latestSnapshot.items[item.id] or 0) >= 1)
+	local isMaxWorm = item.id == 'worm_bait' and (latestSnapshot and latestSnapshot.items and (latestSnapshot.items.worm_bait or 0) >= 5)
+	local isDisabled = isOwnedRod or isMaxWorm
+
+	local priceText = if isOwnedRod then 'MAX (1/1)' elseif isMaxWorm then 'MAX (5/5)' elseif isFree then 'FREE (無料)' else `¥{item.price}`
+	local label = textLabel(row, `{item.name}   {priceText}`, UDim2.new(1, -120, 1, 0), 14)
 	label.Position = UDim2.fromOffset(12, 0)
 	label.ZIndex = 13
 
@@ -130,16 +194,38 @@ local function makeShopRow(item: any, order: number)
 	buy.AnchorPoint = Vector2.new(1, 0.5)
 	buy.Position = UDim2.new(1, -8, 0.5, 0)
 	buy.Size = UDim2.fromOffset(92, 34)
-	buy.BackgroundColor3 = Color3.fromRGB(48, 88, 62)
-	buy.Text = if not item.price or item.price == 0 then 'Get' else 'Buy'
+	buy.BackgroundColor3 = if isDisabled then Color3.fromRGB(115, 125, 135) elseif isFree then Color3.fromRGB(48, 108, 62) else Color3.fromRGB(156, 92, 44)
+	buy.Text = if isOwnedRod then 'Owned' elseif isMaxWorm then 'Max (5/5)' elseif isFree then 'Get' else 'Buy'
 	buy.TextColor3 = Color3.new(1, 1, 1)
 	buy.Font = Enum.Font.GothamBold
 	buy.TextSize = 14
 	buy.ZIndex = 13
+	buy.AutoButtonColor = not isDisabled
 	buy.Parent = row
 	corner(buy, 6)
 
 	buy.Activated:Connect(function()
+		if isOwnedRod then
+			showToast('You already own this fishing rod!')
+			return
+		end
+		if isMaxWorm then
+			showToast('You already have max Worm Bait (5/5)!')
+			return
+		end
+		local price = item.price or 0
+		if price > 0 and latestSnapshot and latestSnapshot.yen and latestSnapshot.yen < price then
+			showToast('Not enough yen.')
+			return
+		end
+		if price > 0 and latestSnapshot and latestSnapshot.yen then
+			latestSnapshot.yen = math.max(0, latestSnapshot.yen - price)
+			local title = if currentShopTitle and currentShopTitle ~= '' then currentShopTitle else 'Shop'
+			shopTitle.Text = `{title}  (¥{latestSnapshot.yen})`
+			if yenLabel then
+				yenLabel.Text = `Bag   (¥{latestSnapshot.yen})`
+			end
+		end
 		RemoteController.fire('ShopBuy', {
 			shopId = currentShopId or 'island_festival',
 			itemId = item.id,
@@ -160,7 +246,7 @@ end
 local function renderInventory(data: any)
 	latestSnapshot = data
 	clearRows(bagList)
-	yenLabel.Text = `Bag   (¥{data.yen or 999999})`
+	yenLabel.Text = `Bag   (¥{data.yen or 500})`
 
 	local order = 1
 	for id, item in pairs(data.items or {}) do
@@ -181,9 +267,12 @@ local function renderInventory(data: any)
 end
 
 local function renderShop(data: any)
+	currentShopData = data
 	clearRows(shopList)
 	currentShopId = data.shopId or data.id or 'ice_cream'
-	shopTitle.Text = `{data.title or data.name or 'Shop'}  (Unlimited Yen)`
+	currentShopTitle = data.title or data.name or 'Shop'
+	local yen = if latestSnapshot and latestSnapshot.yen ~= nil then latestSnapshot.yen else (if data.yen ~= nil then data.yen else 500)
+	shopTitle.Text = `{currentShopTitle}  (¥{yen})`
 	local items = data.catalog or data.items or {}
 	for order, item in ipairs(items) do
 		makeShopRow(item, order)
@@ -205,6 +294,7 @@ local function buildGui()
 	gui = Instance.new('ScreenGui')
 	gui.Name = 'InventoryGui'
 	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = playerGui
 
 	local touch = UIScaling.isTouch()
@@ -352,6 +442,20 @@ local function buildGui()
 end
 
 function InventoryController.init()
+	-- Permanently disable Roblox default Backpack CoreGui hotbar
+	local StarterGui = game:GetService('StarterGui')
+	task.spawn(function()
+		local attempts = 0
+		while attempts < 20 do
+			local ok = pcall(function()
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+			end)
+			if ok then break end
+			task.wait(0.2)
+			attempts += 1
+		end
+	end)
+
 	buildGui()
 
 	UserInputService.InputBegan:Connect(function(input, processed)
@@ -372,6 +476,9 @@ function InventoryController.init()
 		latestSnapshot = data
 		if bagPanel and bagPanel.Visible then
 			renderInventory(data)
+		end
+		if shopPanel and shopPanel.Visible and currentShopData then
+			renderShop(currentShopData)
 		end
 	end
 
@@ -400,6 +507,103 @@ function InventoryController.init()
 			latestSnapshot = snapshot
 		end
 	end)
+
+	-- Consumable Tool Equipping & Screen Action Button
+	local function bindCharacter(char: Model)
+		local currentTool: Tool? = nil
+		local actionGui: ScreenGui? = nil
+		local toolActivatedConn: RBXScriptConnection? = nil
+
+		local function cleanupAction()
+			if actionGui then
+				actionGui:Destroy()
+				actionGui = nil
+			end
+			if toolActivatedConn then
+				toolActivatedConn:Disconnect()
+				toolActivatedConn = nil
+			end
+			currentTool = nil
+		end
+
+		char.ChildAdded:Connect(function(child)
+			if child:IsA('Tool') and child:GetAttribute('IsConsumable') then
+				currentTool = child
+				local isDrink = child:GetAttribute('IsDrink')
+				local itemId = child:GetAttribute('ItemId')
+
+				local function triggerConsume()
+					RemoteController.fire('InventoryAction', {
+						action = 'consume',
+						id = itemId or (currentTool and currentTool:GetAttribute('ItemId')),
+					})
+				end
+
+				if toolActivatedConn then
+					toolActivatedConn:Disconnect()
+				end
+				toolActivatedConn = child.Activated:Connect(triggerConsume)
+
+				local player = Players.LocalPlayer
+				local playerGui = player and player:FindFirstChildOfClass('PlayerGui')
+				if playerGui then
+					if actionGui then actionGui:Destroy() end
+					actionGui = Instance.new('ScreenGui')
+					actionGui.Name = 'ConsumeActionGui'
+					actionGui.ResetOnSpawn = false
+					actionGui.DisplayOrder = 20
+					actionGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+					local btn = Instance.new('TextButton')
+					btn.Name = 'ConsumeButton'
+					btn.AnchorPoint = Vector2.new(0.5, 1)
+					btn.Position = UDim2.new(0.5, 0, 1, -85)
+					btn.Size = UDim2.fromOffset(220, 48)
+					btn.BackgroundColor3 = if isDrink then Color3.fromRGB(38, 110, 125) else Color3.fromRGB(48, 120, 75)
+					btn.Text = ''
+					btn.AutoButtonColor = true
+					btn.ZIndex = 25
+					btn.Parent = actionGui
+
+					corner(btn, 24)
+
+					-- Crisp border stroke only (does not blur text)
+					local stroke = Instance.new('UIStroke')
+					stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+					stroke.Color = Color3.fromRGB(255, 255, 255)
+					stroke.Thickness = 1.5
+					stroke.Transparency = 0.25
+					stroke.Parent = btn
+
+					-- High-definition, sharp text label without text stroke blur
+					local label = Instance.new('TextLabel')
+					label.Size = UDim2.new(1, 0, 1, 0)
+					label.BackgroundTransparency = 1
+					label.Text = if isDrink then 'Drink (Click / Tap)' else 'Eat (Click / Tap)'
+					label.TextColor3 = Color3.new(1, 1, 1)
+					label.Font = Enum.Font.GothamBold
+					label.TextSize = 16
+					label.ZIndex = 26
+					label.Parent = btn
+
+					btn.Activated:Connect(triggerConsume)
+					actionGui.Parent = playerGui
+				end
+			end
+		end)
+
+		char.ChildRemoved:Connect(function(child)
+			if child == currentTool then
+				cleanupAction()
+			end
+		end)
+	end
+
+	local player = Players.LocalPlayer
+	if player.Character then
+		bindCharacter(player.Character)
+	end
+	player.CharacterAdded:Connect(bindCharacter)
 end
 
 return InventoryController

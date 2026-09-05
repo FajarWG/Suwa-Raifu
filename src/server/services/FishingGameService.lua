@@ -322,15 +322,24 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 
 	elseif string.find(itemId, 'ice_cream') or itemId == 'apple_sorbet' then
 		isFood = true
-		handle.Shape = Enum.PartType.Cylinder
-		handle.Size = Vector3.new(1.4, 0.8, 0.8)
-		handle.Color = Color3.fromRGB(195, 145, 90)
-		handle.CFrame *= CFrame.Angles(0, 0, math.rad(90))
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
 
+		-- Waffle cone standing vertically upright (+Y)
+		local cone = Instance.new('Part')
+		cone.Name = 'Cone'
+		cone.Shape = Enum.PartType.Cylinder
+		cone.Size = Vector3.new(0.9, 0.65, 0.65)
+		cone.Color = Color3.fromRGB(215, 160, 100)
+		cone.Material = Enum.Material.SmoothPlastic
+		cone.Parent = tool
+		weldTo(handle, cone, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		-- Scoop of ice cream directly on top of cone (+Y)
 		local scoop = Instance.new('Part')
 		scoop.Name = 'Scoop'
 		scoop.Shape = Enum.PartType.Ball
-		scoop.Size = Vector3.new(1.25, 1.25, 1.25)
+		scoop.Size = Vector3.new(0.9, 0.9, 0.9)
 		scoop.Color = if itemId == 'matcha_ice_cream'
 			then Color3.fromRGB(126, 160, 91)
 			elseif itemId == 'apple_sorbet' then Color3.fromRGB(239, 170, 139)
@@ -339,49 +348,89 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 			else Color3.fromRGB(244, 232, 203)
 		scoop.Material = Enum.Material.SmoothPlastic
 		scoop.Parent = tool
-		weldTo(handle, scoop, CFrame.new(0.9, 0, 0))
+		weldTo(handle, scoop, CFrame.new(0, 0.65, 0))
+
+		-- Mini topping on top
+		local topping = Instance.new('Part')
+		topping.Name = 'Topping'
+		topping.Shape = Enum.PartType.Ball
+		topping.Size = Vector3.new(0.4, 0.4, 0.4)
+		topping.Color = scoop.Color:Lerp(Color3.new(1, 1, 1), 0.25)
+		topping.Material = Enum.Material.SmoothPlastic
+		topping.Parent = tool
+		weldTo(handle, topping, CFrame.new(0, 1.05, 0))
 
 	elseif itemId == 'ramune' then
 		isDrink = true
-		handle.Shape = Enum.PartType.Cylinder
-		handle.Size = Vector3.new(1.8, 0.65, 0.65)
-		handle.Color = Color3.fromRGB(100, 205, 235)
-		handle.Material = Enum.Material.Glass
-		handle.Transparency = 0.35
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
 
+		-- Glass bottle standing vertically upright (+Y)
+		local bottle = Instance.new('Part')
+		bottle.Name = 'Bottle'
+		bottle.Shape = Enum.PartType.Cylinder
+		bottle.Size = Vector3.new(1.3, 0.62, 0.62)
+		bottle.Color = Color3.fromRGB(100, 205, 235)
+		bottle.Material = Enum.Material.Glass
+		bottle.Transparency = 0.35
+		bottle.Parent = tool
+		weldTo(handle, bottle, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		-- Bottle neck
+		local neck = Instance.new('Part')
+		neck.Name = 'Neck'
+		neck.Shape = Enum.PartType.Cylinder
+		neck.Size = Vector3.new(0.35, 0.42, 0.42)
+		neck.Color = Color3.fromRGB(100, 205, 235)
+		neck.Material = Enum.Material.Glass
+		neck.Transparency = 0.35
+		neck.Parent = tool
+		weldTo(handle, neck, CFrame.new(0, 0.72, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		-- Cap on top
 		local cap = Instance.new('Part')
 		cap.Name = 'Cap'
 		cap.Shape = Enum.PartType.Cylinder
-		cap.Size = Vector3.new(0.3, 0.45, 0.45)
+		cap.Size = Vector3.new(0.2, 0.46, 0.46)
 		cap.Color = Color3.fromRGB(230, 240, 245)
 		cap.Material = Enum.Material.SmoothPlastic
 		cap.Parent = tool
-		weldTo(handle, cap, CFrame.new(0, 1.0, 0))
+		weldTo(handle, cap, CFrame.new(0, 0.95, 0) * CFrame.Angles(0, 0, math.rad(90)))
 
 	elseif itemId == 'matcha_tea' or itemId == 'ice_coffee' then
 		isDrink = true
-		handle.Shape = Enum.PartType.Cylinder
-		handle.Size = Vector3.new(1.6, 0.8, 0.8)
-		handle.Color = if itemId == 'ice_coffee' then Color3.fromRGB(65, 40, 25) else Color3.fromRGB(90, 145, 60)
-		handle.Material = Enum.Material.Glass
-		handle.Transparency = 0.2
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
 
+		-- Cup standing vertically upright (+Y)
+		local cup = Instance.new('Part')
+		cup.Name = 'Cup'
+		cup.Shape = Enum.PartType.Cylinder
+		cup.Size = Vector3.new(1.3, 0.75, 0.75)
+		cup.Color = if itemId == 'ice_coffee' then Color3.fromRGB(65, 40, 25) else Color3.fromRGB(90, 145, 60)
+		cup.Material = Enum.Material.Glass
+		cup.Transparency = 0.2
+		cup.Parent = tool
+		weldTo(handle, cup, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		-- Lid on top
 		local lid = Instance.new('Part')
 		lid.Name = 'Lid'
 		lid.Shape = Enum.PartType.Cylinder
-		lid.Size = Vector3.new(0.3, 0.85, 0.85)
+		lid.Size = Vector3.new(0.18, 0.8, 0.8)
 		lid.Color = Color3.fromRGB(245, 245, 245)
 		lid.Material = Enum.Material.SmoothPlastic
 		lid.Parent = tool
-		weldTo(handle, lid, CFrame.new(0, 0.9, 0))
+		weldTo(handle, lid, CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)))
 
+		-- Straw popping out with slight natural tilt
 		local straw = Instance.new('Part')
 		straw.Name = 'Straw'
-		straw.Size = Vector3.new(0.1, 1.2, 0.1)
+		straw.Size = Vector3.new(0.08, 0.9, 0.08)
 		straw.Color = if itemId == 'ice_coffee' then Color3.fromRGB(200, 150, 80) else Color3.fromRGB(70, 170, 90)
 		straw.Material = Enum.Material.SmoothPlastic
 		straw.Parent = tool
-		weldTo(handle, straw, CFrame.new(0.15, 1.2, 0) * CFrame.Angles(0, 0, math.rad(-15)))
+		weldTo(handle, straw, CFrame.new(0.08, 1.0, 0) * CFrame.Angles(0, 0, math.rad(-12)))
 
 	elseif itemId == 'sparkler_pack' then
 		handle.Size = Vector3.new(0.45, 2.8, 0.45)
@@ -476,19 +525,27 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 
 	elseif itemId == 'fisherman_tea' then
 		isDrink = true
-		handle.Shape = Enum.PartType.Cylinder
-		handle.Size = Vector3.new(1.4, 0.75, 0.75)
-		handle.Color = Color3.fromRGB(45, 95, 55)
-		handle.Material = Enum.Material.Metal
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		-- Green tea can standing vertically upright (+Y)
+		local can = Instance.new('Part')
+		can.Name = 'Can'
+		can.Shape = Enum.PartType.Cylinder
+		can.Size = Vector3.new(1.2, 0.72, 0.72)
+		can.Color = Color3.fromRGB(45, 95, 55)
+		can.Material = Enum.Material.Metal
+		can.Parent = tool
+		weldTo(handle, can, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
 
 		local lid = Instance.new('Part')
 		lid.Name = 'CanTop'
 		lid.Shape = Enum.PartType.Cylinder
-		lid.Size = Vector3.new(0.15, 0.72, 0.72)
+		lid.Size = Vector3.new(0.12, 0.7, 0.7)
 		lid.Color = Color3.fromRGB(200, 205, 210)
 		lid.Material = Enum.Material.Metal
 		lid.Parent = tool
-		weldTo(handle, lid, CFrame.new(0, 0.72, 0))
+		weldTo(handle, lid, CFrame.new(0, 0.63, 0) * CFrame.Angles(0, 0, math.rad(90)))
 
 	elseif itemId == 'umeboshi_onigiri' then
 		isFood = true
@@ -538,17 +595,20 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 
 	-- Interactivity for food & drinks
 	if isFood or isDrink then
+		tool:SetAttribute('IsConsumable', true)
+		tool:SetAttribute('IsDrink', isDrink)
+
 		local consuming = false
 		local function consume()
 			if consuming then return end
 			consuming = true
 
 			if isDrink then
-				-- Tilt drink towards mouth
-				tool.GripForward = Vector3.new(0, -0.759, -0.651)
-				tool.GripPos = Vector3.new(1.5, -0.5, 0.3)
+				-- Natural tilt of drink towards mouth
+				tool.GripPos = Vector3.new(0, 0.1, 0.35)
+				tool.GripForward = Vector3.new(0, -0.707, -0.707)
 				tool.GripRight = Vector3.new(1, 0, 0)
-				tool.GripUp = Vector3.new(0, 0.651, -0.759)
+				tool.GripUp = Vector3.new(0, 0.707, -0.707)
 
 				local sound = Instance.new('Sound')
 				sound.SoundId = 'http://www.roblox.com/asset/?id=10722059'
@@ -557,13 +617,13 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 				sound:Play()
 
 				RemoteRegistry.fireClient(player, 'ShopResult', true, `*Gulp gulp* Drank {displayName}! Refreshing!`)
-				task.wait(1.2)
+				task.wait(1.0)
 			else
-				-- Bring food up to mouth
-				tool.GripForward = Vector3.new(0.439, 0.878, 0.189)
-				tool.GripPos = Vector3.new(-0.3, 1.2, -1.3)
-				tool.GripRight = Vector3.new(0.0844, 0.169, -0.982)
-				tool.GripUp = Vector3.new(0.894, -0.347, 0)
+				-- Bring food up toward mouth smoothly
+				tool.GripPos = Vector3.new(0, 0.15, 0.35)
+				tool.GripForward = Vector3.new(0, -0.342, -0.94)
+				tool.GripRight = Vector3.new(1, 0, 0)
+				tool.GripUp = Vector3.new(0, 0.94, -0.342)
 
 				local sound = Instance.new('Sound')
 				sound.SoundId = 'http://www.roblox.com/asset/?id=15047813'
@@ -572,35 +632,26 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 				sound:Play()
 
 				RemoteRegistry.fireClient(player, 'ShopResult', true, `*Nom nom* Ate {displayName}! Delicious!`)
-				task.wait(0.9)
+				task.wait(0.8)
 			end
 
 			InventoryService.removeItem(player.UserId, itemId, 1)
 			local profile = ProfileService.getProfile(player.UserId)
 			if profile and profile.progress then
-				profile.progress.energy = math.min(100, (profile.progress.energy or 50) + (if isDrink then 15 else 20))
-				profile.progress.hunger = math.max(0, (profile.progress.hunger or 0) - (if isDrink then 10 else 30))
+				profile.progress.energy = math.min(100, (profile.progress.energy or 50) + (if isDrink then 15 else 25))
+				profile.progress.hunger = math.max(0, (profile.progress.hunger or 0) - (if isDrink then 10 else 35))
 			end
 			pushInventory(player)
 			tool:Destroy()
 		end
 
 		tool.Activated:Connect(consume)
-		tool:SetAttribute('IsConsumable', true)
 
-		local helper = Instance.new('LocalScript')
-		helper.Name = 'ConsumeClick'
-		helper.Source = [=[
-			local tool = script.Parent
-			local remotes = game:GetService("ReplicatedStorage"):WaitForChild("SuwaRemotes", 5)
-			local action = remotes and remotes:WaitForChild("InventoryAction", 5)
-			tool.Activated:Connect(function()
-				if action then
-					action:FireServer({ action = "consume" })
-				end
-			end)
-		]=]
-		helper.Parent = tool
+		local consumeBindable = Instance.new('BindableFunction')
+		consumeBindable.Name = 'DoConsume'
+		consumeBindable.OnInvoke = consume
+		consumeBindable.Parent = tool
+
 	end
 
 	tool.Parent = backpack
@@ -818,10 +869,12 @@ local function beginFishing(player: Player, spot: BasePart)
 		profile.inventory.items.fishing_rod = 1
 	end
 
-	-- Check for bait (worm, shrimp, lure). If none, provide 15 worm baits!
+	-- Check for bait (worm, shrimp, lure). If none, notify player!
 	local hasBait = (profile.inventory.items.worm_bait or 0) > 0 or (profile.inventory.items.shrimp_bait or 0) > 0 or (profile.inventory.items.golden_lure or 0) > 0
 	if not hasBait then
-		profile.inventory.items.worm_bait = 15
+		sendState(player, 'FAILED', { message = 'No bait! Visit Suwako Fishing Supply for free Worm Bait (無料)!' })
+		RemoteRegistry.fireClient(player, 'ShopResult', false, 'No bait left! Get free Worm Bait at the shop (無料)!')
+		return
 	end
 
 	local root = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
@@ -993,7 +1046,7 @@ local function buildShop(parent: Model, shopId: string, position: Vector3, color
 		shopData.title = shopData.name
 		shopData.catalog = shopData.items
 		local profile = ProfileService.getProfile(player.UserId)
-		shopData.yen = profile and profile.economy.yen or 999999
+		shopData.yen = profile and profile.economy.yen or 500
 		RemoteRegistry.fireClient(player, 'OpenShop', shopData)
 	end)
 
@@ -1094,6 +1147,25 @@ local function buyItem(player: Player, payload: any)
 		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Profile is still loading.')
 		return
 	end
+
+	-- Prevent buying duplicate fishing rods (max 1)
+	if selected.id == 'fishing_rod' or selected.id == 'pro_fishing_rod' then
+		local owned = (profile.inventory and profile.inventory.items and profile.inventory.items[selected.id]) or 0
+		if owned >= 1 then
+			RemoteRegistry.fireClient(player, 'ShopResult', false, 'You already own this fishing rod!')
+			return
+		end
+	end
+
+	-- Worm Bait maximum limit of 5
+	if selected.id == 'worm_bait' then
+		local currentCount = (profile.inventory and profile.inventory.items and profile.inventory.items.worm_bait) or 0
+		if currentCount >= 5 then
+			RemoteRegistry.fireClient(player, 'ShopResult', false, 'You already have max Worm Bait (5/5)!')
+			return
+		end
+	end
+
 	local price = selected.price or 0
 	if price > 0 and profile.economy.yen < price then
 		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Not enough yen.')
@@ -1102,9 +1174,58 @@ local function buyItem(player: Player, payload: any)
 	if price > 0 then
 		profile.economy.yen -= price
 	end
-	InventoryService.addItem(player.UserId, selected.id, selected.amount or 1)
+
+	local amountToAdd = selected.amount or 1
+	if selected.id == 'worm_bait' then
+		local currentCount = (profile.inventory and profile.inventory.items and profile.inventory.items.worm_bait) or 0
+		amountToAdd = math.min(amountToAdd, math.max(1, 5 - currentCount))
+	end
+
+	InventoryService.addItem(player.UserId, selected.id, amountToAdd)
 	pushInventory(player)
 	RemoteRegistry.fireClient(player, 'ShopResult', true, 'Added ' .. selected.name .. ' to Bag!')
+end
+
+local function consumeDirect(player: Player, itemId: string)
+	local profile = ProfileService.getProfile(player.UserId)
+	if not profile or not profile.inventory or not profile.inventory.items then
+		return
+	end
+	if (profile.inventory.items[itemId] or 0) <= 0 then
+		return
+	end
+	local isDrink = itemId == 'ramune' or itemId == 'matcha_tea' or itemId == 'ice_coffee' or itemId == 'fisherman_tea'
+	local isFood = itemId == 'dango' or itemId == 'yakisoba' or itemId == 'taiyaki' or itemId == 'onigiri' or itemId == 'umeboshi_onigiri' or string.find(itemId, 'ice_cream') ~= nil or itemId == 'apple_sorbet'
+	if not isFood and not isDrink then
+		return
+	end
+
+	InventoryService.removeItem(player.UserId, itemId, 1)
+	if profile.progress then
+		profile.progress.energy = math.min(100, (profile.progress.energy or 50) + (if isDrink then 15 else 25))
+		profile.progress.hunger = math.max(0, (profile.progress.hunger or 0) - (if isDrink then 10 else 35))
+	end
+	pushInventory(player)
+
+	local displayName = FishingData.itemNames[itemId] or itemId
+	RemoteRegistry.fireClient(player, 'ShopResult', true, if isDrink then `*Gulp gulp* Drank {displayName}! Refreshing!` else `*Nom nom* Ate {displayName}! Delicious!`)
+
+	local char = player.Character
+	local head = char and (char:FindFirstChild('Head') or char:FindFirstChild('HumanoidRootPart'))
+	if head then
+		local sound = Instance.new('Sound')
+		sound.SoundId = if isDrink then 'http://www.roblox.com/asset/?id=10722059' else 'http://www.roblox.com/asset/?id=15047813'
+		sound.Volume = 1.0
+		sound.Parent = head
+		sound:Play()
+		game:GetService('Debris'):AddItem(sound, 3)
+	end
+	if char then
+		local tool = char:FindFirstChildOfClass('Tool')
+		if tool and tool:GetAttribute('ItemId') == itemId then
+			tool:Destroy()
+		end
+	end
 end
 
 local function inventoryAction(player: Player, payload: any)
@@ -1115,7 +1236,14 @@ local function inventoryAction(player: Player, payload: any)
 		local char = player.Character
 		local tool = char and char:FindFirstChildOfClass('Tool')
 		if tool and tool:GetAttribute('IsConsumable') then
-			tool:Activate()
+			local doConsume = tool:FindFirstChild('DoConsume')
+			if doConsume and doConsume:IsA('BindableFunction') then
+				doConsume:Invoke()
+				return
+			end
+		end
+		if typeof(payload.id) == 'string' then
+			consumeDirect(player, payload.id)
 		end
 		return
 	end
@@ -1133,7 +1261,7 @@ local function inventoryAction(player: Player, payload: any)
 		end
 		if payload.action == 'sell' then
 			local def = FishingData.fish and FishingData.fish[id]
-			local price = def and def.price or 150
+			local price = def and (def.baseValue or def.price) or 150
 			profile.inventory.fish[id] -= 1
 			if profile.inventory.fish[id] <= 0 then
 				profile.inventory.fish[id] = nil
@@ -1148,6 +1276,23 @@ local function inventoryAction(player: Player, payload: any)
 			createFishTool(player, id, definition.name, definition.color)
 		end
 	else
+		-- Junk selling
+		if payload.action == 'sell' and (id == 'old_boot' or id == 'empty_can') then
+			if (profile.inventory.items[id] or 0) <= 0 then return end
+			local price = if id == 'old_boot' then 5 else 3
+			InventoryService.removeItem(player.UserId, id, 1)
+			profile.economy.yen += price
+			pushInventory(player)
+			RemoteRegistry.fireClient(player, 'ShopResult', true, 'Sold ' .. (FishingData.itemNames[id] or id) .. ' for ¥' .. tostring(price) .. '!')
+			return
+		end
+
+		-- Bait cannot be equipped as a tool
+		if id == 'worm_bait' or id == 'shrimp_bait' or id == 'golden_lure' then
+			RemoteRegistry.fireClient(player, 'ShopResult', false, 'Bait is used automatically when casting!')
+			return
+		end
+
 		if (profile.inventory.items[id] or 0) <= 0 then
 			return
 		end

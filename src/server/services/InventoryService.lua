@@ -32,6 +32,10 @@ function InventoryService.removeItem(playerId: number, itemId: string, count: nu
 	if not profile then
 		return { ok = false, error = 'Profile not loaded' }
 	end
+	local current = profile.inventory.items[itemId] or 0
+	if current < count then
+		return { ok = false, error = 'Not enough items' }
+	end
 	local remaining = current - count
 	if remaining <= 0 then
 		profile.inventory.items[itemId] = nil
