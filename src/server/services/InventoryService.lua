@@ -32,12 +32,13 @@ function InventoryService.removeItem(playerId: number, itemId: string, count: nu
 	if not profile then
 		return { ok = false, error = 'Profile not loaded' }
 	end
-	local current = profile.inventory.items[itemId] or 0
-	if current < count then
-		return { ok = false, error = 'Not enough items' }
+	local remaining = current - count
+	if remaining <= 0 then
+		profile.inventory.items[itemId] = nil
+	else
+		profile.inventory.items[itemId] = remaining
 	end
-	profile.inventory.items[itemId] = current - count
-	return { ok = true, data = profile.inventory.items[itemId] }
+	return { ok = true, data = profile.inventory.items[itemId] or 0 }
 end
 
 function InventoryService.addFish(playerId: number, fishId: string, count: number): ProfileTypes.Result<number>

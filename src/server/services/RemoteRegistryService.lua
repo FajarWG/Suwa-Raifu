@@ -13,26 +13,35 @@ local Remotes = require(ReplicatedStorage:WaitForChild('Shared'):WaitForChild('r
 -- folder of its own. Two siblings sharing that name make WaitForChild('Remotes')
 -- ambiguous, and it was resolving to the wrong one -- every remote lookup on
 -- the client silently missed.
-local remotesFolder = Instance.new('Folder')
-remotesFolder.Name = 'SuwaRemotes'
-remotesFolder.Parent = ReplicatedStorage
+local remotesFolder = ReplicatedStorage:FindFirstChild('SuwaRemotes') :: Folder
+if not remotesFolder then
+	remotesFolder = Instance.new('Folder')
+	remotesFolder.Name = 'SuwaRemotes'
+	remotesFolder.Parent = ReplicatedStorage
+end
 
 local events: { [string]: RemoteEvent } = {}
 local functions: { [string]: RemoteFunction } = {}
 
 for _, name in Remotes.events do
 	Remotes.assertValid(name)
-	local event = Instance.new('RemoteEvent')
-	event.Name = name
-	event.Parent = remotesFolder
+	local event = remotesFolder:FindFirstChild(name) :: RemoteEvent
+	if not event then
+		event = Instance.new('RemoteEvent')
+		event.Name = name
+		event.Parent = remotesFolder
+	end
 	events[name] = event
 end
 
 for _, name in Remotes.functions do
 	Remotes.assertValid(name)
-	local fn = Instance.new('RemoteFunction')
-	fn.Name = name
-	fn.Parent = remotesFolder
+	local fn = remotesFolder:FindFirstChild(name) :: RemoteFunction
+	if not fn then
+		fn = Instance.new('RemoteFunction')
+		fn.Name = name
+		fn.Parent = remotesFolder
+	end
 	functions[name] = fn
 end
 

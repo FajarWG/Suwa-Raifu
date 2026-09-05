@@ -69,10 +69,12 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -10, 0, 48)
 	row.BackgroundColor3 = Color3.fromRGB(235, 230, 216)
+	row.ZIndex = 12
 	row.Parent = bagList
 	corner(row, 8)
 	local label = textLabel(row, `{name}  ×{count}`, UDim2.new(1, -130, 1, 0), 15)
 	label.Position = UDim2.fromOffset(12, 0)
+	label.ZIndex = 13
 
 	local action = Instance.new('TextButton')
 	action.AnchorPoint = Vector2.new(1, 0.5)
@@ -81,6 +83,7 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	action.TextColor3 = Color3.new(1, 1, 1)
 	action.Font = Enum.Font.GothamBold
 	action.TextSize = 13
+	action.ZIndex = 13
 	action.Parent = row
 	corner(action, 6)
 
@@ -114,12 +117,14 @@ local function makeShopRow(item: any, order: number)
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -10, 0, 52)
 	row.BackgroundColor3 = Color3.fromRGB(235, 230, 216)
+	row.ZIndex = 12
 	row.Parent = shopList
 	corner(row, 8)
 
 	local priceText = if not item.price or item.price == 0 then 'FREE (無料)' else `¥{item.price}`
 	local label = textLabel(row, `{item.name}   {priceText}`, UDim2.new(1, -120, 1, 0), 15)
 	label.Position = UDim2.fromOffset(12, 0)
+	label.ZIndex = 13
 
 	local buy = Instance.new('TextButton')
 	buy.AnchorPoint = Vector2.new(1, 0.5)
@@ -130,6 +135,7 @@ local function makeShopRow(item: any, order: number)
 	buy.TextColor3 = Color3.new(1, 1, 1)
 	buy.Font = Enum.Font.GothamBold
 	buy.TextSize = 14
+	buy.ZIndex = 13
 	buy.Parent = row
 	corner(buy, 6)
 
@@ -176,11 +182,14 @@ end
 
 local function renderShop(data: any)
 	clearRows(shopList)
-	currentShopId = data.id or 'island_festival'
-	shopTitle.Text = `{data.title or data.name or 'Shop'}   (Unlimited Yen)`
+	currentShopId = data.shopId or data.id or 'ice_cream'
+	shopTitle.Text = `{data.title or data.name or 'Shop'}  (Unlimited Yen)`
 	local items = data.catalog or data.items or {}
 	for order, item in ipairs(items) do
 		makeShopRow(item, order)
+	end
+	if bagPanel then
+		bagPanel.Visible = false
 	end
 	shopPanel.Visible = true
 end
@@ -282,7 +291,7 @@ local function buildGui()
 	shopStroke.Thickness = 1.5
 	shopStroke.Parent = shopPanel
 
-	shopTitle = textLabel(shopPanel, 'Shop', UDim2.new(1, -70, 0, 52), 21)
+	shopTitle = textLabel(shopPanel, 'Shop', UDim2.new(1, -70, 0, 52), 16)
 	shopTitle.Position = UDim2.fromOffset(16, 0)
 	shopTitle.ZIndex = 11
 

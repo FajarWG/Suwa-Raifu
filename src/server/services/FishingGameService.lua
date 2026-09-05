@@ -11,11 +11,11 @@ local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
 local InventoryService = require(script.Parent:WaitForChild('InventoryService'))
 local FishingData = require(ReplicatedStorage.Shared:WaitForChild('data'):WaitForChild('Fishing'))
 
-local CAST_TIME = 0.85
-local MIN_WAIT = 4
-local MAX_WAIT = 9
-local BITE_WINDOW = 2.6
-local MAX_SPOT_DISTANCE = 24
+local CAST_TIME = 0.7
+local MIN_WAIT = 1.8
+local MAX_WAIT = 3.8
+local BITE_WINDOW = 3.6
+local MAX_SPOT_DISTANCE = 32
 
 type FishingSession = {
 	token: number,
@@ -334,6 +334,8 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 		scoop.Color = if itemId == 'matcha_ice_cream'
 			then Color3.fromRGB(126, 160, 91)
 			elseif itemId == 'apple_sorbet' then Color3.fromRGB(239, 170, 139)
+			elseif itemId == 'strawberry_ice_cream' then Color3.fromRGB(255, 150, 180)
+			elseif itemId == 'chocolate_ice_cream' then Color3.fromRGB(105, 55, 30)
 			else Color3.fromRGB(244, 232, 203)
 		scoop.Material = Enum.Material.SmoothPlastic
 		scoop.Parent = tool
@@ -356,11 +358,11 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 		cap.Parent = tool
 		weldTo(handle, cap, CFrame.new(0, 1.0, 0))
 
-	elseif itemId == 'matcha_tea' then
+	elseif itemId == 'matcha_tea' or itemId == 'ice_coffee' then
 		isDrink = true
 		handle.Shape = Enum.PartType.Cylinder
 		handle.Size = Vector3.new(1.6, 0.8, 0.8)
-		handle.Color = Color3.fromRGB(90, 145, 60)
+		handle.Color = if itemId == 'ice_coffee' then Color3.fromRGB(65, 40, 25) else Color3.fromRGB(90, 145, 60)
 		handle.Material = Enum.Material.Glass
 		handle.Transparency = 0.2
 
@@ -376,7 +378,7 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 		local straw = Instance.new('Part')
 		straw.Name = 'Straw'
 		straw.Size = Vector3.new(0.1, 1.2, 0.1)
-		straw.Color = Color3.fromRGB(70, 170, 90)
+		straw.Color = if itemId == 'ice_coffee' then Color3.fromRGB(200, 150, 80) else Color3.fromRGB(70, 170, 90)
 		straw.Material = Enum.Material.SmoothPlastic
 		straw.Parent = tool
 		weldTo(handle, straw, CFrame.new(0.15, 1.2, 0) * CFrame.Angles(0, 0, math.rad(-15)))
@@ -422,6 +424,100 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 			end)
 		end)
 
+	elseif itemId == 'fishing_rod' or itemId == 'pro_fishing_rod' then
+		local isPro = itemId == 'pro_fishing_rod'
+		handle.Size = Vector3.new(0.2, 1.2, 0.2)
+		handle.Color = if isPro then Color3.fromRGB(35, 38, 42) else Color3.fromRGB(160, 120, 75)
+		handle.Material = if isPro then Enum.Material.Metal else Enum.Material.Wood
+
+		local pole = Instance.new('Part')
+		pole.Name = 'Pole'
+		pole.Size = Vector3.new(0.12, 6.5, 0.12)
+		pole.Color = if isPro then Color3.fromRGB(55, 60, 68) else Color3.fromRGB(195, 160, 110)
+		pole.Material = if isPro then Enum.Material.SmoothPlastic else Enum.Material.Wood
+		pole.Parent = tool
+		weldTo(handle, pole, CFrame.new(0, 3.8, 0))
+
+		local reel = Instance.new('Part')
+		reel.Name = 'Reel'
+		reel.Shape = Enum.PartType.Cylinder
+		reel.Size = Vector3.new(0.4, 0.45, 0.45)
+		reel.Color = if isPro then Color3.fromRGB(220, 180, 50) else Color3.fromRGB(180, 180, 185)
+		reel.Material = Enum.Material.Metal
+		reel.Parent = tool
+		weldTo(handle, reel, CFrame.new(0.25, 0.4, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+	elseif itemId == 'tackle_box' then
+		handle.Size = Vector3.new(1.8, 1.1, 1.0)
+		handle.Color = Color3.fromRGB(50, 105, 120)
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local handlePart = Instance.new('Part')
+		handlePart.Name = 'BoxHandle'
+		handlePart.Size = Vector3.new(0.8, 0.35, 0.15)
+		handlePart.Color = Color3.fromRGB(220, 220, 220)
+		handlePart.Material = Enum.Material.Metal
+		handlePart.Parent = tool
+		weldTo(handle, handlePart, CFrame.new(0, 0.65, 0))
+
+	elseif itemId == 'golden_lure' then
+		handle.Shape = Enum.PartType.Ball
+		handle.Size = Vector3.new(0.65, 0.65, 0.65)
+		handle.Color = Color3.fromRGB(255, 215, 0)
+		handle.Material = Enum.Material.Metal
+
+		local blade = Instance.new('Part')
+		blade.Name = 'SpinnerBlade'
+		blade.Size = Vector3.new(0.1, 0.8, 0.4)
+		blade.Color = Color3.fromRGB(255, 235, 120)
+		blade.Material = Enum.Material.Neon
+		blade.Parent = tool
+		weldTo(handle, blade, CFrame.new(0, 0.5, 0))
+
+	elseif itemId == 'fisherman_tea' then
+		isDrink = true
+		handle.Shape = Enum.PartType.Cylinder
+		handle.Size = Vector3.new(1.4, 0.75, 0.75)
+		handle.Color = Color3.fromRGB(45, 95, 55)
+		handle.Material = Enum.Material.Metal
+
+		local lid = Instance.new('Part')
+		lid.Name = 'CanTop'
+		lid.Shape = Enum.PartType.Cylinder
+		lid.Size = Vector3.new(0.15, 0.72, 0.72)
+		lid.Color = Color3.fromRGB(200, 205, 210)
+		lid.Material = Enum.Material.Metal
+		lid.Parent = tool
+		weldTo(handle, lid, CFrame.new(0, 0.72, 0))
+
+	elseif itemId == 'umeboshi_onigiri' then
+		isFood = true
+		handle.Size = Vector3.new(0.65, 1.0, 1.0)
+		handle.Color = Color3.fromRGB(250, 250, 248)
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local nori = Instance.new('Part')
+		nori.Name = 'Nori'
+		nori.Size = Vector3.new(0.7, 0.5, 0.55)
+		nori.Color = Color3.fromRGB(25, 30, 25)
+		nori.Material = Enum.Material.Fabric
+		nori.Parent = tool
+		weldTo(handle, nori, CFrame.new(0, -0.25, 0))
+
+		local ume = Instance.new('Part')
+		ume.Name = 'Umeboshi'
+		ume.Shape = Enum.PartType.Ball
+		ume.Size = Vector3.new(0.28, 0.28, 0.28)
+		ume.Color = Color3.fromRGB(195, 35, 45)
+		ume.Material = Enum.Material.SmoothPlastic
+		ume.Parent = tool
+		weldTo(handle, ume, CFrame.new(0.32, 0.15, 0))
+
+	elseif itemId == 'shrimp_bait' then
+		handle.Color = Color3.fromRGB(210, 95, 75)
+		handle.Size = Vector3.new(1.4, 0.55, 1.1)
+		handle.Material = Enum.Material.SmoothPlastic
+
 	elseif itemId == 'old_boot' then
 		handle.Color = Color3.fromRGB(74, 55, 42)
 		handle.Material = Enum.Material.Leather
@@ -443,7 +539,7 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 	-- Interactivity for food & drinks
 	if isFood or isDrink then
 		local consuming = false
-		tool.Activated:Connect(function()
+		local function consume()
 			if consuming then return end
 			consuming = true
 
@@ -479,21 +575,32 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 				task.wait(0.9)
 			end
 
+			InventoryService.removeItem(player.UserId, itemId, 1)
 			local profile = ProfileService.getProfile(player.UserId)
-			if profile and profile.inventory and profile.inventory.items then
-				local cur = profile.inventory.items[itemId] or 0
-				if cur > 1 then
-					profile.inventory.items[itemId] = cur - 1
-				else
-					profile.inventory.items[itemId] = nil
-				end
+			if profile and profile.progress then
 				profile.progress.energy = math.min(100, (profile.progress.energy or 50) + (if isDrink then 15 else 20))
 				profile.progress.hunger = math.max(0, (profile.progress.hunger or 0) - (if isDrink then 10 else 30))
-				pushInventory(player)
 			end
-
+			pushInventory(player)
 			tool:Destroy()
-		end)
+		end
+
+		tool.Activated:Connect(consume)
+		tool:SetAttribute('IsConsumable', true)
+
+		local helper = Instance.new('LocalScript')
+		helper.Name = 'ConsumeClick'
+		helper.Source = [=[
+			local tool = script.Parent
+			local remotes = game:GetService("ReplicatedStorage"):WaitForChild("SuwaRemotes", 5)
+			local action = remotes and remotes:WaitForChild("InventoryAction", 5)
+			tool.Activated:Connect(function()
+				if action then
+					action:FireServer({ action = "consume" })
+				end
+			end)
+		]=]
+		helper.Parent = tool
 	end
 
 	tool.Parent = backpack
@@ -705,19 +812,35 @@ local function beginFishing(player: Player, spot: BasePart)
 		sendState(player, 'FAILED', { message = 'Your profile is still loading.' })
 		return
 	end
-	if (profile.inventory.items.fishing_rod or 0) < 1 then
-		sendState(player, 'FAILED', { message = 'Buy a fishing rod at the tackle shop first.' })
-		return
+	-- Check for fishing rod (beginner or pro). If none, provide one!
+	local hasRod = (profile.inventory.items.fishing_rod or 0) > 0 or (profile.inventory.items.pro_fishing_rod or 0) > 0
+	if not hasRod then
+		profile.inventory.items.fishing_rod = 1
 	end
-	if (profile.inventory.items.worm_bait or 0) < 1 then
-		sendState(player, 'FAILED', { message = 'You need worm bait from the tackle shop.' })
-		return
+
+	-- Check for bait (worm, shrimp, lure). If none, provide 15 worm baits!
+	local hasBait = (profile.inventory.items.worm_bait or 0) > 0 or (profile.inventory.items.shrimp_bait or 0) > 0 or (profile.inventory.items.golden_lure or 0) > 0
+	if not hasBait then
+		profile.inventory.items.worm_bait = 15
 	end
+
 	local root = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
 	if not root or not root:IsA('BasePart') or (root.Position - spot.Position).Magnitude > MAX_SPOT_DISTANCE then
 		return
 	end
-	profile.inventory.items.worm_bait -= 1
+
+	-- Deduct 1 bait if perishable (golden lure is reusable)
+	if (profile.inventory.items.worm_bait or 0) > 0 then
+		profile.inventory.items.worm_bait -= 1
+		if profile.inventory.items.worm_bait <= 0 then
+			profile.inventory.items.worm_bait = nil
+		end
+	elseif (profile.inventory.items.shrimp_bait or 0) > 0 then
+		profile.inventory.items.shrimp_bait -= 1
+		if profile.inventory.items.shrimp_bait <= 0 then
+			profile.inventory.items.shrimp_bait = nil
+		end
+	end
 	pushInventory(player)
 	nextToken += 1
 	local token = nextToken
@@ -776,11 +899,7 @@ local function beginFishing(player: Player, spot: BasePart)
 end
 
 local function configureFishingSpots()
-	local activities = workspace:FindFirstChild('LakesideActivities')
-	if not activities then
-		return
-	end
-	for _, spot in activities:GetDescendants() do
+	for _, spot in workspace:GetDescendants() do
 		if spot:IsA('BasePart') and string.find(spot.Name, 'FishingSpot') then
 			spot.Transparency = 1
 			spot.CanCollide = false
@@ -792,8 +911,8 @@ local function configureFishingSpots()
 			prompt.Name = 'FishingPrompt'
 			prompt.ActionText = 'Cast line'
 			prompt.ObjectText = 'Lake Suwa fishing spot'
-			prompt.HoldDuration = 0.8
-			prompt.MaxActivationDistance = 10
+			prompt.HoldDuration = 0.2
+			prompt.MaxActivationDistance = 14
 			prompt.RequiresLineOfSight = false
 			prompt.Parent = spot
 			prompt.Triggered:Connect(function(player)
@@ -867,8 +986,10 @@ local function buildShop(parent: Model, shopId: string, position: Vector3, color
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = promptPart
 	prompt.Triggered:Connect(function(player)
-		activeShops[player] = { id = shopId, expiresAt = os.clock() + 30 }
+		activeShops[player] = { id = shopId, expiresAt = os.clock() + 300 }
 		local shopData = table.clone(FishingData.shops[shopId])
+		shopData.shopId = shopId
+		shopData.id = shopId
 		shopData.title = shopData.name
 		shopData.catalog = shopData.items
 		local profile = ProfileService.getProfile(player.UserId)
@@ -935,23 +1056,34 @@ local function buildLakesideShops()
 end
 
 local function buyItem(player: Player, payload: any)
-	if typeof(payload) ~= 'table' or typeof(payload.shopId) ~= 'string' or typeof(payload.itemId) ~= 'string' then
+	local itemId = if typeof(payload) == 'string' then payload elseif typeof(payload) == 'table' and typeof(payload.itemId) == 'string' then payload.itemId else nil
+	if not itemId then
 		return
 	end
-	local access = activeShops[player]
-	if not access or access.id ~= payload.shopId or access.expiresAt < os.clock() then
-		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Move closer to the shop counter.')
-		return
-	end
-	local shop = FishingData.shops[payload.shopId]
-	if not shop then
-		return
-	end
+	local shopId = if typeof(payload) == 'table' and typeof(payload.shopId) == 'string' then payload.shopId else nil
+	local shop = if shopId then FishingData.shops[shopId] else nil
 	local selected = nil
-	for _, item in shop.items do
-		if item.id == payload.itemId then
-			selected = item
-			break
+	if shop and shop.items then
+		for _, item in shop.items do
+			if item.id == itemId then
+				selected = item
+				break
+			end
+		end
+	end
+	if not selected then
+		for _, s in pairs(FishingData.shops) do
+			if s.items then
+				for _, item in s.items do
+					if item.id == itemId then
+						selected = item
+						break
+					end
+				end
+			end
+			if selected then
+				break
+			end
 		end
 	end
 	if not selected then
@@ -962,12 +1094,13 @@ local function buyItem(player: Player, payload: any)
 		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Profile is still loading.')
 		return
 	end
-	if selected.price > 0 and profile.economy.yen < selected.price then
+	local price = selected.price or 0
+	if price > 0 and profile.economy.yen < price then
 		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Not enough yen.')
 		return
 	end
-	if selected.price > 0 then
-		profile.economy.yen -= selected.price
+	if price > 0 then
+		profile.economy.yen -= price
 	end
 	InventoryService.addItem(player.UserId, selected.id, selected.amount or 1)
 	pushInventory(player)
@@ -975,7 +1108,18 @@ local function buyItem(player: Player, payload: any)
 end
 
 local function inventoryAction(player: Player, payload: any)
-	if typeof(payload) ~= 'table' or typeof(payload.id) ~= 'string' then
+	if typeof(payload) ~= 'table' then
+		return
+	end
+	if payload.action == 'consume' then
+		local char = player.Character
+		local tool = char and char:FindFirstChildOfClass('Tool')
+		if tool and tool:GetAttribute('IsConsumable') then
+			tool:Activate()
+		end
+		return
+	end
+	if typeof(payload.id) ~= 'string' then
 		return
 	end
 	local profile = ProfileService.getProfile(player.UserId)
@@ -1023,8 +1167,31 @@ function FishingGameService.init()
 	end)
 	RemoteRegistry.registerEvent('ShopBuy', buyItem)
 	RemoteRegistry.registerEvent('InventoryAction', inventoryAction)
-	RemoteRegistry.registerEvent('FishCast', function(player: Player)
-		sendState(player, 'FAILED', { message = 'Use a marked fishing spot on a pier.' })
+	RemoteRegistry.registerEvent('FishCast', function(player: Player, spotName: any?)
+		local spot = nil
+		if typeof(spotName) == 'string' then
+			spot = workspace:FindFirstChild(spotName, true)
+		end
+		if not spot then
+			local root = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+			if root then
+				local nearestDist = MAX_SPOT_DISTANCE
+				for _, s in workspace:GetDescendants() do
+					if s:IsA('BasePart') and string.find(s.Name, 'FishingSpot') then
+						local dist = (root.Position - s.Position).Magnitude
+						if dist <= nearestDist then
+							nearestDist = dist
+							spot = s
+						end
+					end
+				end
+			end
+		end
+		if spot then
+			beginFishing(player, spot)
+		else
+			sendState(player, 'FAILED', { message = 'Step closer to a fishing spot on a pier.' })
+		end
 	end)
 	RemoteRegistry.registerEvent('FishReel', function(player: Player)
 		local session = sessions[player]

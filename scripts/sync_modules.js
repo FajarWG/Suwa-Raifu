@@ -28,6 +28,16 @@ async function run() {
       target: 'game:GetService("ServerScriptService").Server.services.FishingGameService',
       name: 'FishingGameService',
     },
+    {
+      path: 'src/server/services/RemoteRegistryService.lua',
+      target: 'game:GetService("ServerScriptService").Server.services.RemoteRegistryService',
+      name: 'RemoteRegistryService',
+    },
+    {
+      path: 'src/server/services/InventoryService.lua',
+      target: 'game:GetService("ServerScriptService").Server.services.InventoryService',
+      name: 'InventoryService',
+    },
   ];
 
   for (const item of files) {

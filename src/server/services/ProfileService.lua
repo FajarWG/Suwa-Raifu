@@ -44,7 +44,10 @@ local function defaultProfile(playerId: number): ProfileTypes.Profile
 		},
 		economy = { yen = Config.startingYen },
 		inventory = {
-			items = {},
+			items = {
+				fishing_rod = 1,
+				worm_bait = 15,
+			},
 			clothing = {},
 			furniture = {},
 			fish = {},
@@ -220,9 +223,21 @@ end
 
 function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
 	local profile = profiles[playerId]
+	if not profile then
+		profile = defaultProfile(playerId)
+		profiles[playerId] = profile
+	end
 	if profile and profile.economy then
 		if profile.economy.yen < 999999 then
 			profile.economy.yen = 999999
+		end
+	end
+	if profile and profile.inventory and profile.inventory.items then
+		if not profile.inventory.items.fishing_rod and not profile.inventory.items.pro_fishing_rod then
+			profile.inventory.items.fishing_rod = 1
+		end
+		if not profile.inventory.items.worm_bait and not profile.inventory.items.shrimp_bait then
+			profile.inventory.items.worm_bait = 15
 		end
 	end
 	return profile

@@ -93,25 +93,33 @@ Fishing.junk = {
 Fishing.shops = {
 	fishing_supply = {
 		id = 'fishing_supply',
-		name = 'Suwako Fishing Supply',
+		name = 'Suwako Fishing Supply (釣具店)',
 		items = {
 			{ id = 'fishing_rod', name = 'Beginner Fishing Rod', price = 0, amount = 1 },
+			{ id = 'pro_fishing_rod', name = 'Pro Carbon Fishing Rod', price = 0, amount = 1 },
 			{ id = 'worm_bait', name = 'Worm Bait ×5', price = 0, amount = 5 },
-			{ id = 'tackle_box', name = 'Small Tackle Box', price = 0, amount = 1 },
+			{ id = 'shrimp_bait', name = 'River Shrimp Bait ×5', price = 0, amount = 5 },
+			{ id = 'golden_lure', name = 'Golden Spinner Lure', price = 0, amount = 1 },
+			{ id = 'tackle_box', name = 'Lake Tackle Box', price = 0, amount = 1 },
+			{ id = 'fisherman_tea', name = 'Hot Fisherman Green Tea', price = 0, amount = 1 },
+			{ id = 'umeboshi_onigiri', name = 'Umeboshi Onigiri', price = 0, amount = 1 },
 		},
 	},
 	ice_cream = {
 		id = 'ice_cream',
-		name = 'Suwako Ice Cream',
+		name = 'Suwako Ice Cream (アイスクリーム)',
 		items = {
 			{ id = 'vanilla_ice_cream', name = 'Vanilla Ice Cream', price = 0, amount = 1 },
 			{ id = 'matcha_ice_cream', name = 'Matcha Ice Cream', price = 0, amount = 1 },
+			{ id = 'strawberry_ice_cream', name = 'Strawberry Gelato', price = 0, amount = 1 },
+			{ id = 'chocolate_ice_cream', name = 'Chocolate Soft Serve', price = 0, amount = 1 },
 			{ id = 'apple_sorbet', name = 'Shinshu Apple Sorbet', price = 0, amount = 1 },
+			{ id = 'ice_coffee', name = 'Iced Japanese Coffee', price = 0, amount = 1 },
 		},
 	},
 	island_festival = {
 		id = 'island_festival',
-		name = 'Hatsushima Festival Stall',
+		name = 'Hatsushima Festival Stall (島の売店)',
 		items = {
 			{ id = 'dango', name = 'Hanami Dango', price = 0, amount = 1 },
 			{ id = 'yakisoba', name = 'Festival Yakisoba', price = 0, amount = 1 },
@@ -126,11 +134,19 @@ Fishing.shops = {
 
 Fishing.itemNames = {
 	fishing_rod = 'Beginner Fishing Rod',
+	pro_fishing_rod = 'Pro Carbon Fishing Rod',
 	worm_bait = 'Worm Bait',
-	tackle_box = 'Small Tackle Box',
+	shrimp_bait = 'River Shrimp Bait',
+	golden_lure = 'Golden Spinner Lure',
+	tackle_box = 'Lake Tackle Box',
+	fisherman_tea = 'Hot Fisherman Green Tea',
+	umeboshi_onigiri = 'Umeboshi Onigiri',
 	vanilla_ice_cream = 'Vanilla Ice Cream',
 	matcha_ice_cream = 'Matcha Ice Cream',
+	strawberry_ice_cream = 'Strawberry Gelato',
+	chocolate_ice_cream = 'Chocolate Soft Serve',
 	apple_sorbet = 'Shinshu Apple Sorbet',
+	ice_coffee = 'Iced Japanese Coffee',
 	dango = 'Hanami Dango',
 	yakisoba = 'Festival Yakisoba',
 	taiyaki = 'Warm Taiyaki',
