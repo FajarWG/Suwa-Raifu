@@ -37,7 +37,7 @@ local Config: GameConfig = {
 	dailyLoopDurationMinutes = 20,
 	dayPhases = { 'morning', 'daytime', 'evening', 'night', 'late_night' },
 
-	startingYen = 999999,
+	startingYen = 500,
 	startingEnergy = 100,
 	startingHunger = 0,
 	maxEnergy = 100,
