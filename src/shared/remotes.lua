@@ -41,6 +41,8 @@ local Remotes: RemoteDefinitions = {
 		'ClearStatus',
 		'CarryRelease',
 		'NPCInteract',
+		'BasketUpdated',
+		'InventoryToast',
 	},
 	functions = {
 		'GetProfile',

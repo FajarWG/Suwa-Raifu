@@ -5,6 +5,7 @@
 local Players = game:GetService('Players')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local Debris = game:GetService('Debris')
+local SoundService = game:GetService('SoundService')
 
 local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
 local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
@@ -17,6 +18,30 @@ local MAX_WAIT = 3.8
 local BITE_WINDOW = 3.6
 local MAX_SPOT_DISTANCE = 32
 
+-- Konbini Sound Assets
+-- NOTE: Roblox requires sound files to be uploaded to Roblox to receive an rbxassetid://
+-- Upload assets/irasshaimase.mp3 and assets/arigatougozaimasu.mp3 via Roblox Studio Asset Manager or Creator Dashboard.
+local SOUND_KONBINI_DOOR_CHIME = 'rbxassetid://116480334166185' -- FamilyMart/7-11 door chime
+local SOUND_KONBINI_REGISTER_BEEP = 'rbxassetid://9069609200' -- Register checkout beep
+local SOUND_KONBINI_WELCOME_IRASSHAIMASE = 'rbxassetid://118590628485091' -- 「いらっしゃいませ！」 by fathurzoy7
+local SOUND_KONBINI_THANK_YOU_ARIGATOU = 'rbxassetid://107094107671003' -- 「ありがとうございます！」 by fathurzoy7
+
+local function getIrasshaimaseSoundId(): string
+	local s = SoundService:FindFirstChild('Konbini_Irasshaimase')
+	if s and s:IsA('Sound') and s.SoundId ~= '' and s.SoundId ~= 'rbxassetid://0' then
+		return s.SoundId
+	end
+	return SOUND_KONBINI_WELCOME_IRASSHAIMASE
+end
+
+local function getArigatouSoundId(): string
+	local s = SoundService:FindFirstChild('Konbini_Arigatou')
+	if s and s:IsA('Sound') and s.SoundId ~= '' and s.SoundId ~= 'rbxassetid://0' then
+		return s.SoundId
+	end
+	return SOUND_KONBINI_THANK_YOU_ARIGATOU
+end
+
 type FishingSession = {
 	token: number,
 	state: string,
@@ -28,6 +53,7 @@ type FishingSession = {
 local FishingGameService = {}
 local sessions: { [Player]: FishingSession } = {}
 local activeShops: { [Player]: { id: string, expiresAt: number } } = {}
+local playerBaskets: { [number]: { items: { [string]: number }, totalCount: number, totalYen: number } } = {}
 local nextToken = 0
 
 local function terrainHeight(x: number, z: number, fallback: number): number
@@ -115,6 +141,111 @@ local function clearDisplayedTool(player: Player)
 	end
 	clear(player.Character)
 	clear(player:FindFirstChildOfClass('Backpack'))
+end
+
+local function clearBasketTool(player: Player)
+	local function clear(container: Instance?)
+		if not container then
+			return
+		end
+		for _, child in container:GetChildren() do
+			if child:IsA('Tool') and child:GetAttribute('BasketTool') then
+				child:Destroy()
+			end
+		end
+	end
+	clear(player.Character)
+	clear(player:FindFirstChildOfClass('Backpack'))
+end
+
+local function syncBasket(player: Player)
+	local basket = playerBaskets[player.UserId] or { items = {}, totalCount = 0, totalYen = 0 }
+	RemoteRegistry.fireClient(player, 'BasketUpdated', {
+		count = basket.totalCount,
+		totalCount = basket.totalCount,
+		yen = basket.totalYen,
+		totalYen = basket.totalYen,
+		items = basket.items,
+	})
+end
+
+local function createBasketTool(player: Player): Tool?
+	local backpack = player:FindFirstChildOfClass('Backpack')
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass('Humanoid')
+	if not humanoid then
+		return nil
+	end
+
+	if character and character:FindFirstChild('KonbiniBasket') then
+		return character:FindFirstChild('KonbiniBasket') :: Tool
+	end
+	if backpack and backpack:FindFirstChild('KonbiniBasket') then
+		local existing = backpack:FindFirstChild('KonbiniBasket') :: Tool
+		humanoid:EquipTool(existing)
+		return existing
+	end
+
+	local tool = Instance.new('Tool')
+	tool.Name = 'KonbiniBasket'
+	tool.CanBeDropped = false
+	tool:SetAttribute('BasketTool', true)
+	tool.Grip = CFrame.new(0, -0.35, -0.2) * CFrame.Angles(0, math.rad(90), 0)
+
+	local handle = Instance.new('Part')
+	handle.Name = 'Handle'
+	handle.Size = Vector3.new(1.3, 0.75, 0.95)
+	handle.Color = Color3.fromRGB(245, 195, 35)
+	handle.Material = Enum.Material.Plastic
+	handle.CanCollide = false
+	handle.Massless = true
+	handle.Parent = tool
+
+	local inside = Instance.new('Part')
+	inside.Name = 'BasketInside'
+	inside.Size = Vector3.new(1.15, 0.7, 0.82)
+	inside.Color = Color3.fromRGB(210, 160, 25)
+	inside.Material = Enum.Material.SmoothPlastic
+	inside.CanCollide = false
+	inside.Massless = true
+	inside.Parent = tool
+	weldTo(handle, inside, CFrame.new(0, 0.05, 0))
+
+	local handleBar = Instance.new('Part')
+	handleBar.Name = 'BasketHandleBar'
+	handleBar.Size = Vector3.new(0.08, 0.45, 0.75)
+	handleBar.Color = Color3.fromRGB(40, 40, 40)
+	handleBar.Material = Enum.Material.SmoothPlastic
+	handleBar.CanCollide = false
+	handleBar.Massless = true
+	handleBar.Parent = tool
+	weldTo(handle, handleBar, CFrame.new(0, 0.5, 0))
+
+	local snackProp = Instance.new('Part')
+	snackProp.Name = 'SnackProp'
+	snackProp.Size = Vector3.new(0.4, 0.35, 0.35)
+	snackProp.Color = Color3.fromRGB(45, 165, 80)
+	snackProp.Material = Enum.Material.SmoothPlastic
+	snackProp.CanCollide = false
+	snackProp.Massless = true
+	snackProp.Parent = tool
+	weldTo(handle, snackProp, CFrame.new(0.25, 0.25, 0.1))
+
+	local bentoProp = Instance.new('Part')
+	bentoProp.Name = 'BentoProp'
+	bentoProp.Size = Vector3.new(0.5, 0.18, 0.35)
+	bentoProp.Color = Color3.fromRGB(240, 240, 240)
+	bentoProp.Material = Enum.Material.SmoothPlastic
+	bentoProp.CanCollide = false
+	bentoProp.Massless = true
+	bentoProp.Parent = tool
+	weldTo(handle, bentoProp, CFrame.new(-0.25, 0.2, -0.1) * CFrame.Angles(0, math.rad(15), 0))
+
+	tool.Parent = backpack or character
+	if humanoid then
+		humanoid:EquipTool(tool)
+	end
+	return tool
 end
 
 local function createRodTool(player: Player, sessionOnly: boolean): Tool?
@@ -568,6 +699,228 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 		ume.Material = Enum.Material.SmoothPlastic
 		ume.Parent = tool
 		weldTo(handle, ume, CFrame.new(0.32, 0.15, 0))
+
+	elseif itemId == 'nanachiki' then
+		isFood = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local pouch = Instance.new('Part')
+		pouch.Name = 'Pouch'
+		pouch.Size = Vector3.new(0.4, 0.9, 0.8)
+		pouch.Color = Color3.fromRGB(248, 244, 235)
+		pouch.Material = Enum.Material.SmoothPlastic
+		pouch.Parent = tool
+		weldTo(handle, pouch, CFrame.new(0, 0, 0))
+
+		local trim = Instance.new('Part')
+		trim.Name = 'PouchTrim'
+		trim.Size = Vector3.new(0.42, 0.18, 0.82)
+		trim.Color = Color3.fromRGB(218, 41, 28)
+		trim.Material = Enum.Material.SmoothPlastic
+		trim.Parent = tool
+		weldTo(handle, trim, CFrame.new(0, 0.25, 0))
+
+		local chicken = Instance.new('Part')
+		chicken.Name = 'CrispyChicken'
+		chicken.Size = Vector3.new(0.36, 0.75, 0.7)
+		chicken.Color = Color3.fromRGB(205, 125, 45)
+		chicken.Material = Enum.Material.Pebble
+		chicken.Parent = tool
+		weldTo(handle, chicken, CFrame.new(0, 0.6, 0))
+
+	elseif itemId == 'tamago_sandwich' then
+		isFood = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local bread = Instance.new('WedgePart')
+		bread.Name = 'Bread'
+		bread.Size = Vector3.new(0.65, 1.1, 1.1)
+		bread.Color = Color3.fromRGB(252, 248, 240)
+		bread.Material = Enum.Material.SmoothPlastic
+		bread.Parent = tool
+		weldTo(handle, bread, CFrame.new(0, 0, 0))
+
+		local eggFilling = Instance.new('Part')
+		eggFilling.Name = 'EggFilling'
+		eggFilling.Size = Vector3.new(0.68, 0.45, 0.8)
+		eggFilling.Color = Color3.fromRGB(248, 210, 50)
+		eggFilling.Material = Enum.Material.SmoothPlastic
+		eggFilling.Parent = tool
+		weldTo(handle, eggFilling, CFrame.new(0, 0.1, 0.1))
+
+	elseif itemId == 'tuna_mayo_onigiri' then
+		isFood = true
+		handle.Size = Vector3.new(0.65, 1.0, 1.0)
+		handle.Color = Color3.fromRGB(250, 250, 248)
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local nori = Instance.new('Part')
+		nori.Name = 'Nori'
+		nori.Size = Vector3.new(0.7, 0.5, 0.55)
+		nori.Color = Color3.fromRGB(25, 30, 25)
+		nori.Material = Enum.Material.Fabric
+		nori.Parent = tool
+		weldTo(handle, nori, CFrame.new(0, -0.25, 0))
+
+		local dot = Instance.new('Part')
+		dot.Name = 'TunaFillingDot'
+		dot.Shape = Enum.PartType.Ball
+		dot.Size = Vector3.new(0.24, 0.24, 0.24)
+		dot.Color = Color3.fromRGB(215, 155, 115)
+		dot.Material = Enum.Material.SmoothPlastic
+		dot.Parent = tool
+		weldTo(handle, dot, CFrame.new(0.32, 0.18, 0))
+
+	elseif itemId == 'katsu_curry' then
+		isFood = true
+		handle.Size = Vector3.new(1.4, 0.35, 1.2)
+		handle.Color = Color3.fromRGB(30, 30, 30)
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local rice = Instance.new('Part')
+		rice.Name = 'Rice'
+		rice.Size = Vector3.new(0.65, 0.25, 1.05)
+		rice.Color = Color3.fromRGB(250, 250, 248)
+		rice.Material = Enum.Material.SmoothPlastic
+		rice.Parent = tool
+		weldTo(handle, rice, CFrame.new(-0.32, 0.15, 0))
+
+		local curry = Instance.new('Part')
+		curry.Name = 'Curry'
+		curry.Size = Vector3.new(0.65, 0.22, 1.05)
+		curry.Color = Color3.fromRGB(110, 60, 25)
+		curry.Material = Enum.Material.SmoothPlastic
+		curry.Parent = tool
+		weldTo(handle, curry, CFrame.new(0.32, 0.14, 0))
+
+		local katsu = Instance.new('Part')
+		katsu.Name = 'Tonkatsu'
+		katsu.Size = Vector3.new(0.5, 0.2, 0.8)
+		katsu.Color = Color3.fromRGB(195, 125, 50)
+		katsu.Material = Enum.Material.Pebble
+		katsu.Parent = tool
+		weldTo(handle, katsu, CFrame.new(0, 0.26, 0))
+
+	elseif itemId == 'melonpan' then
+		isFood = true
+		handle.Shape = Enum.PartType.Ball
+		handle.Size = Vector3.new(0.95, 0.7, 0.95)
+		handle.Color = Color3.fromRGB(232, 208, 138)
+		handle.Material = Enum.Material.SmoothPlastic
+
+	elseif itemId == 'pocky_box' then
+		isFood = true
+		handle.Size = Vector3.new(0.35, 1.3, 0.75)
+		handle.Color = Color3.fromRGB(215, 30, 30)
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local stick = Instance.new('Part')
+		stick.Name = 'PockyStick'
+		stick.Size = Vector3.new(0.1, 0.8, 0.1)
+		stick.Color = Color3.fromRGB(75, 45, 25)
+		stick.Material = Enum.Material.SmoothPlastic
+		stick.Parent = tool
+		weldTo(handle, stick, CFrame.new(0.08, 0.85, 0))
+
+	elseif itemId == 'seven_cafe_latte' then
+		isDrink = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local cup = Instance.new('Part')
+		cup.Name = 'LatteCup'
+		cup.Shape = Enum.PartType.Cylinder
+		cup.Size = Vector3.new(1.2, 0.75, 0.75)
+		cup.Color = Color3.fromRGB(195, 155, 115)
+		cup.Material = Enum.Material.Glass
+		cup.Transparency = 0.25
+		cup.Parent = tool
+		weldTo(handle, cup, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local lid = Instance.new('Part')
+		lid.Name = 'Lid'
+		lid.Shape = Enum.PartType.Cylinder
+		lid.Size = Vector3.new(0.18, 0.78, 0.78)
+		lid.Color = Color3.fromRGB(240, 240, 240)
+		lid.Material = Enum.Material.SmoothPlastic
+		lid.Parent = tool
+		weldTo(handle, lid, CFrame.new(0, 0.65, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local straw = Instance.new('Part')
+		straw.Name = 'Straw'
+		straw.Size = Vector3.new(0.08, 0.9, 0.08)
+		straw.Color = Color3.fromRGB(0, 145, 75)
+		straw.Material = Enum.Material.SmoothPlastic
+		straw.Parent = tool
+		weldTo(handle, straw, CFrame.new(0.08, 0.95, 0) * CFrame.Angles(0, 0, math.rad(-10)))
+
+	elseif itemId == 'green_tea_bottle' then
+		isDrink = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local bottle = Instance.new('Part')
+		bottle.Name = 'TeaBottle'
+		bottle.Shape = Enum.PartType.Cylinder
+		bottle.Size = Vector3.new(1.3, 0.6, 0.6)
+		bottle.Color = Color3.fromRGB(105, 145, 70)
+		bottle.Material = Enum.Material.Glass
+		bottle.Transparency = 0.2
+		bottle.Parent = tool
+		weldTo(handle, bottle, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local label = Instance.new('Part')
+		label.Name = 'Label'
+		label.Shape = Enum.PartType.Cylinder
+		label.Size = Vector3.new(0.65, 0.62, 0.62)
+		label.Color = Color3.fromRGB(240, 245, 230)
+		label.Material = Enum.Material.SmoothPlastic
+		label.Parent = tool
+		weldTo(handle, label, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local cap = Instance.new('Part')
+		cap.Name = 'Cap'
+		cap.Shape = Enum.PartType.Cylinder
+		cap.Size = Vector3.new(0.18, 0.44, 0.44)
+		cap.Color = Color3.fromRGB(38, 95, 42)
+		cap.Material = Enum.Material.SmoothPlastic
+		cap.Parent = tool
+		weldTo(handle, cap, CFrame.new(0, 0.72, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+	elseif itemId == 'pocari_sweat' then
+		isDrink = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local bottle = Instance.new('Part')
+		bottle.Name = 'PocariBottle'
+		bottle.Shape = Enum.PartType.Cylinder
+		bottle.Size = Vector3.new(1.3, 0.6, 0.6)
+		bottle.Color = Color3.fromRGB(45, 125, 215)
+		bottle.Material = Enum.Material.Glass
+		bottle.Transparency = 0.25
+		bottle.Parent = tool
+		weldTo(handle, bottle, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local label = Instance.new('Part')
+		label.Name = 'Label'
+		label.Shape = Enum.PartType.Cylinder
+		label.Size = Vector3.new(0.65, 0.62, 0.62)
+		label.Color = Color3.fromRGB(245, 245, 250)
+		label.Material = Enum.Material.SmoothPlastic
+		label.Parent = tool
+		weldTo(handle, label, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local cap = Instance.new('Part')
+		cap.Name = 'Cap'
+		cap.Shape = Enum.PartType.Cylinder
+		cap.Size = Vector3.new(0.18, 0.44, 0.44)
+		cap.Color = Color3.fromRGB(250, 250, 250)
+		cap.Material = Enum.Material.SmoothPlastic
+		cap.Parent = tool
+		weldTo(handle, cap, CFrame.new(0, 0.72, 0) * CFrame.Angles(0, 0, math.rad(90)))
 
 	elseif itemId == 'shrimp_bait' then
 		handle.Color = Color3.fromRGB(210, 95, 75)
@@ -1121,12 +1474,257 @@ local function buildLakesideShops()
 	buildShop(root, 'island_festival', Vector3.new(50, 3.4, -610), Color3.fromRGB(164, 73, 57), '島の売店')
 end
 
+local function processCashierCheckout(player: Player, cashierPart: BasePart?)
+	local b = playerBaskets[player.UserId]
+	if b and b.totalCount > 0 then
+		-- Process checkout payment
+		local profile = ProfileService.getProfile(player.UserId)
+		if not profile then
+			RemoteRegistry.fireClient(player, 'ShopResult', false, 'Loading player data...')
+			return
+		end
+
+		if profile.economy.yen < b.totalYen then
+			RemoteRegistry.fireClient(player, 'ShopResult', false, '所持金が足りません (Not enough Yen) - Total: ¥' .. tostring(b.totalYen) .. ' (Have: ¥' .. tostring(profile.economy.yen) .. ')')
+			return
+		end
+
+		-- Deduct Yen
+		profile.economy.yen -= b.totalYen
+		local totalItems = b.totalCount
+		local totalPaid = b.totalYen
+
+		-- Transfer items into player's Bag inventory
+		for itId, cnt in pairs(b.items) do
+			InventoryService.addItem(player.UserId, itId, cnt)
+		end
+
+		-- Clear basket state and tool
+		playerBaskets[player.UserId] = nil
+		clearBasketTool(player)
+		syncBasket(player)
+		pushInventory(player)
+
+		local soundParent = cashierPart or (player.Character and player.Character:FindFirstChild('HumanoidRootPart'))
+		if soundParent then
+			-- Cash register sound
+			local regSound = Instance.new('Sound')
+			regSound.SoundId = SOUND_KONBINI_REGISTER_BEEP
+			regSound.Volume = 0.95
+			regSound.Parent = soundParent
+			regSound:Play()
+			game:GetService('Debris'):AddItem(regSound, 2.5)
+
+			-- Authentic Japanese "Arigatou gozaimasu!" voice clip
+			local voiceSound = Instance.new('Sound')
+			voiceSound.SoundId = getArigatouSoundId()
+			voiceSound.Volume = 1.0
+			voiceSound.Parent = soundParent
+			voiceSound:Play()
+			game:GetService('Debris'):AddItem(voiceSound, 2.5)
+		end
+
+		RemoteRegistry.fireClient(player, 'ShopResult', true, 'お会計完了！ 合計 ¥' .. tostring(totalPaid) .. ' (' .. tostring(totalItems) .. '点) をかばん[B]に入れました！')
+		RemoteRegistry.fireClient(player, 'InventoryToast', '「ありがとうございました！」 (Thank you very much!)')
+	else
+		-- Basket is empty -> Friendly clerk greeting "Irasshaimase!" and open direct catalog
+		local soundParent = cashierPart or (player.Character and player.Character:FindFirstChild('HumanoidRootPart'))
+		if soundParent then
+			local voiceSound = Instance.new('Sound')
+			voiceSound.SoundId = getIrasshaimaseSoundId()
+			voiceSound.Volume = 0.9
+			voiceSound.Parent = soundParent
+			voiceSound:Play()
+			game:GetService('Debris'):AddItem(voiceSound, 2.5)
+		end
+
+		RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」 (Welcome to 7-Eleven!)')
+
+		activeShops[player] = { id = 'seven_eleven', expiresAt = os.clock() + 300 }
+		local shopData = table.clone(FishingData.shops['seven_eleven'])
+		shopData.shopId = 'seven_eleven'
+		shopData.id = 'seven_eleven'
+		shopData.title = shopData.name
+		shopData.catalog = shopData.items
+		local profile = ProfileService.getProfile(player.UserId)
+		shopData.yen = profile and profile.economy.yen or 500
+		RemoteRegistry.fireClient(player, 'OpenShop', shopData)
+	end
+end
+
+local function setupSevenElevenStore()
+	local townRoad = workspace:FindFirstChild('TownRoadNetwork')
+	local townBlocks = townRoad and townRoad:FindFirstChild('TownBlocks')
+	local store = townBlocks and townBlocks:FindFirstChild('Store_7ElevenClean')
+	if not store then
+		return
+	end
+
+	local subModel = store:FindFirstChild('Model')
+	local sevenEleven = subModel and subModel:FindFirstChild('Seven Eleven')
+	if not sevenEleven then
+		return
+	end
+
+	local function attachShelfPrompt(part: BasePart, actionText: string, objectText: string, maxDist: number?, shopKey: string)
+		if not part or part:FindFirstChild('SevenElevenPrompt') then
+			return
+		end
+		local prompt = Instance.new('ProximityPrompt')
+		prompt.Name = 'SevenElevenPrompt'
+		prompt.ActionText = actionText or '商品を見る / Browse (E)'
+		prompt.ObjectText = objectText or '7-Eleven 棚 (Shelf)'
+		prompt.MaxActivationDistance = maxDist or 12
+		prompt.RequiresLineOfSight = false
+		prompt.HoldDuration = 0
+		prompt.Parent = part
+		prompt.Triggered:Connect(function(player)
+			activeShops[player] = { id = shopKey, expiresAt = os.clock() + 300 }
+			local shopData = table.clone(FishingData.shops[shopKey] or FishingData.shops['seven_eleven'])
+			shopData.shopId = shopKey
+			shopData.id = shopKey
+			shopData.title = shopData.name
+			shopData.catalog = shopData.items
+			local profile = ProfileService.getProfile(player.UserId)
+			shopData.yen = profile and profile.economy.yen or 500
+			RemoteRegistry.fireClient(player, 'OpenShop', shopData)
+		end)
+	end
+
+	local function attachCashierPrompt(part: BasePart, actionText: string, objectText: string, maxDist: number?)
+		if not part or part:FindFirstChild('SevenElevenPrompt') then
+			return
+		end
+		local prompt = Instance.new('ProximityPrompt')
+		prompt.Name = 'SevenElevenPrompt'
+		prompt.ActionText = actionText or 'お会計 / Checkout (E)'
+		prompt.ObjectText = objectText or '7-Eleven レジカウンター (Cashier)'
+		prompt.MaxActivationDistance = maxDist or 12
+		prompt.RequiresLineOfSight = false
+		prompt.HoldDuration = 0
+		prompt.Parent = part
+		prompt.Triggered:Connect(function(player)
+			processCashierCheckout(player, part)
+		end)
+	end
+
+	-- 1. Setup Cashier Counter & Registers
+	local reg1 = sevenEleven:FindFirstChild('Register')
+	local reg2 = sevenEleven:FindFirstChild('Register 2')
+	if reg1 then
+		local p = reg1:FindFirstChildWhichIsA('BasePart', true)
+		if p then
+			attachCashierPrompt(p, 'お会計 / Checkout (E)', '7-Eleven レジ (Register)', 12)
+		end
+	end
+	if reg2 then
+		local p = reg2:FindFirstChildWhichIsA('BasePart', true)
+		if p then
+			attachCashierPrompt(p, 'お会計 / Checkout (E)', '7-Eleven レジ (Register)', 12)
+		end
+	end
+
+	-- 2. Setup Cashier Clerk NPC
+	for _, child in ipairs(sevenEleven:GetChildren()) do
+		local hum = child:FindFirstChildOfClass('Humanoid')
+		if hum and child:IsA('Model') then
+			child.Name = 'StoreClerk'
+			hum.DisplayName = '7-Eleven 店員 (Staff)'
+			local torso = child:FindFirstChild('Torso') or child:FindFirstChild('HumanoidRootPart') or child:FindFirstChild('Head')
+			if torso and torso:IsA('BasePart') then
+				attachCashierPrompt(torso, 'お会計 / Checkout (E)', '7-Eleven 店員 (Staff)', 12)
+			end
+		end
+	end
+
+	-- 3. Setup Drinks Cooler
+	local cooler = sevenEleven:FindFirstChild('Cooler')
+	if cooler then
+		local p = cooler:FindFirstChildWhichIsA('BasePart', true)
+		if p then
+			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven ドリンク冷蔵庫 (Drinks)', 11, 'seven_eleven_drinks')
+		end
+	end
+
+	-- 4. Setup Food / Bento / Snack Shelves
+	local shelf = sevenEleven:FindFirstChild('Shelf')
+	if shelf then
+		local p = shelf:FindFirstChildWhichIsA('BasePart', true)
+		if p then
+			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven お弁当・ご飯 (Bento & Meals)', 11, 'seven_eleven_food')
+		end
+	end
+
+	local shelf2 = sevenEleven:FindFirstChild('Shelf 2')
+	if shelf2 then
+		local p = shelf2:FindFirstChildWhichIsA('BasePart', true)
+		if p then
+			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven おにぎり・お菓子 (Snacks)', 11, 'seven_eleven_food')
+		end
+	end
+
+	-- 5. Setup Sundries, Bait, & Fireworks
+	local shelf3 = sevenEleven:FindFirstChild('Shelf 3 (Backshelf)') or sevenEleven:FindFirstChild('Drinks and Junk')
+	if shelf3 then
+		local p = shelf3:FindFirstChildWhichIsA('BasePart', true)
+		if p then
+			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven 日用品・釣り餌 (Sundries & Bait)', 11, 'seven_eleven_sundries')
+		end
+	end
+
+	-- 6. Automatic Door Welcome Chime Sensor
+	local previousSensor = sevenEleven:FindFirstChild('EntranceSensor')
+	if previousSensor then
+		previousSensor:Destroy()
+	end
+	local sensor = Instance.new('Part')
+	sensor.Name = 'EntranceSensor'
+	sensor.Size = Vector3.new(14, 8, 4)
+	sensor.CFrame = CFrame.new(123.5, 9.5, 36.8)
+	sensor.Transparency = 1
+	sensor.CanCollide = false
+	sensor.Anchored = true
+	sensor.Parent = sevenEleven
+
+	local chimeSound = Instance.new('Sound')
+	chimeSound.Name = 'DoorChime'
+	chimeSound.SoundId = SOUND_KONBINI_DOOR_CHIME -- Iconic Japanese konbini doorbell chime
+	chimeSound.Volume = 0.8
+	chimeSound.Parent = sensor
+
+	local voiceSound = Instance.new('Sound')
+	voiceSound.Name = 'WelcomeVoice'
+	voiceSound.SoundId = getIrasshaimaseSoundId() -- Japanese greeting voice
+	voiceSound.Volume = 0.85
+	voiceSound.Parent = sensor
+
+	local lastChimeTimes = {}
+	sensor.Touched:Connect(function(hit)
+		local char = hit and hit.Parent
+		local player = char and Players:GetPlayerFromCharacter(char)
+		if player then
+			local now = os.clock()
+			if not lastChimeTimes[player] or (now - lastChimeTimes[player]) > 10 then
+				lastChimeTimes[player] = now
+				chimeSound:Play()
+				task.delay(0.8, function()
+					if voiceSound and voiceSound.Parent then
+						voiceSound:Play()
+					end
+				end)
+				RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」 (Welcome to 7-Eleven!)')
+			end
+		end
+	end)
+end
+
 local function buyItem(player: Player, payload: any)
 	local itemId = if typeof(payload) == 'string' then payload elseif typeof(payload) == 'table' and typeof(payload.itemId) == 'string' then payload.itemId else nil
 	if not itemId then
 		return
 	end
 	local shopId = if typeof(payload) == 'table' and typeof(payload.shopId) == 'string' then payload.shopId else nil
+	local isBasket = if typeof(payload) == 'table' and payload.isBasket == true then true else false
 	local shop = if shopId then FishingData.shops[shopId] else nil
 	local selected = nil
 	if shop and shop.items then
@@ -1155,6 +1753,35 @@ local function buyItem(player: Player, payload: any)
 	if not selected then
 		return
 	end
+
+	-- If this is a basket purchase (from 7-Eleven shelf or cooler)
+	if isBasket or (shop and shop.isBasket) then
+		if not playerBaskets[player.UserId] then
+			playerBaskets[player.UserId] = { items = {}, totalCount = 0, totalYen = 0 }
+		end
+		local b = playerBaskets[player.UserId]
+
+		-- Worm Bait max limit
+		if selected.id == 'worm_bait' then
+			local profile = ProfileService.getProfile(player.UserId)
+			local currentCount = (profile and profile.inventory and profile.inventory.items and profile.inventory.items.worm_bait) or 0
+			local inBasket = b.items['worm_bait'] or 0
+			if currentCount + inBasket >= 5 then
+				RemoteRegistry.fireClient(player, 'ShopResult', false, 'Maksimal 5 Umpan Cacing (5/5)!')
+				return
+			end
+		end
+
+		b.items[selected.id] = (b.items[selected.id] or 0) + 1
+		b.totalCount += 1
+		b.totalYen += (selected.price or 0)
+
+		createBasketTool(player)
+		syncBasket(player)
+		RemoteRegistry.fireClient(player, 'ShopResult', true, '買い物かごに追加: ' .. selected.name .. ' (¥' .. tostring(selected.price or 0) .. ')')
+		return
+	end
+
 	local profile = ProfileService.getProfile(player.UserId)
 	if not profile then
 		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Profile is still loading.')
@@ -1207,8 +1834,28 @@ local function consumeDirect(player: Player, itemId: string)
 	if (profile.inventory.items[itemId] or 0) <= 0 then
 		return
 	end
-	local isDrink = itemId == 'ramune' or itemId == 'matcha_tea' or itemId == 'ice_coffee' or itemId == 'fisherman_tea'
-	local isFood = itemId == 'dango' or itemId == 'yakisoba' or itemId == 'taiyaki' or itemId == 'onigiri' or itemId == 'umeboshi_onigiri' or string.find(itemId, 'ice_cream') ~= nil or itemId == 'apple_sorbet'
+	local isDrink = itemId == 'ramune'
+		or itemId == 'matcha_tea'
+		or itemId == 'ice_coffee'
+		or itemId == 'fisherman_tea'
+		or itemId == 'seven_cafe_latte'
+		or itemId == 'green_tea_bottle'
+		or itemId == 'pocari_sweat'
+
+	local isFood = itemId == 'dango'
+		or itemId == 'yakisoba'
+		or itemId == 'taiyaki'
+		or itemId == 'onigiri'
+		or itemId == 'umeboshi_onigiri'
+		or itemId == 'nanachiki'
+		or itemId == 'tamago_sandwich'
+		or itemId == 'tuna_mayo_onigiri'
+		or itemId == 'katsu_curry'
+		or itemId == 'melonpan'
+		or itemId == 'pocky_box'
+		or string.find(itemId, 'ice_cream') ~= nil
+		or itemId == 'apple_sorbet'
+
 	if not isFood and not isDrink then
 		return
 	end
@@ -1243,6 +1890,17 @@ end
 
 local function inventoryAction(player: Player, payload: any)
 	if typeof(payload) ~= 'table' then
+		return
+	end
+	if payload.action == 'clear_basket' then
+		playerBaskets[player.UserId] = nil
+		clearBasketTool(player)
+		syncBasket(player)
+		RemoteRegistry.fireClient(player, 'ShopResult', true, '買い物かごを空にしました (Basket cleared)')
+		return
+	end
+	if payload.action == 'checkout_basket' then
+		processCashierCheckout(player, nil)
 		return
 	end
 	if payload.action == 'unequip' then
@@ -1319,6 +1977,7 @@ end
 
 function FishingGameService.init()
 	buildLakesideShops()
+	setupSevenElevenStore()
 	configureFishingSpots()
 
 	RemoteRegistry.registerFunction('GetInventory', function(player: Player)
@@ -1384,6 +2043,7 @@ function FishingGameService.init()
 		end
 		sessions[player] = nil
 		activeShops[player] = nil
+		playerBaskets[player.UserId] = nil
 	end)
 end
 

@@ -90,8 +90,26 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	action.Parent = row
 	corner(action, 6)
 
-	local isDrink = id == 'ramune' or id == 'matcha_tea' or id == 'ice_coffee' or id == 'fisherman_tea'
-	local isFood = id == 'dango' or id == 'yakisoba' or id == 'taiyaki' or id == 'onigiri' or id == 'umeboshi_onigiri' or string.find(id, 'ice_cream') ~= nil or id == 'apple_sorbet'
+	local isDrink = id == 'ramune'
+		or id == 'matcha_tea'
+		or id == 'ice_coffee'
+		or id == 'fisherman_tea'
+		or id == 'seven_cafe_latte'
+		or id == 'green_tea_bottle'
+		or id == 'pocari_sweat'
+	local isFood = id == 'dango'
+		or id == 'yakisoba'
+		or id == 'taiyaki'
+		or id == 'onigiri'
+		or id == 'umeboshi_onigiri'
+		or id == 'nanachiki'
+		or id == 'tamago_sandwich'
+		or id == 'tuna_mayo_onigiri'
+		or id == 'katsu_curry'
+		or id == 'melonpan'
+		or id == 'pocky_box'
+		or string.find(id, 'ice_cream') ~= nil
+		or id == 'apple_sorbet'
 	local isBait = id == 'worm_bait' or id == 'shrimp_bait' or id == 'golden_lure'
 	local isRod = id == 'fishing_rod' or id == 'pro_fishing_rod'
 	local isJunk = id == 'old_boot' or id == 'empty_can'
@@ -206,15 +224,31 @@ local function makeShopRow(item: any, order: number)
 	label.Position = UDim2.fromOffset(12, 0)
 	label.ZIndex = 13
 
+	local isBasketShop = currentShopData and currentShopData.isBasket == true
+
 	local buy = Instance.new('TextButton')
 	buy.AnchorPoint = Vector2.new(1, 0.5)
 	buy.Position = UDim2.new(1, -8, 0.5, 0)
-	buy.Size = UDim2.fromOffset(92, 34)
-	buy.BackgroundColor3 = if isDisabled then Color3.fromRGB(115, 125, 135) elseif isFree then Color3.fromRGB(48, 108, 62) else Color3.fromRGB(156, 92, 44)
-	buy.Text = if isOwnedRod then 'Owned' elseif isMaxWorm then 'Max (5/5)' elseif isFree then 'Get' else 'Buy'
+	buy.Size = UDim2.fromOffset(if isBasketShop then 96 else 92, 34)
+	buy.BackgroundColor3 = if isDisabled
+		then Color3.fromRGB(115, 125, 135)
+		elseif isBasketShop
+		then Color3.fromRGB(210, 145, 25)
+		elseif isFree
+		then Color3.fromRGB(48, 108, 62)
+		else Color3.fromRGB(156, 92, 44)
+	buy.Text = if isOwnedRod
+		then 'Owned'
+		elseif isMaxWorm
+		then 'Max (5/5)'
+		elseif isBasketShop
+		then '+ Basket'
+		elseif isFree
+		then 'Get'
+		else 'Buy'
 	buy.TextColor3 = Color3.new(1, 1, 1)
 	buy.Font = Enum.Font.GothamBold
-	buy.TextSize = 14
+	buy.TextSize = 13
 	buy.ZIndex = 13
 	buy.AutoButtonColor = not isDisabled
 	buy.Parent = row
@@ -227,6 +261,14 @@ local function makeShopRow(item: any, order: number)
 		end
 		if isMaxWorm then
 			showToast('You already have max Worm Bait (5/5)!')
+			return
+		end
+		if isBasketShop then
+			RemoteController.fire('ShopBuy', {
+				shopId = currentShopId,
+				itemId = item.id,
+				isBasket = true,
+			})
 			return
 		end
 		local price = item.price or 0
@@ -528,6 +570,91 @@ function InventoryController.init()
 		if message then
 			showToast(message)
 		end
+	end)
+
+	local basketBar: Frame? = nil
+	local basketLabel: TextLabel? = nil
+
+	local function updateBasketGui(basketData: any)
+		local count = if basketData then (basketData.count or basketData.totalCount or 0) else 0
+		local yen = if basketData then (basketData.yen or basketData.totalYen or 0) else 0
+		if count <= 0 then
+			if basketBar then
+				basketBar.Visible = false
+			end
+			return
+		end
+		if not basketBar and gui then
+			basketBar = Instance.new('Frame')
+			basketBar.Name = 'KonbiniBasketBar'
+			basketBar.AnchorPoint = Vector2.new(0.5, 1)
+			basketBar.Position = UDim2.new(0.5, 0, 1, -22)
+			basketBar.Size = UDim2.fromOffset(470, 46)
+			basketBar.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+			basketBar.BackgroundTransparency = 0.12
+			basketBar.ZIndex = 25
+			basketBar.Parent = gui
+			corner(basketBar, 12)
+
+			local stroke = Instance.new('UIStroke')
+			stroke.Color = Color3.fromRGB(240, 195, 30)
+			stroke.Thickness = 1.5
+			stroke.Parent = basketBar
+			UIScaling.fit(basketBar)
+
+			basketLabel = Instance.new('TextLabel')
+			basketLabel.Size = UDim2.new(1, -185, 1, 0)
+			basketLabel.Position = UDim2.fromOffset(12, 0)
+			basketLabel.BackgroundTransparency = 1
+			basketLabel.TextColor3 = Color3.fromRGB(255, 235, 170)
+			basketLabel.Font = Enum.Font.GothamBold
+			basketLabel.TextSize = 13
+			basketLabel.TextXAlignment = Enum.TextXAlignment.Left
+			basketLabel.ZIndex = 26
+			basketLabel.Parent = basketBar
+
+			local clearBtn = Instance.new('TextButton')
+			clearBtn.AnchorPoint = Vector2.new(1, 0.5)
+			clearBtn.Position = UDim2.new(1, -94, 0.5, 0)
+			clearBtn.Size = UDim2.fromOffset(80, 32)
+			clearBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 50)
+			clearBtn.Text = '取消 (Cancel)'
+			clearBtn.TextColor3 = Color3.new(1, 1, 1)
+			clearBtn.Font = Enum.Font.GothamBold
+			clearBtn.TextSize = 12
+			clearBtn.ZIndex = 26
+			clearBtn.Parent = basketBar
+			corner(clearBtn, 8)
+			clearBtn.Activated:Connect(function()
+				RemoteController.fire('InventoryAction', { action = 'clear_basket' })
+			end)
+
+			local payBtn = Instance.new('TextButton')
+			payBtn.AnchorPoint = Vector2.new(1, 0.5)
+			payBtn.Position = UDim2.new(1, -8, 0.5, 0)
+			payBtn.Size = UDim2.fromOffset(80, 32)
+			payBtn.BackgroundColor3 = Color3.fromRGB(42, 140, 78)
+			payBtn.Text = 'お会計 (E)'
+			payBtn.TextColor3 = Color3.new(1, 1, 1)
+			payBtn.Font = Enum.Font.GothamBold
+			payBtn.TextSize = 12
+			payBtn.ZIndex = 26
+			payBtn.Parent = basketBar
+			corner(payBtn, 8)
+			payBtn.Activated:Connect(function()
+				RemoteController.fire('InventoryAction', { action = 'checkout_basket' })
+			end)
+		end
+		if basketLabel then
+			basketLabel.Text = string.format("🛒 買い物かご: %d点 (¥%d) • レジへどうぞ", count, yen)
+		end
+		if basketBar then
+			basketBar.Visible = true
+		end
+	end
+
+	RemoteController.onEvent('BasketUpdated', function(basketData)
+		updateBasketGui(basketData)
 	end)
 
 	task.spawn(function()
