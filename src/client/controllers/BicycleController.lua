@@ -24,6 +24,7 @@ local player = Players.LocalPlayer
 local BicycleController = {}
 
 local HOP_ACTION = 'SuwaBikeHop'
+local BELL_ACTION = 'SuwaBikeBell'
 local DISMOUNT_ACTION = 'SuwaBikeDismount'
 local CARD_SECONDS = 5
 
@@ -33,6 +34,7 @@ local mountedAt = 0
 local screenGui: ScreenGui? = nil
 local dismissThread: thread? = nil
 local hopButton: TextButton? = nil
+local bellButton: TextButton? = nil
 
 type WheelState = {
 	collider: BasePart,
@@ -49,6 +51,7 @@ local KEY_ROWS = {
 	{ key = 'W A S D', desc = 'Ride & steer  ・  走る・曲がる' },
 	{ key = 'Shift', desc = 'Sprint boost  ・  ダッシュ' },
 	{ key = 'Space / Q', desc = 'Bunny hop  ・  ジャンプ' },
+	{ key = 'R', desc = 'Ring bell  ・  ベルを鳴らす' },
 	{ key = 'E  /  X', desc = 'Get off  ・  降りる' },
 }
 
@@ -56,6 +59,7 @@ local TOUCH_ROWS = {
 	{ key = 'Joystick', desc = 'Ride & steer  ・  走る・曲がる' },
 	{ key = 'BOOST', desc = 'Pedal fast  ・  ダッシュ' },
 	{ key = 'HOP', desc = 'Bunny hop  ・  ジャンプ' },
+	{ key = 'BELL', desc = 'Ring bell  ・  ベルを鳴らす' },
 	{ key = 'GET OFF', desc = 'Get off  ・  降りる' },
 }
 
@@ -248,6 +252,10 @@ local function triggerHop()
 	RemoteController.fire('VehicleHop')
 end
 
+local function triggerBell()
+	RemoteController.fire('VehicleBell')
+end
+
 local function dismount()
 	local humanoid = currentHumanoid
 	if not humanoid or not currentSeat then
@@ -263,26 +271,42 @@ local function buildMobileBikeButtons()
 	if not UIScaling.isTouch() then
 		return
 	end
-	if hopButton then
-		hopButton.Visible = true
-		return
+
+	-- Bell Button — leftmost slot in the shared bottom action row
+	if bellButton then
+		bellButton.Visible = true
+	else
+		local bellBtn = UIDock.roundButton('BELL', 0, Color3.fromRGB(205, 145, 25))
+		bellBtn.Name = 'BellButton'
+		bellBtn.Parent = UIDock.getBottomActionRow()
+		bellButton = bellBtn
+
+		bellBtn.MouseButton1Click:Connect(function()
+			triggerBell()
+		end)
 	end
 
-	-- Hop Button — leftmost slot in the shared bottom action row, so it sits
-	-- neatly beside MovementController's Sprint/Boost button.
-	local hopBtn = UIDock.roundButton('HOP', 1, Color3.fromRGB(32, 100, 175))
-	hopBtn.Name = 'HopButton'
-	hopBtn.Parent = UIDock.getBottomActionRow()
-	hopButton = hopBtn
+	-- Hop Button — slot 1 in the shared bottom action row
+	if hopButton then
+		hopButton.Visible = true
+	else
+		local hopBtn = UIDock.roundButton('HOP', 1, Color3.fromRGB(32, 100, 175))
+		hopBtn.Name = 'HopButton'
+		hopBtn.Parent = UIDock.getBottomActionRow()
+		hopButton = hopBtn
 
-	hopBtn.MouseButton1Click:Connect(function()
-		triggerHop()
-	end)
+		hopBtn.MouseButton1Click:Connect(function()
+			triggerHop()
+		end)
+	end
 end
 
 local function removeMobileBikeButtons()
 	if hopButton then
 		hopButton.Visible = false
+	end
+	if bellButton then
+		bellButton.Visible = false
 	end
 end
 
@@ -293,6 +317,13 @@ local function bindControls()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.Space, Enum.KeyCode.Q, Enum.KeyCode.ButtonA, Enum.PlayerActions.CharacterJump)
+
+	ContextActionService:BindAction(BELL_ACTION, function(_, state: Enum.UserInputState)
+		if state == Enum.UserInputState.Begin then
+			triggerBell()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.R, Enum.KeyCode.ButtonY)
 
 	ContextActionService:BindAction(DISMOUNT_ACTION, function(_, state: Enum.UserInputState)
 		if state == Enum.UserInputState.Begin then
@@ -306,6 +337,7 @@ end
 
 local function unbindControls()
 	ContextActionService:UnbindAction(HOP_ACTION)
+	ContextActionService:UnbindAction(BELL_ACTION)
 	ContextActionService:UnbindAction(DISMOUNT_ACTION)
 	removeMobileBikeButtons()
 end

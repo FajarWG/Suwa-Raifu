@@ -20,12 +20,14 @@ for _, boat in ipairs(crafts:GetChildren()) do
                 end
             end
 
-            -- Ensure boat is elevated so root Y is 4.45 (dry and buoyant)
-            local currentY = root.Position.Y
+            -- Ensure boat is elevated so root Y is 4.45 (dry and buoyant) and shifted clear of pier (Z = -254.00)
+            local currentPos = root.Position
             local targetY = 4.45
-            local deltaY = targetY - currentY
-            if math.abs(deltaY) > 0.05 then
-                boat:PivotTo(boat:GetPivot() + Vector3.new(0, deltaY, 0))
+            local targetZ = -254.00
+            local deltaY = targetY - currentPos.Y
+            local deltaZ = targetZ - currentPos.Z
+            if math.abs(deltaY) > 0.05 or math.abs(deltaZ) > 0.05 then
+                boat:PivotTo(boat:GetPivot() + Vector3.new(0, deltaY, deltaZ))
             end
 
             root:SetAttribute("ParkedY", root.Position.Y)

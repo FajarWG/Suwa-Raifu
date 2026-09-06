@@ -58,6 +58,36 @@ async function run() {
       target: 'game:GetService("ServerScriptService").Server.services.VehicleInteractionService',
       name: 'VehicleInteractionService',
     },
+    {
+      path: 'src/shared/remotes.lua',
+      target: 'game:GetService("ReplicatedStorage").Shared.remotes',
+      name: 'remotes',
+    },
+    {
+      path: 'src/server/services/BicycleService.lua',
+      target: 'game:GetService("ServerScriptService").Server.services.BicycleService',
+      name: 'BicycleService',
+    },
+    {
+      path: 'src/client/controllers/BicycleController.lua',
+      target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.BicycleController',
+      name: 'BicycleController',
+    },
+    {
+      path: 'src/client/controllers/MovementController.lua',
+      target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.MovementController',
+      name: 'MovementController',
+    },
+    {
+      path: 'src/client/controllers/UIScaling.lua',
+      target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.UIScaling',
+      name: 'UIScaling',
+    },
+    {
+      path: 'src/server/runner.server.lua',
+      target: 'game:GetService("ServerScriptService").Server.runner',
+      name: 'runner',
+    },
   ];
 
   for (const item of files) {

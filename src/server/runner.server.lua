@@ -9,9 +9,13 @@ local servicesFolder = script.Parent:WaitForChild('services')
 local function initService(module: ModuleScript)
 	local ok, service = pcall(require, module)
 	if ok and typeof(service) == 'table' and service.init then
-		service.init()
-		Services[module.Name] = service
-		print(`[Server] Loaded {module.Name}`)
+		local initOk, initErr = pcall(service.init)
+		if initOk then
+			Services[module.Name] = service
+			print(`[Server] Loaded {module.Name}`)
+		else
+			warn(`[Server] Failed to initialize {module.Name}: {initErr}`)
+		end
 	else
 		warn(`[Server] Failed to load {module.Name}: {service}`)
 	end

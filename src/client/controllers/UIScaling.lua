@@ -18,7 +18,7 @@ local REFERENCE_HEIGHT = 640
 local MIN_SCALE = 0.5
 
 function UIScaling.isTouch(): boolean
-	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	return UserInputService.TouchEnabled
 end
 
 local function viewportSize(): Vector2

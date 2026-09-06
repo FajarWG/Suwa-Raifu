@@ -35,16 +35,19 @@ local Remotes: RemoteDefinitions = {
 		'InventoryAction',
 		'VehicleBoost',
 		'VehicleHop',
+		'VehicleBell',
 		'ProfileUpdated',
 		'SetStatus',
 		'ClearStatus',
 		'CarryRelease',
+		'NPCInteract',
 	},
 	functions = {
 		'GetProfile',
 		'GetShopCatalog',
 		'GetTimeInfo',
 		'GetInventory',
+		'NPCGetDialog',
 	},
 }
 

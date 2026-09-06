@@ -63,6 +63,12 @@ local WATER_LEVEL = 0
 -- badly): the rider is put back on their feet and the bike goes home.
 local DROWN_LEVEL = WATER_LEVEL + 2
 
+-- Sounds for authentic, atmospheric mamachari riding:
+-- Soft rolling tires on pavement, subtle chain pedaling, and crisp double bell.
+local SOUND_ROLL = 'rbxassetid://9125955674'
+local SOUND_CHAIN = 'rbxassetid://9113438203'
+local SOUND_BELL = 'rbxassetid://9125390319'
+
 type Wheel = {
 	collider: BasePart,
 	mesh: BasePart,
@@ -86,10 +92,30 @@ type Bike = {
 	hopping: boolean,
 	hopVelocityY: number?,
 	anchorTask: thread?,
+	rollSound: Sound?,
+	chainSound: Sound?,
+	bellSound: Sound?,
 }
 
 local bikes: { [VehicleSeat]: Bike } = {}
 local boosting: { [Player]: boolean } = {}
+
+local function makeBikeSound(seat: BasePart, name: string, soundId: string, looped: boolean, minDistance: number, maxDistance: number): Sound
+	local sound = Instance.new('Sound')
+	sound.Name = name
+	sound.SoundId = soundId
+	sound.Looped = looped
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = minDistance
+	sound.RollOffMaxDistance = maxDistance
+	sound.Volume = 0
+	sound.PlaybackSpeed = 1
+	sound.Parent = seat
+	if looped then
+		sound:Play()
+	end
+	return sound
+end
 
 --=============================================================================
 -- Rigging
@@ -379,7 +405,7 @@ local function stopRiding(bike: Bike)
 	bike.hopVelocityY = nil
 	bike.attachment.Axis = Vector3.yAxis
 
-	for _, name in { 'DriveAttachment', 'DriveLV', 'DriveAV' } do
+	for _, name in { 'DriveAttachment', 'DriveLV', 'DriveAV', 'BikeRollSound', 'BikeChainSound', 'BikeBellSound' } do
 		local existing = bike.seat:FindFirstChild(name)
 		if existing then
 			existing:Destroy()
@@ -387,6 +413,9 @@ local function stopRiding(bike: Bike)
 	end
 	bike.linear = nil
 	bike.angular = nil
+	bike.rollSound = nil
+	bike.chainSound = nil
+	bike.bellSound = nil
 
 	bike.seat.AssemblyLinearVelocity = Vector3.zero
 	bike.seat.AssemblyAngularVelocity = Vector3.zero
@@ -435,6 +464,22 @@ local function startRiding(bike: Bike)
 	setAnchored(bike, false)
 
 	local seat = bike.seat
+
+	for _, name in { 'DriveAttachment', 'DriveLV', 'DriveAV', 'BikeRollSound', 'BikeChainSound', 'BikeBellSound' } do
+		local existing = seat:FindFirstChild(name)
+		if existing then
+			existing:Destroy()
+		end
+	end
+
+	local rollSound = makeBikeSound(seat, 'BikeRollSound', SOUND_ROLL, true, 5, 45)
+	local chainSound = makeBikeSound(seat, 'BikeChainSound', SOUND_CHAIN, true, 5, 40)
+	local bellSound = makeBikeSound(seat, 'BikeBellSound', SOUND_BELL, false, 8, 60)
+	bellSound.Volume = 0.52
+
+	bike.rollSound = rollSound
+	bike.chainSound = chainSound
+	bike.bellSound = bellSound
 
 	local attachment = Instance.new('Attachment')
 	attachment.Name = 'DriveAttachment'
@@ -508,16 +553,50 @@ local function startRiding(bike: Bike)
 		-- Steering only bites once the bike is actually rolling — a parked bike
 		-- should not spin on the spot.
 		local velocity = seat.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
-		local grip = math.clamp(velocity.Magnitude / 9, 0, 1)
+		local currentSpeed = velocity.Magnitude
+		local grip = math.clamp(currentSpeed / 9, 0, 1)
 		local targetYaw = -steer * TURN_SPEED * grip
 		local currentYaw = angular.AngularVelocity.Y
 		angular.AngularVelocity =
 			Vector3.new(0, currentYaw + (targetYaw - currentYaw) * math.min(1, delta * 9), 0)
+
+		-- Smooth, atmospheric audio modulation
+		local grounded = isGrounded(bike)
+		local speedRatio = math.clamp(currentSpeed / math.max(top, 1), 0, 1)
+
+		-- 1. Tire roll on pavement: audible when rolling on ground
+		local targetRollVol = 0
+		local targetRollPitch = 0.85
+		if grounded and currentSpeed > 0.5 then
+			targetRollVol = math.clamp(0.08 + 0.26 * speedRatio, 0, 0.36)
+			targetRollPitch = 0.85 + 0.30 * speedRatio
+		end
+
+		-- 2. Chain pedaling: active when actively pedaling and moving
+		local targetChainVol = 0
+		local targetChainPitch = 0.90
+		if grounded and math.abs(throttle) > 0.05 and currentSpeed > 0.5 and not blocked then
+			targetChainVol = math.clamp(0.08 + 0.20 * speedRatio, 0, 0.28)
+			targetChainPitch = 0.90 + 0.35 * speedRatio
+		end
+
+		local rollAlpha = 1 - math.exp(-12 * delta)
+		rollSound.Volume += (targetRollVol - rollSound.Volume) * rollAlpha
+		rollSound.PlaybackSpeed += (targetRollPitch - rollSound.PlaybackSpeed) * rollAlpha
+
+		local chainAlpha = 1 - math.exp(-14 * delta)
+		chainSound.Volume += (targetChainVol - chainSound.Volume) * chainAlpha
+		chainSound.PlaybackSpeed += (targetChainPitch - chainSound.PlaybackSpeed) * chainAlpha
 	end)
 end
 
 local function setupSeat(bike: Bike)
 	local seat = bike.seat
+	if seat:GetAttribute('SeatConfigured') then
+		return
+	end
+	seat:SetAttribute('SeatConfigured', true)
+
 	local prompt = bike.prompt
 
 	prompt.Triggered:Connect(function(player)
@@ -567,43 +646,72 @@ end
 
 --=============================================================================
 
+local function isActualBikeModel(model: Instance): boolean
+	if not model:IsA('Model') then
+		return false
+	end
+	local name = model.Name:lower()
+	if name:find('parking') or name:find('covered') or name:find('rack') or name:find('station') then
+		return false
+	end
+	if model:FindFirstChild('Bicycles') then
+		return false
+	end
+	if model:GetAttribute('ParkBike') or name:find('bike') or name:find('bicycle') or name:find('mamachari') then
+		return model:FindFirstChildWhichIsA('VehicleSeat', true) ~= nil
+	end
+	return false
+end
+
 local function collect(): { Model }
 	local found: { Model } = {}
 	local seen: { [Model]: boolean } = {}
 
 	for _, descendant in workspace:GetDescendants() do
-		local model: Model? = nil
-		if descendant:IsA('Model') and descendant:GetAttribute('ParkBike') then
-			model = descendant
-		elseif descendant:IsA('Folder') and descendant.Name == 'Bicycles' then
+		if descendant:IsA('Folder') and descendant.Name == 'Bicycles' then
 			for _, child in descendant:GetChildren() do
-				if child:IsA('Model') and not seen[child] then
+				if child:IsA('Model') and not seen[child] and child:FindFirstChildWhichIsA('VehicleSeat', true) then
 					seen[child] = true
 					table.insert(found, child)
 				end
 			end
-		end
-		if model and not seen[model] then
-			seen[model] = true
-			table.insert(found, model)
+		elseif isActualBikeModel(descendant) then
+			local parent = descendant.Parent
+			if not (parent and isActualBikeModel(parent)) and not seen[descendant] then
+				seen[descendant] = true
+				table.insert(found, descendant)
+			end
 		end
 	end
 	return found
 end
 
 function BicycleService.init()
-	local rigged = 0
-	for _, model in collect() do
-		local bike = rig(model)
-		if bike then
-			setupSeat(bike)
-			rigged += 1
+	local function scanAndRig(): number
+		local rigged = 0
+		for _, model in collect() do
+			local bike = rig(model)
+			if bike then
+				setupSeat(bike)
+				rigged += 1
+			end
 		end
+		return rigged
 	end
+
+	local initialCount = scanAndRig()
+
+	-- Secondary sweep once all map models settle
+	task.delay(2, function()
+		local added = scanAndRig()
+		if added > 0 then
+			print(`[BicycleService] Secondary sweep rigged {added} additional mamachari.`)
+		end
+	end)
 
 	-- Bikes the park builder drops in later still get rigged.
 	workspace.DescendantAdded:Connect(function(descendant)
-		if descendant:IsA('Model') and descendant:GetAttribute('ParkBike') then
+		if descendant:IsA('Model') and (descendant:GetAttribute('ParkBike') or descendant.Name:lower():find('bike')) then
 			task.delay(0.5, function()
 				if descendant.Parent then
 					local bike = rig(descendant)
@@ -628,6 +736,20 @@ function BicycleService.init()
 		local bike = seat and bikes[seat :: VehicleSeat]
 		if bike then
 			hop(bike)
+		end
+	end)
+
+	RemoteRegistry.registerEvent('VehicleBell', function(player: Player)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass('Humanoid')
+		local seat = humanoid and humanoid.SeatPart
+		local bike = seat and bikes[seat :: VehicleSeat]
+		if bike and bike.seat then
+			local bell = bike.seat:FindFirstChild('BikeBellSound') :: Sound?
+			if bell then
+				bell.TimePosition = 0
+				bell:Play()
+			end
 		end
 	end)
 

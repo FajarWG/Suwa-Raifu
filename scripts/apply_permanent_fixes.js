@@ -879,12 +879,41 @@ return { brokenBridge = bBridge ~= nil, walkway = wLadder ~= nil }
   }
 
   // =========================================================================
-  // 5. SET WAYPOINT AND FOCUS ROBLOX STUDIO
+  // 5. FIX HOTEL PLAZA & PARKING LOT Z-FIGHTING
   // =========================================================================
-  console.log('\n[5/5] Finalizing waypoint and focusing Studio...');
+  console.log('\n[5/6] Fixing Hotel Plaza & Parking Lot Z-fighting...');
+  const codeHotelPlaza = `
+local townBlocks = workspace:FindFirstChild("TownRoadNetwork") and workspace.TownRoadNetwork:FindFirstChild("TownBlocks")
+local hotelPlaza = townBlocks and townBlocks:FindFirstChild("HotelPlazaAndParking")
+if hotelPlaza then
+    local plazaLot = hotelPlaza:FindFirstChild("PlazaLot")
+    local driveway = hotelPlaza:FindFirstChild("HotelDrivewayLink")
+    local newThickness = 3.0
+    local targetTopY = 6.10
+    local targetPosY = targetTopY - (newThickness / 2)
+    if plazaLot then
+        plazaLot.Size = Vector3.new(128, newThickness, 74)
+        plazaLot.Position = Vector3.new(355, targetPosY, 45)
+    end
+    if driveway then
+        driveway.Size = Vector3.new(14, newThickness, 6)
+        driveway.Position = Vector3.new(355, targetPosY, 5)
+    end
+    workspace.Terrain:FillBlock(CFrame.new(355, 4.5, 45), Vector3.new(120, 4, 66), Enum.Material.Air)
+    return "Hotel plaza and driveway fixed!"
+end
+return "Hotel plaza not found"
+`;
+  const resHotelPlaza = await executeLuau(codeHotelPlaza, 'Edit');
+  console.log('Hotel Plaza Fix:', resHotelPlaza?.content?.[0]?.text);
+
+  // =========================================================================
+  // 6. SET WAYPOINT AND FOCUS ROBLOX STUDIO
+  // =========================================================================
+  console.log('\n[6/6] Finalizing waypoint and focusing Studio...');
   const codeWaypoint = `
 local chs = game:GetService("ChangeHistoryService")
-chs:SetWaypoint("Mitsuha Uniform, Campfire Benches & Cabin Sleeping Fixed")
+chs:SetWaypoint("Mitsuha Uniform, Campfire Benches, Cabin & Hotel Plaza Fixed")
 return "Waypoint set successfully!"
 `;
   await executeLuau(codeWaypoint, 'Edit');

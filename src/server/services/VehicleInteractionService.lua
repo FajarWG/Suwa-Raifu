@@ -284,9 +284,9 @@ local SWAN_PROFILE: CraftProfile = {
 	-- makes. (The swan model ships its own loop, but that asset is not shared
 	-- with this experience -- it only ever printed "not authorized".)
 	washSound = 'rbxassetid://9120570661',
-	washVolume = { 0.02, 0.12 },
+	washVolume = { 0.16, 0.36 },
 	washPitch = { 0.85, 1.15 },
-	rollOff = { 12, 80 },
+	rollOff = { 15, 75 },
 	bob = 0.05,
 }
 
@@ -298,12 +298,12 @@ local SPEEDBOAT_PROFILE: CraftProfile = {
 	turnSpeed = 1.5,
 	boost = 1.7,
 	engineSound = 'rbxassetid://9126002405',
-	engineVolume = { 0.90, 2.20 },
-	enginePitch = { 0.80, 1.45 },
+	engineVolume = { 0.22, 0.48 },
+	enginePitch = { 0.80, 1.35 },
 	washSound = 'rbxassetid://9126173719',
-	washVolume = { 0.03, 0.16 },
-	washPitch = { 0.90, 1.30 },
-	rollOff = { 25, 190 },
+	washVolume = { 0.15, 0.35 },
+	washPitch = { 0.85, 1.25 },
+	rollOff = { 20, 140 },
 	bob = 0.08,
 }
 
@@ -315,14 +315,14 @@ local FUNE_PROFILE: CraftProfile = {
 	turnSpeed = 0.7,
 	boost = 1.35,
 	engineSound = 'rbxassetid://9112780932',
-	-- Louder and pitched well below the speedboat: a big ship rumbles, it does
-	-- not whine, and the sound carries much further over open water.
-	engineVolume = { 1.40, 2.60 },
-	enginePitch = { 0.55, 0.90 },
+	-- Soft, pleasant engine purr
+	engineVolume = { 0.18, 0.42 },
+	enginePitch = { 0.60, 0.90 },
 	washSound = 'rbxassetid://9126173719',
-	washVolume = { 0.03, 0.16 },
-	washPitch = { 0.70, 1.00 },
-	rollOff = { 45, 320 },
+	-- Audible, refreshing wake water sound
+	washVolume = { 0.15, 0.35 },
+	washPitch = { 0.75, 1.05 },
+	rollOff = { 20, 140 },
 	bob = 0.06,
 }
 
@@ -334,12 +334,12 @@ local GENERIC_BOAT_PROFILE: CraftProfile = {
 	turnSpeed = 1.2,
 	boost = 1.4,
 	engineSound = 'rbxassetid://9118729626',
-	engineVolume = { 0.80, 1.80 },
-	enginePitch = { 0.85, 1.25 },
+	engineVolume = { 0.18, 0.40 },
+	enginePitch = { 0.85, 1.20 },
 	washSound = 'rbxassetid://9126173719',
-	washVolume = { 0.03, 0.14 },
-	washPitch = { 0.90, 1.25 },
-	rollOff = { 22, 160 },
+	washVolume = { 0.15, 0.32 },
+	washPitch = { 0.85, 1.15 },
+	rollOff = { 18, 120 },
 	bob = 0.08,
 }
 
@@ -405,7 +405,10 @@ local function makeLoop(rootPart: BasePart, name: string, soundId: string, profi
 	sound.Name = name
 	sound.SoundId = soundId
 	sound.Looped = true
-	sound.Volume = 0
+	local initialVol = if name:find('Wash') then (profile.washVolume and profile.washVolume[1] or 0.15) else (profile.engineVolume and profile.engineVolume[1] or 0.18)
+	local initialPitch = if name:find('Wash') then (profile.washPitch and profile.washPitch[1] or 1) else (profile.enginePitch and profile.enginePitch[1] or 1)
+	sound.Volume = initialVol
+	sound.PlaybackSpeed = initialPitch
 	sound.RollOffMode = Enum.RollOffMode.InverseTapered
 	sound.RollOffMinDistance = profile.rollOff[1]
 	sound.RollOffMaxDistance = profile.rollOff[2]
@@ -984,14 +987,18 @@ local function rigVehicle(model: Model)
 					task.cancel(existingAnchor)
 					anchorTasks[driver] = nil
 				end
-				rootPart.Anchored = false
+				-- Activate drive controller and surface hold constraints BEFORE unanchoring
+				startDriving(driver, rootPart, onWater, wheels)
 				local rider = Players:GetPlayerFromCharacter(driver.Occupant.Parent)
 				if rider then
 					pcall(function()
 						rootPart:SetNetworkOwner(rider)
 					end)
 				end
-				startDriving(driver, rootPart, onWater, wheels)
+				-- Clear physics momentum to guarantee zero dipping or flinging on boarding
+				rootPart.AssemblyLinearVelocity = Vector3.zero
+				rootPart.AssemblyAngularVelocity = Vector3.zero
+				rootPart.Anchored = false
 			else
 				stopDriving(driver, rootPart, onWater)
 				pcall(function()
