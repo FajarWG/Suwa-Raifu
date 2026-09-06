@@ -246,7 +246,13 @@ function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
 		if not profile.inventory.items.fishing_rod and not profile.inventory.items.pro_fishing_rod then
 			profile.inventory.items.fishing_rod = 1
 		end
-		if profile.inventory.items.worm_bait == nil or profile.inventory.items.worm_bait > 5 then
+		if profile.inventory.hasReceivedStarterBait == nil then
+			profile.inventory.hasReceivedStarterBait = true
+			if profile.inventory.items.worm_bait == nil then
+				profile.inventory.items.worm_bait = 5
+			end
+		end
+		if (profile.inventory.items.worm_bait or 0) > 5 then
 			profile.inventory.items.worm_bait = 5
 		end
 	end

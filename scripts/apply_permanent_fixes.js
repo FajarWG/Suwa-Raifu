@@ -24,7 +24,8 @@ local newBlock = [[id = "mitsuha_miyamizu",
 		pants = 6229694164,
 		shirtTemplate = "http://www.roblox.com/asset/?id=6229692758",
 		pantsTemplate = "http://www.roblox.com/asset/?id=6229694145",
-		description = "Itomori High School uniform with the iconic braided red ribbon.\\n組紐の赤リボンが心をつなぐ、三葉の糸守高校制服。"]]
+		description = "Itomori High School uniform with the iconic braided red ribbon.\\n組紐の赤リボンが心をつなぐ、三葉の糸守高校制服。"
+	}]]
 
 local replaced, count = string.gsub(src, pattern, newBlock)
 if count > 0 then

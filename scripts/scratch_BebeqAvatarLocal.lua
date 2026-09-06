@@ -67,7 +67,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 0, 24)
 Title.Position = UDim2.new(0, 18, 0, 8)
 Title.BackgroundTransparency = 1
-Title.Text = "👘 SUWA LIFE WARDROBE"
+Title.Text = "👘 SUWA LIFE AVATAR (アバターカタログ)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
@@ -496,8 +496,8 @@ local function CloseUI()
 end
 
 local wardrobeIcon = Icon.new()
-	:setLabel("Wardrobe")
-	:setCaption("Suwa Life Wardrobe | 衣装カタログ")
+	:setLabel("Avatar")
+	:setCaption("Suwa Life Avatar | アバターカタログ")
 	:bindEvent("selected", function() OpenUI() end)
 	:bindEvent("deselected", function() CloseUI() end)
 
@@ -506,8 +506,30 @@ task.spawn(function()
 	table.insert(_G.SuwaTopbarApps, wardrobeIcon)
 end)
 
+-- Top-Right Dock integration for instant visibility (never hidden, visible on PC & Mobile)
+task.spawn(function()
+	local ok, UIDock = pcall(function()
+		return require(player.PlayerScripts.Client.controllers.UIDock)
+	end)
+	if ok and UIDock then
+		local avatarBtn = UIDock.pillButton("Avatar", 3)
+		avatarBtn.Name = "AvatarButton"
+		avatarBtn.ZIndex = 2
+		avatarBtn.Parent = UIDock.getTopRightRow()
+		avatarBtn.Activated:Connect(function()
+			if isOpen then
+				CloseUI()
+				pcall(function() wardrobeIcon:deselect() end)
+			else
+				OpenUI()
+				pcall(function() wardrobeIcon:select() end)
+			end
+		end)
+	end
+end)
+
 CloseBtn.MouseButton1Click:Connect(function()
-	wardrobeIcon:deselect()
+	pcall(function() wardrobeIcon:deselect() end)
 	CloseUI()
 end)
 

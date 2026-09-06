@@ -108,7 +108,7 @@ local function clearDisplayedTool(player: Player)
 			return
 		end
 		for _, child in container:GetChildren() do
-			if child:IsA('Tool') and child:GetAttribute('InventoryDisplayTool') then
+			if child:IsA('Tool') and (child:GetAttribute('InventoryDisplayTool') or child:GetAttribute('FishingSessionTool')) then
 				child:Destroy()
 			end
 		end
@@ -125,14 +125,13 @@ local function createRodTool(player: Player, sessionOnly: boolean): Tool?
 		return nil
 	end
 
-	if not sessionOnly then
-		clearDisplayedTool(player)
-	end
+	clearDisplayedTool(player)
 	local tool = Instance.new('Tool')
 	tool.Name = if sessionOnly then 'Active Fishing Rod' else 'Beginner Fishing Rod'
 	tool.CanBeDropped = false
 	tool:SetAttribute('InventoryDisplayTool', not sessionOnly)
 	tool:SetAttribute('FishingSessionTool', sessionOnly)
+	tool:SetAttribute('ItemId', if sessionOnly then 'active_rod' else 'fishing_rod')
 
 	local handle = Instance.new('Part')
 	handle.Name = 'Handle'
@@ -728,7 +727,10 @@ local function rollCatch(fishingLevel: number): (string, any, boolean)
 	local candidates = {}
 	local totalWeight = 0
 	for id, definition in FishingData.fish do
-		local rarityBoost = if definition.rarity == 'Rare' then 1 + fishingLevel * 0.06 else 1
+		local rarityBoost = if definition.rarity == 'Legendary' then 1 + fishingLevel * 0.15
+			elseif definition.rarity == 'Epic' then 1 + fishingLevel * 0.10
+			elseif definition.rarity == 'Rare' then 1 + fishingLevel * 0.06
+			else 1
 		local weight = definition.weight * rarityBoost
 		table.insert(candidates, { id = id, definition = definition, weight = weight, isFish = true })
 		totalWeight += weight
@@ -759,7 +761,10 @@ local function createCatchDisplay(player: Player, id: string, definition: any, i
 	model.Parent = workspace
 	local position = root.Position + root.CFrame.LookVector * 4 + Vector3.new(0, 3, 0)
 	if isFish then
-		local length = if id == 'eel' then 4.5 else 2.8
+		local length = if id == 'eel' or id == 'catfish' then 4.5
+			elseif id == 'golden_koi' or id == 'common_carp' then 3.6
+			elseif id == 'wakasagi' or id == 'moroko' or id == 'kamatsuka' then 1.6
+			else 2.8
 		local body = makePart(
 			model,
 			'FishBody',
@@ -821,13 +826,21 @@ local function completeCatch(player: Player)
 	if isFish then
 		lengthCm = math.random(definition.minLength, definition.maxLength)
 		local ratio = lengthCm / definition.maxLength
-		local maxWeight = if id == 'wakasagi'
-			then 0.04
-			elseif id == 'crucian_carp' then 1.4
-			elseif id == 'common_carp' then 10
+		local maxWeight = if id == 'golden_koi' then 14.0
+			elseif id == 'common_carp' then 10.0
+			elseif id == 'catfish' then 6.5
+			elseif id == 'rainbow_trout' then 4.5
+			elseif id == 'lake_trout' then 3.8
 			elseif id == 'black_bass' then 3.5
-			elseif id == 'rainbow_trout' then 4
-			else 2
+			elseif id == 'cherry_salmon' then 2.5
+			elseif id == 'eel' then 1.8
+			elseif id == 'crucian_carp' then 1.4
+			elseif id == 'bluegill' then 0.65
+			elseif id == 'ayu' then 0.35
+			elseif id == 'kamatsuka' then 0.18
+			elseif id == 'moroko' then 0.05
+			elseif id == 'wakasagi' then 0.04
+			else 2.0
 		weightKg = math.floor(maxWeight * ratio * ratio * ratio * 100 + 0.5) / 100
 		InventoryService.addFish(player.UserId, id, 1)
 		local totalCaught = 0
@@ -1232,6 +1245,10 @@ local function inventoryAction(player: Player, payload: any)
 	if typeof(payload) ~= 'table' then
 		return
 	end
+	if payload.action == 'unequip' then
+		clearDisplayedTool(player)
+		return
+	end
 	if payload.action == 'consume' then
 		local char = player.Character
 		local tool = char and char:FindFirstChildOfClass('Tool')
@@ -1333,6 +1350,7 @@ function FishingGameService.init()
 			end
 		end
 		if spot then
+			clearDisplayedTool(player)
 			beginFishing(player, spot)
 		else
 			sendState(player, 'FAILED', { message = 'Step closer to a fishing spot on a pier.' })

@@ -22,6 +22,7 @@ local shopList: Frame
 local shopTitle: TextLabel
 local toast: TextLabel
 local latestSnapshot: any = nil
+local currentEquippedItemId: string? = nil
 
 local function corner(parent: GuiObject, radius: number)
 	local uiCorner = Instance.new('UICorner')
@@ -69,19 +70,19 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	local row = Instance.new('Frame')
 	row.Name = 'InventoryRow'
 	row.LayoutOrder = order
-	row.Size = UDim2.new(1, -10, 0, 48)
+	row.Size = UDim2.new(1, -10, 0, 50)
 	row.BackgroundColor3 = Color3.fromRGB(235, 230, 216)
 	row.ZIndex = 12
 	row.Parent = bagList
 	corner(row, 8)
-	local label = textLabel(row, `{name}  ×{count}`, UDim2.new(1, -130, 1, 0), 15)
+	local label = textLabel(row, `{name}  ×{count}`, UDim2.new(1, -130, 1, 0), 14)
 	label.Position = UDim2.fromOffset(12, 0)
 	label.ZIndex = 13
 
 	local action = Instance.new('TextButton')
 	action.AnchorPoint = Vector2.new(1, 0.5)
 	action.Position = UDim2.new(1, -8, 0.5, 0)
-	action.Size = UDim2.fromOffset(108, 34)
+	action.Size = UDim2.fromOffset(108, 36)
 	action.TextColor3 = Color3.new(1, 1, 1)
 	action.Font = Enum.Font.GothamBold
 	action.TextSize = 13
@@ -94,8 +95,23 @@ local function makeInventoryRow(category: string, id: string, name: string, coun
 	local isBait = id == 'worm_bait' or id == 'shrimp_bait' or id == 'golden_lure'
 	local isRod = id == 'fishing_rod' or id == 'pro_fishing_rod'
 	local isJunk = id == 'old_boot' or id == 'empty_can'
+	local isCurrentlyEquipped = (currentEquippedItemId == id)
 
-	if category == 'fish' then
+	if isCurrentlyEquipped then
+		action.Text = 'Unequip'
+		action.BackgroundColor3 = Color3.fromRGB(160, 68, 68)
+		action.Activated:Connect(function()
+			RemoteController.fire('InventoryAction', {
+				action = 'unequip',
+				category = category,
+				id = id,
+			})
+			currentEquippedItemId = nil
+			if latestSnapshot then
+				renderInventory(latestSnapshot)
+			end
+		end)
+	elseif category == 'fish' then
 		local def = FishingData.fish and FishingData.fish[id]
 		local price = def and (def.baseValue or def.price) or 150
 		action.Text = `Sell (+¥{price})`
@@ -300,7 +316,7 @@ local function buildGui()
 	local touch = UIScaling.isTouch()
 
 	-- 1. Top-Right Dock Button
-	local bagButton = UIDock.pillButton(if touch then 'Bag' else 'Bag [B]', 3)
+	local bagButton = UIDock.pillButton(if touch then 'Bag' else 'Bag [B]', 4)
 	bagButton.Name = 'BagButton'
 	bagButton.ZIndex = 2
 	bagButton.Parent = UIDock.getTopRightRow()
@@ -354,11 +370,24 @@ local function buildGui()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = bagList
 
+	bagPanel:GetPropertyChangedSignal('Visible'):Connect(function()
+		if bagPanel.Visible then
+			if latestSnapshot then
+				renderInventory(latestSnapshot)
+			else
+				task.spawn(function()
+					local snapshot = RemoteController.invoke('GetInventory')
+					if snapshot then
+						latestSnapshot = snapshot
+						renderInventory(snapshot)
+					end
+				end)
+			end
+		end
+	end)
+
 	bagButton.Activated:Connect(function()
 		bagPanel.Visible = not bagPanel.Visible
-		if bagPanel.Visible and latestSnapshot then
-			renderInventory(latestSnapshot)
-		end
 	end)
 	closeBag.Activated:Connect(function()
 		bagPanel.Visible = false
@@ -508,7 +537,7 @@ function InventoryController.init()
 		end
 	end)
 
-	-- Consumable Tool Equipping & Screen Action Button
+	-- Tool Equipping & Responsive Screen Action Bar (Eat, Drink, Put Away / Unequip)
 	local function bindCharacter(char: Model)
 		local currentTool: Tool? = nil
 		local actionGui: ScreenGui? = nil
@@ -524,14 +553,66 @@ function InventoryController.init()
 				toolActivatedConn = nil
 			end
 			currentTool = nil
+			currentEquippedItemId = nil
+			if bagPanel and bagPanel.Visible and latestSnapshot then
+				renderInventory(latestSnapshot)
+			end
 		end
 
-		char.ChildAdded:Connect(function(child)
-			if child:IsA('Tool') and child:GetAttribute('IsConsumable') then
-				currentTool = child
-				local isDrink = child:GetAttribute('IsDrink')
-				local itemId = child:GetAttribute('ItemId')
+		local function updateActionUi(tool: Tool)
+			currentTool = tool
+			local itemId = tool:GetAttribute('ItemId')
+			currentEquippedItemId = itemId
+			if bagPanel and bagPanel.Visible and latestSnapshot then
+				renderInventory(latestSnapshot)
+			end
 
+			-- FishingController manages the reel/bite controls during active fishing sessions
+			if tool:GetAttribute('FishingSessionTool') == true then
+				if actionGui then
+					actionGui:Destroy()
+					actionGui = nil
+				end
+				return
+			end
+
+			local player = Players.LocalPlayer
+			local playerGui = player and player:FindFirstChildOfClass('PlayerGui')
+			if not playerGui then
+				return
+			end
+
+			if actionGui then
+				actionGui:Destroy()
+			end
+
+			actionGui = Instance.new('ScreenGui')
+			actionGui.Name = 'ItemActionBarGui'
+			actionGui.ResetOnSpawn = false
+			actionGui.DisplayOrder = 20
+			actionGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+			local container = Instance.new('Frame')
+			container.Name = 'Container'
+			container.AnchorPoint = Vector2.new(0.5, 1)
+			container.Position = UDim2.new(0.5, 0, 1, -82)
+			container.AutomaticSize = Enum.AutomaticSize.XY
+			container.Size = UDim2.new(0, 0, 0, 0)
+			container.BackgroundTransparency = 1
+			container.Parent = actionGui
+			UIScaling.fit(container)
+
+			local layout = Instance.new('UIListLayout')
+			layout.FillDirection = Enum.FillDirection.Horizontal
+			layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			layout.VerticalAlignment = Enum.VerticalAlignment.Center
+			layout.Padding = UDim.new(0, 10)
+			layout.Parent = container
+
+			local isConsumable = tool:GetAttribute('IsConsumable') == true
+			local isDrink = tool:GetAttribute('IsDrink') == true
+
+			if isConsumable then
 				local function triggerConsume()
 					RemoteController.fire('InventoryAction', {
 						action = 'consume',
@@ -542,53 +623,121 @@ function InventoryController.init()
 				if toolActivatedConn then
 					toolActivatedConn:Disconnect()
 				end
-				toolActivatedConn = child.Activated:Connect(triggerConsume)
+				toolActivatedConn = tool.Activated:Connect(triggerConsume)
 
-				local player = Players.LocalPlayer
-				local playerGui = player and player:FindFirstChildOfClass('PlayerGui')
-				if playerGui then
-					if actionGui then actionGui:Destroy() end
-					actionGui = Instance.new('ScreenGui')
-					actionGui.Name = 'ConsumeActionGui'
-					actionGui.ResetOnSpawn = false
-					actionGui.DisplayOrder = 20
-					actionGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+				-- 1. Eat / Drink Button
+				local consumeBtn = Instance.new('TextButton')
+				consumeBtn.Name = 'ConsumeButton'
+				consumeBtn.Size = UDim2.fromOffset(175, 46)
+				consumeBtn.BackgroundColor3 = if isDrink then Color3.fromRGB(38, 110, 125) else Color3.fromRGB(48, 120, 75)
+				consumeBtn.Text = ''
+				consumeBtn.AutoButtonColor = true
+				consumeBtn.ZIndex = 25
+				consumeBtn.Parent = container
+				corner(consumeBtn, 23)
 
-					local btn = Instance.new('TextButton')
-					btn.Name = 'ConsumeButton'
-					btn.AnchorPoint = Vector2.new(0.5, 1)
-					btn.Position = UDim2.new(0.5, 0, 1, -85)
-					btn.Size = UDim2.fromOffset(220, 48)
-					btn.BackgroundColor3 = if isDrink then Color3.fromRGB(38, 110, 125) else Color3.fromRGB(48, 120, 75)
-					btn.Text = ''
-					btn.AutoButtonColor = true
-					btn.ZIndex = 25
-					btn.Parent = actionGui
+				local cStroke = Instance.new('UIStroke')
+				cStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				cStroke.Color = Color3.fromRGB(255, 255, 255)
+				cStroke.Thickness = 1.5
+				cStroke.Transparency = 0.25
+				cStroke.Parent = consumeBtn
 
-					corner(btn, 24)
+				local cLabel = Instance.new('TextLabel')
+				cLabel.Size = UDim2.new(1, 0, 1, 0)
+				cLabel.BackgroundTransparency = 1
+				cLabel.Text = if isDrink then 'Drink (Click/Tap)' else 'Eat (Click/Tap)'
+				cLabel.TextColor3 = Color3.new(1, 1, 1)
+				cLabel.Font = Enum.Font.GothamBold
+				cLabel.TextSize = 15
+				cLabel.ZIndex = 26
+				cLabel.Parent = consumeBtn
 
-					-- Crisp border stroke only (does not blur text)
-					local stroke = Instance.new('UIStroke')
-					stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-					stroke.Color = Color3.fromRGB(255, 255, 255)
-					stroke.Thickness = 1.5
-					stroke.Transparency = 0.25
-					stroke.Parent = btn
+				consumeBtn.Activated:Connect(triggerConsume)
 
-					-- High-definition, sharp text label without text stroke blur
-					local label = Instance.new('TextLabel')
-					label.Size = UDim2.new(1, 0, 1, 0)
-					label.BackgroundTransparency = 1
-					label.Text = if isDrink then 'Drink (Click / Tap)' else 'Eat (Click / Tap)'
-					label.TextColor3 = Color3.new(1, 1, 1)
-					label.Font = Enum.Font.GothamBold
-					label.TextSize = 16
-					label.ZIndex = 26
-					label.Parent = btn
+				-- 2. Put Away Button (Cancels eating and stows back into Bag safely)
+				local putAwayBtn = Instance.new('TextButton')
+				putAwayBtn.Name = 'PutAwayButton'
+				putAwayBtn.Size = UDim2.fromOffset(115, 46)
+				putAwayBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 60)
+				putAwayBtn.Text = ''
+				putAwayBtn.AutoButtonColor = true
+				putAwayBtn.ZIndex = 25
+				putAwayBtn.Parent = container
+				corner(putAwayBtn, 23)
 
-					btn.Activated:Connect(triggerConsume)
-					actionGui.Parent = playerGui
-				end
+				local pStroke = Instance.new('UIStroke')
+				pStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				pStroke.Color = Color3.fromRGB(255, 255, 255)
+				pStroke.Thickness = 1.5
+				pStroke.Transparency = 0.35
+				pStroke.Parent = putAwayBtn
+
+				local pLabel = Instance.new('TextLabel')
+				pLabel.Size = UDim2.new(1, 0, 1, 0)
+				pLabel.BackgroundTransparency = 1
+				pLabel.Text = 'Put Away'
+				pLabel.TextColor3 = Color3.new(1, 1, 1)
+				pLabel.Font = Enum.Font.GothamBold
+				pLabel.TextSize = 14
+				pLabel.ZIndex = 26
+				pLabel.Parent = putAwayBtn
+
+				putAwayBtn.Activated:Connect(function()
+					RemoteController.fire('InventoryAction', {
+						action = 'unequip',
+						id = itemId,
+					})
+					cleanupAction()
+				end)
+			else
+				-- Display item (Fishing Rod, Fish, etc.)
+				local putAwayBtn = Instance.new('TextButton')
+				putAwayBtn.Name = 'PutAwayButton'
+				local btnText = if itemId == 'fishing_rod' or itemId == 'pro_fishing_rod'
+					then 'Put Away Rod'
+					elseif FishingData.fish and FishingData.fish[itemId] then 'Put Away Fish'
+					else 'Put Away'
+				putAwayBtn.Size = UDim2.fromOffset(165, 46)
+				putAwayBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 60)
+				putAwayBtn.Text = ''
+				putAwayBtn.AutoButtonColor = true
+				putAwayBtn.ZIndex = 25
+				putAwayBtn.Parent = container
+				corner(putAwayBtn, 23)
+
+				local pStroke = Instance.new('UIStroke')
+				pStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				pStroke.Color = Color3.fromRGB(255, 255, 255)
+				pStroke.Thickness = 1.5
+				pStroke.Transparency = 0.35
+				pStroke.Parent = putAwayBtn
+
+				local pLabel = Instance.new('TextLabel')
+				pLabel.Size = UDim2.new(1, 0, 1, 0)
+				pLabel.BackgroundTransparency = 1
+				pLabel.Text = btnText
+				pLabel.TextColor3 = Color3.new(1, 1, 1)
+				pLabel.Font = Enum.Font.GothamBold
+				pLabel.TextSize = 14
+				pLabel.ZIndex = 26
+				pLabel.Parent = putAwayBtn
+
+				putAwayBtn.Activated:Connect(function()
+					RemoteController.fire('InventoryAction', {
+						action = 'unequip',
+						id = itemId,
+					})
+					cleanupAction()
+				end)
+			end
+
+			actionGui.Parent = playerGui
+		end
+
+		char.ChildAdded:Connect(function(child)
+			if child:IsA('Tool') then
+				updateActionUi(child)
 			end
 		end)
 
@@ -597,6 +746,11 @@ function InventoryController.init()
 				cleanupAction()
 			end
 		end)
+
+		local existingTool = char:FindFirstChildOfClass('Tool')
+		if existingTool then
+			updateActionUi(existingTool)
+		end
 	end
 
 	local player = Players.LocalPlayer

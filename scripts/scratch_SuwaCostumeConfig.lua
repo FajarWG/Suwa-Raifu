@@ -1,7 +1,7 @@
 local CostumeConfig = {}
 
 CostumeConfig.Presets = {
-	-- 👘 TRADITIONAL & CULTURAL
+	-- TRADITIONAL & CULTURAL
 	{
 		id = "yukata_navy",
 		name = "Navy Summer Yukata (紺の夏浴衣)",
@@ -9,7 +9,9 @@ CostumeConfig.Presets = {
 		categoryIcon = "👘",
 		shirt = 12557329485,
 		pants = 12557348926,
-		description = "Traditional summer yukata, ideal for peaceful evening strolls along Lake Suwa.\n諏訪湖の夕涼みや花火祭りにぴったりの伝統的な浴衣。"
+		shirtTemplate = "http://www.roblox.com/asset/?id=12557329456",
+		pantsTemplate = "http://www.roblox.com/asset/?id=12557348902",
+		description = "Traditional summer yukata, ideal for peaceful evening strolls along Lake Suwa."
 	},
 	{
 		id = "yukata_sakura",
@@ -18,7 +20,9 @@ CostumeConfig.Presets = {
 		categoryIcon = "👘",
 		shirt = 79326241303163,
 		pants = 101332222597295,
-		description = "Graceful soft pink sakura blossom yukata with an elegant obi sash.\n淡い桜模様が華やかな、優美な夏祭り用レディース浴衣。"
+		shirtTemplate = "http://www.roblox.com/asset/?id=86879614867795",
+		pantsTemplate = "http://www.roblox.com/asset/?id=116271433567649",
+		description = "Graceful soft pink sakura blossom yukata with an elegant obi sash."
 	},
 	{
 		id = "miko_shrine",
@@ -27,19 +31,23 @@ CostumeConfig.Presets = {
 		categoryIcon = "⛩️",
 		shirt = 89608123771601,
 		pants = 79227464689155,
-		description = "Sacred red hakama and pure white vestments of the Suwa Taisha shrine maidens.\n諏訪大社に仕える巫女の清らかな白衣と緋袴。"
+		shirtTemplate = "http://www.roblox.com/asset/?id=74725036785431",
+		pantsTemplate = "http://www.roblox.com/asset/?id=92559863248202",
+		description = "Sacred red hakama and pure white vestments of the Suwa Taisha shrine maidens."
 	},
 	{
-		id = "haori_classic",
-		name = "Nagano Heritage Haori (信州の羽織着物)",
+		id = "kitsune_guardian",
+		name = "Kitsune Shrine Guardian (白狐の霊装)",
 		category = "Traditional",
-		categoryIcon = "👘",
-		shirt = 4901968882,
-		pants = 4901972583,
-		description = "Classic outer haori robe inspired by traditional Nagano countryside craftsmanship.\n信州の豊かな自然と伝統が息づく気品ある羽織スタイル。"
+		categoryIcon = "🦊",
+		shirt = 3218143244,
+		pants = 3218143520,
+		shirtTemplate = "http://www.roblox.com/asset/?id=3218143214",
+		pantsTemplate = "http://www.roblox.com/asset/?id=3218143496",
+		description = "Sacred white fox spirit robe blessed for night lantern processions."
 	},
 
-	-- 🎒 SCHOOL UNIFORMS
+	-- SCHOOL UNIFORMS
 	{
 		id = "gakuran_male",
 		name = "Gakuran High School (男子学ラン制服)",
@@ -47,7 +55,9 @@ CostumeConfig.Presets = {
 		categoryIcon = "🎒",
 		shirt = 6914550284,
 		pants = 6914552071,
-		description = "Classic Japanese high school boys uniform with golden buttons.\n金ボタンが引き締める、凛々しく伝統的な男子高校生詰襟制服。"
+		shirtTemplate = "http://www.roblox.com/asset/?id=6914550277",
+		pantsTemplate = "http://www.roblox.com/asset/?id=6914552062",
+		description = "Classic Japanese high school boys uniform with golden buttons."
 	},
 	{
 		id = "sailor_female",
@@ -56,83 +66,90 @@ CostumeConfig.Presets = {
 		categoryIcon = "🎒",
 		shirt = 8959935056,
 		pants = 1770015436,
-		description = "Iconic navy pleated skirt and crisp neckerchief Japanese sailor uniform.\n定番のネイビータイとプリーツスカートが清楚なセーラー服。"
+		shirtTemplate = "http://www.roblox.com/asset/?id=8959935025",
+		pantsTemplate = "http://www.roblox.com/asset/?id=1770015426",
+		description = "Iconic navy pleated skirt and crisp neckerchief Japanese sailor uniform."
 	},
 
-	-- 🌠 ANIME SPECIAL
+	-- ANIME SPECIAL
 	{
 		id = "taki_tachibana",
 		name = "Taki Tachibana - Your Name (立花 瀧)",
 		category = "Anime",
 		categoryIcon = "🌠",
-		shirt = 8047583641,
+		shirt = 5935442599,
 		pants = 8047585078,
-		description = "Tokyo school uniform worn by Taki when searching for Itomori & Lake Suwa.\n糸守と諏訪湖の記憶を辿る瀧の東京学生制服スタイル。"
+		shirtTemplate = "http://www.roblox.com/asset/?id=5935442591",
+		pantsTemplate = "http://www.roblox.com/asset/?id=8047585070",
+		description = "Tokyo school uniform worn by Taki when searching for Itomori & Lake Suwa."
 	},
 	{
 		id = "mitsuha_miyamizu",
 		name = "Mitsuha Miyamizu - Your Name (宮水 三葉)",
 		category = "Anime",
 		categoryIcon = "🌠",
-		shirt = 8661711667,
-		pants = 8661713338,
-		description = "Itomori High School sailor uniform with the iconic braided red ribbon.\n組紐の赤リボンが心をつなぐ、三葉の糸守高校制服。"
+		shirt = 6229692771,
+		pants = 6229694164,
+		shirtTemplate = "http://www.roblox.com/asset/?id=6229692758",
+		pantsTemplate = "http://www.roblox.com/asset/?id=6229694145",
+		description = "Itomori High School uniform with the iconic braided red ribbon.\n組紐の赤リボンが心をつなぐ、三葉の糸守高校制服。"
 	},
 	{
 		id = "tanjiro_kamado",
 		name = "Tanjiro - Demon Slayer (竈門 炭治郎)",
 		category = "Anime",
 		categoryIcon = "⚔️",
-		shirt = 3830911721,
-		pants = 3830913164,
-		description = "Iconic green & black checkered haori worn by the Demon Slayer Corps warrior.\n市松模様の羽織が象徴的な、心優しき鬼殺隊士の装束。"
+		shirt = 6078620265,
+		pants = 6078621916,
+		shirtTemplate = "http://www.roblox.com/asset/?id=6078620221",
+		pantsTemplate = "http://www.roblox.com/asset/?id=6078621881",
+		description = "Iconic green & black checkered haori worn by the Demon Slayer Corps warrior."
 	},
 	{
 		id = "nezuko_kamado",
 		name = "Nezuko - Demon Slayer (竈門 禰豆子)",
 		category = "Anime",
 		categoryIcon = "🌸",
-		shirt = 3833290635,
-		pants = 3833292415,
-		description = "Pink asanoha geometric kimono with dark haori and checkered sash.\n麻の葉文様の桜色着物と黒羽織を身に纏った可憐な姿。"
+		shirt = 9804978856,
+		pants = 9805010066,
+		shirtTemplate = "http://www.roblox.com/asset/?id=9804978841",
+		pantsTemplate = "http://www.roblox.com/asset/?id=9805010062",
+		description = "Pink asanoha geometric kimono with dark haori and checkered sash."
 	},
 	{
 		id = "satoru_gojo",
 		name = "Satoru Gojo - Jujutsu Kaisen (五条 悟)",
 		category = "Anime",
 		categoryIcon = "👁️",
-		shirt = 6271928011,
-		pants = 6271929319,
-		description = "High-collar dark uniform worn by the strongest Jujutsu High teacher.\n現代最強の呪術師が着こなすスタイリッシュな高専制服。"
+		shirt = 8303172932,
+		pants = 16151335982,
+		shirtTemplate = "http://www.roblox.com/asset/?id=8303172927",
+		pantsTemplate = "http://www.roblox.com/asset/?id=16151335911",
+		description = "High-collar dark uniform worn by the strongest Jujutsu High teacher."
 	},
 
-	-- 🎃 EVENT & FESTIVALS
-	{
-		id = "halloween_vampire",
-		name = "Halloween Gothic Kimono (宵闇の着物)",
-		category = "Event",
-		categoryIcon = "🦇",
-		shirt = 5683226955,
-		pants = 5683228198,
-		description = "Enchanting gothic dark-red kimono for mysterious lakeside Halloween nights.\n諏訪の夜に映える妖美なゴシック・ハロウィン着物。"
-	},
+	-- EVENT & FESTIVALS
 	{
 		id = "halloween_pumpkin",
 		name = "Pumpkin Festival Haori (南瓜の祭法被)",
 		category = "Event",
 		categoryIcon = "🎃",
-		shirt = 7531776939,
-		pants = 7531778216,
-		description = "Vibrant orange & midnight black Jack-o'-Lantern festival festival coat.\n鮮やかなカボチャ色と黒が祝祭を彩るハロウィン法被。"
+		shirt = 14227797884,
+		pants = 4646484209,
+		shirtTemplate = "http://www.roblox.com/asset/?id=14227797829",
+		pantsTemplate = "http://www.roblox.com/asset/?id=4646484173",
+		description = "Vibrant orange & midnight black Jack-o-Lantern festival coat."
 	},
 	{
-		id = "kitsune_guardian",
-		name = "Kitsune Shrine Guardian (白狐の霊装)",
+		id = "halloween_vampire",
+		name = "Halloween Gothic Kimono (宵闇の着物)",
 		category = "Event",
-		categoryIcon = "🦊",
-		shirt = 3450917036,
-		pants = 3450917639,
-		description = "Sacred white fox spirit robe blessed for night lantern processions.\n夜の灯籠祭りを清め守護する神聖な白狐の霊験装束。"
+		categoryIcon = "🦇",
+		shirt = 2432814442,
+		pants = 2432814944,
+		shirtTemplate = "http://www.roblox.com/asset/?id=2432814438",
+		pantsTemplate = "http://www.roblox.com/asset/?id=2432814941",
+		description = "Enchanting gothic dark-red kimono for mysterious lakeside Halloween nights."
 	},
 }
 

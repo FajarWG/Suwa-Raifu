@@ -65,7 +65,10 @@ local function renderCatch(payload: any)
 	if definition then
 		local body = Instance.new('Part')
 		body.Shape = Enum.PartType.Ball
-		body.Size = if payload.id == 'eel' then Vector3.new(4.5, 0.6, 0.6) else Vector3.new(3.1, 1.0, 1.3)
+		body.Size = if payload.id == 'eel' or payload.id == 'catfish' then Vector3.new(4.5, 0.7, 0.7)
+			elseif payload.id == 'golden_koi' or payload.id == 'common_carp' then Vector3.new(3.8, 1.3, 1.5)
+			elseif payload.id == 'wakasagi' or payload.id == 'moroko' or payload.id == 'kamatsuka' then Vector3.new(2.2, 0.7, 0.8)
+			else Vector3.new(3.1, 1.0, 1.3)
 		body.Color = definition.color
 		body.Material = Enum.Material.SmoothPlastic
 		body.Anchored = true

@@ -14,9 +14,24 @@ async function run() {
       name: 'Config',
     },
     {
+      path: 'scripts/scratch_SuwaCostumeConfig.lua',
+      target: 'game:GetService("ReplicatedStorage").SuwaCostumeConfig',
+      name: 'SuwaCostumeConfig',
+    },
+    {
       path: 'src/client/controllers/InventoryController.lua',
       target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.InventoryController',
       name: 'InventoryController',
+    },
+    {
+      path: 'src/client/controllers/FishingController.lua',
+      target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.FishingController',
+      name: 'FishingController',
+    },
+    {
+      path: 'scripts/scratch_BebeqAvatarLocal.lua',
+      target: 'game:GetService("StarterPlayer").StarterPlayerScripts.BebeqAvatarLocal',
+      name: 'BebeqAvatarLocal',
     },
     {
       path: 'src/server/services/ProfileService.lua',
