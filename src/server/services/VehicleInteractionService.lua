@@ -518,6 +518,9 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 	if typeof(waterlineY) ~= 'number' then
 		waterlineY = rootPart.Position.Y
 	end
+	if isSwan and waterlineY < 4.4 then
+		waterlineY = 4.45
+	end
 	local targetWaterlineY: number = waterlineY :: number
 
 	local engineSound: Sound? = if profile.engineSound
@@ -677,15 +680,17 @@ local function startDriving(seat: VehicleSeat, rootPart: BasePart, onWater: bool
 			-- Rule three: pinned to the surface. This is a velocity actuator, so
 			-- the correction decays exponentially with no overshoot, and the
 			-- clamp stops a big error from turning into a launch.
+			local hereWater = waterSurfaceAt(position.X, position.Z)
+			local currentWaterline = if isSwan and hereWater then (hereWater + 4.45) else targetWaterlineY
 			local bobbing = math.sin(tick() * 2.2) * profile.bob
-			local yError = (targetWaterlineY + bobbing) - position.Y
+			local yError = (currentWaterline + bobbing) - position.Y
 			velocity += Vector3.new(0, math.clamp(yError * 5, -14, 14), 0)
 
 			-- A hull thrown clear of the water by a collision cannot be recovered
 			-- with velocity alone; put it back on the waterline directly.
 			if math.abs(yError) > 8 then
 				local _, yaw, _ = rootPart.CFrame:ToOrientation()
-				rootPart.CFrame = CFrame.new(position.X, targetWaterlineY, position.Z)
+				rootPart.CFrame = CFrame.new(position.X, currentWaterline, position.Z)
 					* CFrame.fromOrientation(0, yaw, 0)
 				rootPart.AssemblyLinearVelocity = Vector3.zero
 				rootPart.AssemblyAngularVelocity = Vector3.zero
@@ -803,6 +808,11 @@ local function rigVehicle(model: Model)
 		-- Swan Boat collision parts: only the cockpit floor and hull bottom are solid
 		CockpitSole = true,
 		Bottom = true,
+		WatertightCockpitFloor = true,
+		WatertightCoaming_Left = true,
+		WatertightCoaming_Right = true,
+		WatertightBulkhead_Front = true,
+		WatertightBulkhead_Back = true,
 		-- Boat_Railing, Pontoons, *_Door_Railing and SkiRail are deliberately left
 		-- off this list: they're lattice/bar or curved-tube meshes, and Roblox's
 		-- default collision fidelity can fill in the gaps of a lattice into a

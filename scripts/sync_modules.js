@@ -53,6 +53,11 @@ async function run() {
       target: 'game:GetService("ServerScriptService").Server.services.InventoryService',
       name: 'InventoryService',
     },
+    {
+      path: 'src/server/services/VehicleInteractionService.lua',
+      target: 'game:GetService("ServerScriptService").Server.services.VehicleInteractionService',
+      name: 'VehicleInteractionService',
+    },
   ];
 
   for (const item of files) {
