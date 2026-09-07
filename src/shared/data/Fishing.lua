@@ -255,6 +255,18 @@ Fishing.shops = {
 			{ id = 'sparkler_pack', name = 'Hanabi Sparkler Pack', price = 300, amount = 1 },
 		},
 	},
+	seven_eleven_slurpee = {
+		id = 'seven_eleven_slurpee',
+		name = '7-Eleven Slurpee & Drink Bar (スラーピー・ドリンクバー)',
+		isBasket = true,
+		items = {
+			{ id = 'slurpee_cherry', name = 'Wild Cherry Slurpee (チェリースラーピー)', price = 160, amount = 1 },
+			{ id = 'slurpee_blue_ice', name = 'Blue Raspberry Slurpee (ブルーアイススラーピー)', price = 160, amount = 1 },
+			{ id = 'fountain_coca_cola', name = 'Fountain Coca-Cola (ファウンテンコーラ)', price = 150, amount = 1 },
+			{ id = 'fountain_melon_soda', name = 'Fountain Melon Soda (メロンソーダ)', price = 150, amount = 1 },
+			{ id = 'seven_cafe_latte', name = '7-Café Iced Latte', price = 210, amount = 1 },
+		},
+	},
 	seven_eleven = {
 		id = 'seven_eleven',
 		name = '7-Eleven Cashier (レジカウンター)',
@@ -266,6 +278,8 @@ Fishing.shops = {
 			{ id = 'katsu_curry', name = 'Katsu Curry Bento', price = 580, amount = 1 },
 			{ id = 'melonpan', name = 'Fluffy Melonpan', price = 140, amount = 1 },
 			{ id = 'pocky_box', name = 'Chocolate Pocky', price = 180, amount = 1 },
+			{ id = 'slurpee_cherry', name = 'Wild Cherry Slurpee', price = 160, amount = 1 },
+			{ id = 'fountain_coca_cola', name = 'Fountain Coca-Cola', price = 150, amount = 1 },
 			{ id = 'seven_cafe_latte', name = '7-Café Iced Latte', price = 210, amount = 1 },
 			{ id = 'green_tea_bottle', name = 'Shinshu Green Tea 500ml', price = 140, amount = 1 },
 			{ id = 'pocari_sweat', name = 'Pocari Sweat 500ml', price = 160, amount = 1 },
@@ -277,6 +291,10 @@ Fishing.shops = {
 }
 
 Fishing.itemNames = {
+	slurpee_cherry = 'Wild Cherry Slurpee',
+	slurpee_blue_ice = 'Blue Raspberry Slurpee',
+	fountain_coca_cola = 'Fountain Coca-Cola',
+	fountain_melon_soda = 'Fountain Melon Soda',
 	nanachiki = 'Nanachiki Crispy Chicken',
 	tamago_sandwich = 'Egg Salad Sandwich',
 	tuna_mayo_onigiri = 'Tuna Mayo Onigiri',

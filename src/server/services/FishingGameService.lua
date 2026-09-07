@@ -1485,7 +1485,19 @@ local function processCashierCheckout(player: Player, cashierPart: BasePart?)
 		end
 
 		if profile.economy.yen < b.totalYen then
-			RemoteRegistry.fireClient(player, 'ShopResult', false, '所持金が足りません (Not enough Yen) - Total: ¥' .. tostring(b.totalYen) .. ' (Have: ¥' .. tostring(profile.economy.yen) .. ')')
+			local diff = b.totalYen - profile.economy.yen
+			local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+			if hrp then
+				local beep = Instance.new('Sound')
+				beep.SoundId = SOUND_KONBINI_REGISTER_BEEP
+				beep.Pitch = 0.7
+				beep.Volume = 1.0
+				beep.Parent = hrp
+				beep:Play()
+				game:GetService('Debris'):AddItem(beep, 2)
+			end
+			RemoteRegistry.fireClient(player, 'ShopResult', false, '所持金が足りません！ (¥' .. tostring(diff) .. ' 不足) - 合計: ¥' .. tostring(b.totalYen) .. ' (所持金: ¥' .. tostring(profile.economy.yen) .. ')')
+			RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ 所持金が足りません！ (¥' .. tostring(diff) .. ' 不足)')
 			return
 		end
 
@@ -1525,7 +1537,7 @@ local function processCashierCheckout(player: Player, cashierPart: BasePart?)
 		end
 
 		RemoteRegistry.fireClient(player, 'ShopResult', true, 'お会計完了！ 合計 ¥' .. tostring(totalPaid) .. ' (' .. tostring(totalItems) .. '点) をかばん[B]に入れました！')
-		RemoteRegistry.fireClient(player, 'InventoryToast', '「ありがとうございました！」 (Thank you very much!)')
+		RemoteRegistry.fireClient(player, 'InventoryToast', '「ありがとうございました！」')
 	else
 		-- Basket is empty -> Friendly clerk greeting "Irasshaimase!" and open direct catalog
 		local soundParent = cashierPart or (player.Character and player.Character:FindFirstChild('HumanoidRootPart'))
@@ -1538,7 +1550,7 @@ local function processCashierCheckout(player: Player, cashierPart: BasePart?)
 			game:GetService('Debris'):AddItem(voiceSound, 2.5)
 		end
 
-		RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」 (Welcome to 7-Eleven!)')
+		RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」')
 
 		activeShops[player] = { id = 'seven_eleven', expiresAt = os.clock() + 300 }
 		local shopData = table.clone(FishingData.shops['seven_eleven'])
@@ -1552,6 +1564,161 @@ local function processCashierCheckout(player: Player, cashierPart: BasePart?)
 	end
 end
 
+local function stockSevenElevenShelves(sevenEleven: Model)
+	local previousStock = sevenEleven:FindFirstChild('ShelfStock')
+	if previousStock then
+		previousStock:Destroy()
+	end
+
+	local stockModel = Instance.new('Model')
+	stockModel.Name = 'ShelfStock'
+	stockModel.Parent = sevenEleven
+
+	local function makePart(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material?, trans: number?): Part
+		local p = Instance.new('Part')
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = mat or Enum.Material.SmoothPlastic
+		p.Transparency = trans or 0
+		p.Anchored = true
+		p.CanCollide = false
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = parent
+		return p
+	end
+
+	local function makeWedge(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material?, trans: number?): WedgePart
+		local p = Instance.new('WedgePart')
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = mat or Enum.Material.SmoothPlastic
+		p.Transparency = trans or 0
+		p.Anchored = true
+		p.CanCollide = false
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = parent
+		return p
+	end
+
+	-- 1. WINDOW SHELF (Shelf 2) -> Snacks & Onigiri
+	local windowGroup = Instance.new('Model')
+	windowGroup.Name = 'WindowShelfStock'
+	windowGroup.Parent = stockModel
+
+	-- (A) Lower Tier Onigiri (X = 133.2 to 137.5, Y = 9.4)
+	for row = 1, 2 do
+		local zPos = 38.3 + (row - 1) * 0.7
+		for col = 1, 5 do
+			local xPos = 133.2 + (col - 1) * 0.85
+			makeWedge(windowGroup, 'Onigiri', Vector3.new(0.65, 0.65, 0.5), CFrame.new(xPos, 9.4 + 0.32, zPos) * CFrame.Angles(0, math.rad(180), 0), Color3.fromRGB(248, 248, 245))
+			makePart(windowGroup, 'Nori', Vector3.new(0.66, 0.32, 0.28), CFrame.new(xPos, 9.4 + 0.18, zPos - 0.05), Color3.fromRGB(22, 26, 22))
+			local stickerCol = (col % 2 == 1) and Color3.fromRGB(215, 45, 45) or Color3.fromRGB(45, 115, 215)
+			makePart(windowGroup, 'Label', Vector3.new(0.2, 0.2, 0.05), CFrame.new(xPos, 9.4 + 0.38, zPos - 0.26), stickerCol)
+		end
+	end
+
+	-- (B) Lower Tier Melonpan (X = 138.2 to 141.5, Y = 9.4)
+	for row = 1, 2 do
+		local zPos = 38.3 + (row - 1) * 0.75
+		for col = 1, 4 do
+			local xPos = 138.2 + (col - 1) * 0.85
+			local bun = makePart(windowGroup, 'Melonpan', Vector3.new(0.72, 0.38, 0.72), CFrame.new(xPos, 9.4 + 0.2, zPos), Color3.fromRGB(238, 198, 120), Enum.Material.Sand)
+			bun.Shape = Enum.PartType.Cylinder
+			bun.CFrame = CFrame.new(xPos, 9.4 + 0.2, zPos) * CFrame.Angles(0, 0, math.rad(90))
+		end
+	end
+
+	-- (C) Lower Tier Pocky Boxes (X = 142.3 to 145.2, Y = 9.4)
+	for col = 1, 5 do
+		local xPos = 142.3 + (col - 1) * 0.65
+		makePart(windowGroup, 'PockyBox', Vector3.new(0.55, 0.95, 0.3), CFrame.new(xPos, 9.4 + 0.48, 38.5) * CFrame.Angles(math.rad(-10), math.rad(15 * (col % 3 - 1)), 0), Color3.fromRGB(205, 28, 28))
+		makePart(windowGroup, 'PockyTop', Vector3.new(0.56, 0.28, 0.31), CFrame.new(xPos, 9.4 + 0.82, 38.5) * CFrame.Angles(math.rad(-10), math.rad(15 * (col % 3 - 1)), 0), Color3.fromRGB(75, 42, 22))
+	end
+
+	-- (D) Lower Tier Chips & Snack Bags (X = 145.8 to 149.0, Y = 9.4)
+	local bagColors = {
+		Color3.fromRGB(235, 195, 35),
+		Color3.fromRGB(45, 150, 65),
+		Color3.fromRGB(220, 50, 40),
+		Color3.fromRGB(230, 115, 25),
+		Color3.fromRGB(40, 110, 205),
+	}
+	for col = 1, 5 do
+		local xPos = 145.8 + (col - 1) * 0.65
+		makePart(windowGroup, 'SnackBag', Vector3.new(0.65, 0.95, 0.4), CFrame.new(xPos, 9.4 + 0.48, 38.6) * CFrame.Angles(math.rad(-12), math.rad(10 * (col % 3 - 1)), 0), bagColors[col])
+	end
+
+	-- (E) Upper Tier Window Shelf (Y = 11.2, X = 133 to 148, Z = 38.2)
+	for col = 1, 12 do
+		local xPos = 134.0 + (col - 1) * 1.15
+		local bCol = bagColors[(col % #bagColors) + 1]
+		makePart(windowGroup, 'UpperSnack', Vector3.new(0.55, 0.85, 0.35), CFrame.new(xPos, 11.2 + 0.43, 38.2) * CFrame.Angles(math.rad(-10), math.rad(12 * (col % 3 - 1)), 0), bCol)
+	end
+
+	-- 2. WALL SHELF (Shelf) -> Bento, Meals, Sandwiches
+	local bentoGroup = Instance.new('Model')
+	bentoGroup.Name = 'BentoShelfStock'
+	bentoGroup.Parent = stockModel
+
+	-- (A) Bento Boxes Lower Tier (Under Coca-Cola, X = 102.5 to 110, Z = 38.7, Y = 9.4)
+	for col = 1, 5 do
+		local xPos = 102.5 + (col - 1) * 1.55
+		for row = 1, 2 do
+			local zPos = 38.2 + (row - 1) * 0.9
+			makePart(bentoGroup, 'BentoTray', Vector3.new(1.35, 0.22, 0.82), CFrame.new(xPos, 9.4 + 0.11, zPos), Color3.fromRGB(28, 28, 30))
+			makePart(bentoGroup, 'BentoLid', Vector3.new(1.36, 0.15, 0.83), CFrame.new(xPos, 9.4 + 0.28, zPos), Color3.fromRGB(245, 250, 255), Enum.Material.Glass, 0.6)
+			makePart(bentoGroup, 'Rice', Vector3.new(0.55, 0.12, 0.68), CFrame.new(xPos - 0.32, 9.4 + 0.2, zPos), Color3.fromRGB(250, 250, 248))
+			makePart(bentoGroup, 'Ume', Vector3.new(0.12, 0.14, 0.12), CFrame.new(xPos - 0.32, 9.4 + 0.24, zPos), Color3.fromRGB(200, 35, 35))
+			makePart(bentoGroup, 'Katsu', Vector3.new(0.55, 0.14, 0.68), CFrame.new(xPos + 0.32, 9.4 + 0.21, zPos), Color3.fromRGB(165, 100, 35))
+		end
+	end
+
+	-- (B) Upper Tier Bento & Meal Trays (Under Coca-Cola, Y = 11.2, X = 102.5 to 110, Z = 38.2)
+	for col = 1, 5 do
+		local xPos = 102.8 + (col - 1) * 1.55
+		makePart(bentoGroup, 'UpperBento', Vector3.new(1.3, 0.25, 0.75), CFrame.new(xPos, 11.2 + 0.13, 38.2), Color3.fromRGB(30, 32, 34))
+		makePart(bentoGroup, 'UpperLid', Vector3.new(1.32, 0.12, 0.76), CFrame.new(xPos, 11.2 + 0.25, 38.2), Color3.fromRGB(245, 250, 255), Enum.Material.Glass, 0.55)
+		makePart(bentoGroup, 'UpperCurry', Vector3.new(1.2, 0.1, 0.65), CFrame.new(xPos, 11.2 + 0.18, 38.2), Color3.fromRGB(175, 105, 35))
+	end
+
+	-- (C) Sandwiches (X = 101.5, Z = 42 to 49, Y = 9.4)
+	for i = 1, 7 do
+		local zPos = 42.5 + (i - 1) * 0.95
+		makeWedge(bentoGroup, 'Sandwich', Vector3.new(0.65, 0.75, 0.65), CFrame.new(101.4, 9.4 + 0.38, zPos) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(252, 252, 248))
+		makePart(bentoGroup, 'EggFilling', Vector3.new(0.12, 0.65, 0.45), CFrame.new(101.6, 9.4 + 0.35, zPos), Color3.fromRGB(248, 218, 55))
+		makePart(bentoGroup, 'Lettuce', Vector3.new(0.12, 0.65, 0.15), CFrame.new(101.6, 9.4 + 0.35, zPos + 0.18), Color3.fromRGB(55, 150, 60))
+	end
+
+	-- (D) Nanachiki & Hot Chicken Warmer Boxes (X = 101.5, Z = 50 to 56, Y = 9.4)
+	for i = 1, 5 do
+		local zPos = 50.5 + (i - 1) * 1.1
+		makePart(bentoGroup, 'ChickenPouch', Vector3.new(0.55, 0.65, 0.85), CFrame.new(101.4, 9.4 + 0.33, zPos), Color3.fromRGB(225, 45, 35))
+		makePart(bentoGroup, 'CrispyChicken', Vector3.new(0.48, 0.45, 0.75), CFrame.new(101.4, 9.4 + 0.68, zPos), Color3.fromRGB(205, 130, 40), Enum.Material.Granite)
+	end
+
+	-- (E) Cup Noodles Stacks (X = 101.5, Z = 57 to 64, Y = 9.4)
+	local cupColors = {
+		Color3.fromRGB(225, 40, 40),
+		Color3.fromRGB(235, 195, 30),
+		Color3.fromRGB(45, 120, 205),
+		Color3.fromRGB(50, 160, 75),
+	}
+	for i = 1, 6 do
+		local zPos = 57.5 + (i - 1) * 1.05
+		local col = cupColors[(i % #cupColors) + 1]
+		local cup = makePart(bentoGroup, 'CupRamen', Vector3.new(0.72, 0.78, 0.72), CFrame.new(101.4, 9.4 + 0.39, zPos), Color3.fromRGB(248, 245, 240))
+		cup.Shape = Enum.PartType.Cylinder
+		cup.CFrame = CFrame.new(101.4, 9.4 + 0.39, zPos) * CFrame.Angles(0, 0, math.rad(90))
+		makePart(bentoGroup, 'RamenLid', Vector3.new(0.08, 0.74, 0.74), CFrame.new(101.4, 9.4 + 0.78, zPos), col)
+	end
+end
+
 local function setupSevenElevenStore()
 	local townRoad = workspace:FindFirstChild('TownRoadNetwork')
 	local townBlocks = townRoad and townRoad:FindFirstChild('TownBlocks')
@@ -1559,6 +1726,7 @@ local function setupSevenElevenStore()
 	if not store then
 		return
 	end
+
 
 	local subModel = store:FindFirstChild('Model')
 	local sevenEleven = subModel and subModel:FindFirstChild('Seven Eleven')
@@ -1637,40 +1805,44 @@ local function setupSevenElevenStore()
 		end
 	end
 
-	-- 3. Setup Drinks Cooler
-	local cooler = sevenEleven:FindFirstChild('Cooler')
-	if cooler then
-		local p = cooler:FindFirstChildWhichIsA('BasePart', true)
-		if p then
-			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven ドリンク冷蔵庫 (Drinks)', 11, 'seven_eleven_drinks')
+	-- 3. Stock Shelves with 3D Food & Snack Props
+	stockSevenElevenShelves(sevenEleven)
+
+	-- 4. Setup Dedicated Triggers with Proper Reach & Positioning
+	local function attachTrigger(name: string, cf: CFrame, size: Vector3, actionText: string, objectText: string, maxDist: number, shopKey: string)
+		local existing = sevenEleven:FindFirstChild(name)
+		if existing then
+			existing:Destroy()
 		end
+		local p = Instance.new('Part')
+		p.Name = name
+		p.CFrame = cf
+		p.Size = size
+		p.Transparency = 1
+		p.Anchored = true
+		p.CanCollide = false
+		p.Parent = sevenEleven
+		attachShelfPrompt(p, actionText, objectText, maxDist, shopKey)
 	end
 
-	-- 4. Setup Food / Bento / Snack Shelves
-	local shelf = sevenEleven:FindFirstChild('Shelf')
-	if shelf then
-		local p = shelf:FindFirstChildWhichIsA('BasePart', true)
-		if p then
-			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven お弁当・ご飯 (Bento & Meals)', 11, 'seven_eleven_food')
-		end
-	end
+	-- (A) Cooler Doors (Picture 3 - Chilled Drink Bottles)
+	attachTrigger('Trigger_CoolerLeft', CFrame.new(126.0, 10.5, 70.8), Vector3.new(7, 6, 2), '商品を見る / Browse (E)', '7-Eleven 冷蔵ドリンク (Cold Drinks)', 14, 'seven_eleven_drinks')
+	attachTrigger('Trigger_CoolerRight', CFrame.new(138.0, 10.5, 70.8), Vector3.new(7, 6, 2), '商品を見る / Browse (E)', '7-Eleven 冷蔵ドリンク (Cold Drinks)', 14, 'seven_eleven_drinks')
 
-	local shelf2 = sevenEleven:FindFirstChild('Shelf 2')
-	if shelf2 then
-		local p = shelf2:FindFirstChildWhichIsA('BasePart', true)
-		if p then
-			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven おにぎり・お菓子 (Snacks)', 11, 'seven_eleven_food')
-		end
-	end
+	-- (B) Soda & Slurpee Fountain Machine (Picture 4)
+	attachTrigger('Trigger_SodaMachine', CFrame.new(148.5, 11.2, 53.0), Vector3.new(2.5, 4.5, 4.5), 'ドリンクを注ぐ / Pour Drink (E)', '7-Eleven スラーピー・ドリンクバー (Slurpee & Soda)', 13, 'seven_eleven_slurpee')
 
-	-- 5. Setup Sundries, Bait, & Fireworks
-	local shelf3 = sevenEleven:FindFirstChild('Shelf 3 (Backshelf)') or sevenEleven:FindFirstChild('Drinks and Junk')
-	if shelf3 then
-		local p = shelf3:FindFirstChildWhichIsA('BasePart', true)
-		if p then
-			attachShelfPrompt(p, '商品を見る / Browse (E)', '7-Eleven 日用品・釣り餌 (Sundries & Bait)', 11, 'seven_eleven_sundries')
-		end
-	end
+	-- (C) Bento & Meals Shelf (Picture 2 - Under Coca-Cola)
+	attachTrigger('Trigger_BentoShelf', CFrame.new(106.5, 10.2, 39.0), Vector3.new(11, 3.5, 2.5), '商品を見る / Browse (E)', '7-Eleven お弁当・ご飯 (Bento & Meals)', 14, 'seven_eleven_food')
+
+	-- (D) Window Shelf (Picture 1 - Front Window Snacks & Onigiri)
+	attachTrigger('Trigger_WindowShelf', CFrame.new(141.0, 10.2, 39.0), Vector3.new(14, 3.5, 2.5), '商品を見る / Browse (E)', '7-Eleven おにぎり・お菓子 (Snacks & Onigiri)', 14, 'seven_eleven_food')
+
+	-- (E) Chips & Snacks Rack (Picture 3, right side next to Doritos)
+	attachTrigger('Trigger_JunkRack', CFrame.new(148.0, 10.5, 57.2), Vector3.new(2.5, 5.0, 7.5), '商品を見る / Browse (E)', '7-Eleven スナック・ポテトチップス (Chips & Snacks)', 13, 'seven_eleven_food')
+
+	-- (F) Backshelf (Fishing Bait & Sundries)
+	attachTrigger('Trigger_Backshelf', CFrame.new(115.5, 10.0, 57.2), Vector3.new(4, 5, 4), '商品を見る / Browse (E)', '7-Eleven 日用品・釣り餌 (Sundries & Bait)', 13, 'seven_eleven_sundries')
 
 	-- 6. Automatic Door Welcome Chime Sensor
 	local previousSensor = sevenEleven:FindFirstChild('EntranceSensor')
@@ -1699,10 +1871,32 @@ local function setupSevenElevenStore()
 	voiceSound.Parent = sensor
 
 	local lastChimeTimes = {}
+	local lastExitBlockTimes = {}
 	sensor.Touched:Connect(function(hit)
 		local char = hit and hit.Parent
 		local player = char and Players:GetPlayerFromCharacter(char)
 		if player then
+			local b = playerBaskets[player.UserId]
+			local hrp = char:FindFirstChild('HumanoidRootPart')
+			-- If player is carrying an unpaid basket and walking out (Z < 38.5)
+			if b and b.totalCount > 0 and hrp and hrp.Position.Z < 38.5 then
+				hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y, 41.0)
+				local now = os.clock()
+				if not lastExitBlockTimes[player] or (now - lastExitBlockTimes[player]) > 2 then
+					lastExitBlockTimes[player] = now
+					local buzzer = Instance.new('Sound')
+					buzzer.SoundId = SOUND_KONBINI_REGISTER_BEEP
+					buzzer.Pitch = 0.65
+					buzzer.Volume = 1.0
+					buzzer.Parent = hrp
+					buzzer:Play()
+					game:GetService('Debris'):AddItem(buzzer, 2)
+					RemoteRegistry.fireClient(player, 'ShopResult', false, '未会計の商品があります！ 先にレジでお会計をしてください (Please pay at cashier before leaving!)')
+					RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ 未会計の商品があります！ 先にレジでお会計をしてください')
+				end
+				return
+			end
+
 			local now = os.clock()
 			if not lastChimeTimes[player] or (now - lastChimeTimes[player]) > 10 then
 				lastChimeTimes[player] = now
@@ -1712,7 +1906,7 @@ local function setupSevenElevenStore()
 						voiceSound:Play()
 					end
 				end)
-				RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」 (Welcome to 7-Eleven!)')
+				RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」')
 			end
 		end
 	end)
@@ -1767,7 +1961,7 @@ local function buyItem(player: Player, payload: any)
 			local currentCount = (profile and profile.inventory and profile.inventory.items and profile.inventory.items.worm_bait) or 0
 			local inBasket = b.items['worm_bait'] or 0
 			if currentCount + inBasket >= 5 then
-				RemoteRegistry.fireClient(player, 'ShopResult', false, 'Maksimal 5 Umpan Cacing (5/5)!')
+				RemoteRegistry.fireClient(player, 'ShopResult', false, 'ミミズの餌は最大5個までです (Max 5 Worm Bait)!')
 				return
 			end
 		end
@@ -1801,14 +1995,26 @@ local function buyItem(player: Player, payload: any)
 	if selected.id == 'worm_bait' then
 		local currentCount = (profile.inventory and profile.inventory.items and profile.inventory.items.worm_bait) or 0
 		if currentCount >= 5 then
-			RemoteRegistry.fireClient(player, 'ShopResult', false, 'You already have max Worm Bait (5/5)!')
+			RemoteRegistry.fireClient(player, 'ShopResult', false, 'ミミズの餌は最大5個までです (Max 5 Worm Bait)!')
 			return
 		end
 	end
 
 	local price = selected.price or 0
 	if price > 0 and profile.economy.yen < price then
-		RemoteRegistry.fireClient(player, 'ShopResult', false, 'Not enough yen.')
+		local diff = price - profile.economy.yen
+		local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+		if hrp then
+			local beep = Instance.new('Sound')
+			beep.SoundId = SOUND_KONBINI_REGISTER_BEEP
+			beep.Pitch = 0.7
+			beep.Volume = 1.0
+			beep.Parent = hrp
+			beep:Play()
+			game:GetService('Debris'):AddItem(beep, 2)
+		end
+		RemoteRegistry.fireClient(player, 'ShopResult', false, '所持金が足りません (¥' .. tostring(diff) .. ' 不足)')
+		RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ 所持金が足りません！ (¥' .. tostring(diff) .. ' 不足)')
 		return
 	end
 	if price > 0 then
@@ -1823,7 +2029,49 @@ local function buyItem(player: Player, payload: any)
 
 	InventoryService.addItem(player.UserId, selected.id, amountToAdd)
 	pushInventory(player)
-	RemoteRegistry.fireClient(player, 'ShopResult', true, 'Added ' .. selected.name .. ' to Bag!')
+
+	-- Check if purchase is from 7-Eleven or konbini food/drink
+	local isKonbini = (shopId and string.find(shopId, 'seven_eleven') ~= nil)
+		or (shop and shop.id and string.find(shop.id, 'seven_eleven') ~= nil)
+		or (selected and (
+			selected.id == 'nanachiki'
+			or selected.id == 'tamago_sandwich'
+			or selected.id == 'tuna_mayo_onigiri'
+			or selected.id == 'umeboshi_onigiri'
+			or selected.id == 'katsu_curry'
+			or selected.id == 'melonpan'
+			or selected.id == 'pocky_box'
+			or selected.id == 'seven_cafe_latte'
+			or selected.id == 'green_tea_bottle'
+			or selected.id == 'pocari_sweat'
+			or selected.id == 'slurpee_cherry'
+			or selected.id == 'slurpee_blue_ice'
+			or selected.id == 'fountain_coca_cola'
+			or selected.id == 'fountain_melon_soda'
+		))
+
+	if isKonbini then
+		local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+		if hrp then
+			local regSound = Instance.new('Sound')
+			regSound.SoundId = SOUND_KONBINI_REGISTER_BEEP
+			regSound.Volume = 0.95
+			regSound.Parent = hrp
+			regSound:Play()
+			game:GetService('Debris'):AddItem(regSound, 2.5)
+
+			local voiceSound = Instance.new('Sound')
+			voiceSound.SoundId = getArigatouSoundId()
+			voiceSound.Volume = 1.0
+			voiceSound.Parent = hrp
+			voiceSound:Play()
+			game:GetService('Debris'):AddItem(voiceSound, 2.5)
+		end
+		RemoteRegistry.fireClient(player, 'ShopResult', true, selected.name .. ' を購入しました！ (¥' .. tostring(price) .. ')')
+		RemoteRegistry.fireClient(player, 'InventoryToast', '「ありがとうございました！」')
+	else
+		RemoteRegistry.fireClient(player, 'ShopResult', true, 'Added ' .. selected.name .. ' to Bag!')
+	end
 end
 
 local function consumeDirect(player: Player, itemId: string)
@@ -1841,6 +2089,10 @@ local function consumeDirect(player: Player, itemId: string)
 		or itemId == 'seven_cafe_latte'
 		or itemId == 'green_tea_bottle'
 		or itemId == 'pocari_sweat'
+		or itemId == 'slurpee_cherry'
+		or itemId == 'slurpee_blue_ice'
+		or itemId == 'fountain_coca_cola'
+		or itemId == 'fountain_melon_soda'
 
 	local isFood = itemId == 'dango'
 		or itemId == 'yakisoba'
@@ -1899,7 +2151,55 @@ local function inventoryAction(player: Player, payload: any)
 		RemoteRegistry.fireClient(player, 'ShopResult', true, '買い物かごを空にしました (Basket cleared)')
 		return
 	end
+	if payload.action == 'remove_basket_item' and typeof(payload.itemId) == 'string' then
+		local b = playerBaskets[player.UserId]
+		if not b or not b.items or not b.items[payload.itemId] or b.items[payload.itemId] <= 0 then
+			return
+		end
+		local itId = payload.itemId
+		local unitPrice = 0
+		for _, s in pairs(FishingData.shops) do
+			if s.items then
+				for _, item in ipairs(s.items) do
+					if item.id == itId then
+						unitPrice = item.price or 0
+						break
+					end
+				end
+			end
+			if unitPrice > 0 then
+				break
+			end
+		end
+
+		b.items[itId] -= 1
+		b.totalCount = math.max(0, b.totalCount - 1)
+		b.totalYen = math.max(0, b.totalYen - unitPrice)
+
+		if b.items[itId] <= 0 then
+			b.items[itId] = nil
+		end
+
+		if b.totalCount <= 0 then
+			playerBaskets[player.UserId] = nil
+			clearBasketTool(player)
+		end
+
+		syncBasket(player)
+		local itemName = (FishingData.itemNames and FishingData.itemNames[itId]) or itId
+		RemoteRegistry.fireClient(player, 'ShopResult', true, itemName .. ' をかごから戻しました (Returned to shelf)')
+		return
+	end
 	if payload.action == 'checkout_basket' then
+		local char = player.Character
+		local hrp = char and char:FindFirstChild('HumanoidRootPart')
+		local cashierPos = Vector3.new(116.5, 10.0, 43.5)
+		local dist = hrp and (hrp.Position - cashierPos).Magnitude or 999
+		if dist > 18 then
+			RemoteRegistry.fireClient(player, 'ShopResult', false, 'レジカウンターでお会計してください (Please proceed to the cashier to pay)')
+			RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ レジカウンター[E]でお会計してください')
+			return
+		end
 		processCashierCheckout(player, nil)
 		return
 	end

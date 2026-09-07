@@ -291,10 +291,46 @@ local function makeShopRow(item: any, order: number)
 	end)
 end
 
+local SOUND_IRASSHAIMASE = 'rbxassetid://118590628485091'
+local SOUND_ARIGATOU = 'rbxassetid://107094107671003'
+
+local function playLocalVoice(soundId: string)
+	local sound = Instance.new('Sound')
+	sound.SoundId = soundId
+	sound.Volume = 1.0
+	sound.Parent = SoundService
+	if sound.IsLoaded then
+		sound:Play()
+	else
+		task.spawn(function()
+			if not sound.IsLoaded then
+				sound.Loaded:Wait()
+			end
+			sound:Play()
+		end)
+	end
+	game:GetService('Debris'):AddItem(sound, 3.5)
+end
+
 local function showToast(message: string)
 	toast.Text = message
 	toast.Visible = true
-	task.delay(2.5, function()
+
+	if string.find(message, '所持金が足りません') or string.find(message, '⚠️') then
+		toast.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+		toast.TextColor3 = Color3.fromRGB(255, 240, 240)
+	else
+		toast.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+		toast.TextColor3 = Color3.fromRGB(255, 235, 170)
+	end
+
+	if string.find(message, 'いらっしゃいませ') then
+		playLocalVoice(SOUND_IRASSHAIMASE)
+	elseif string.find(message, 'ありがとうございました') or string.find(message, 'ありがとうございます') then
+		playLocalVoice(SOUND_ARIGATOU)
+	end
+
+	task.delay(2.8, function()
 		if toast.Text == message then
 			toast.Visible = false
 		end
@@ -574,22 +610,193 @@ function InventoryController.init()
 
 	local basketBar: Frame? = nil
 	local basketLabel: TextLabel? = nil
+	local basketModal: Frame? = nil
+	local basketModalList: ScrollingFrame? = nil
+	local basketModalTotal: TextLabel? = nil
+	local currentBasketData: any = nil
+
+	local function renderBasketModalRows(bData: any)
+		if not basketModalList then
+			return
+		end
+		clearRows(basketModalList)
+		if not bData or not bData.items then
+			return
+		end
+
+		local totalItems = 0
+		local totalYen = bData.yen or bData.totalYen or 0
+		local order = 1
+
+		for itId, cnt in pairs(bData.items) do
+			if cnt > 0 then
+				totalItems += cnt
+				local itemName = getItemName(itId)
+				local unitPrice = 0
+				for _, s in pairs(FishingData.shops) do
+					if s.items then
+						for _, item in ipairs(s.items) do
+							if item.id == itId then
+								unitPrice = item.price or 0
+								break
+							end
+						end
+					end
+					if unitPrice > 0 then
+						break
+					end
+				end
+
+				local row = Instance.new('Frame')
+				row.Name = 'BasketItemRow'
+				row.LayoutOrder = order
+				row.Size = UDim2.new(1, -6, 0, 42)
+				row.BackgroundColor3 = Color3.fromRGB(36, 42, 56)
+				row.ZIndex = 32
+				row.Parent = basketModalList
+				corner(row, 8)
+
+				local nameLbl = Instance.new('TextLabel')
+				nameLbl.Size = UDim2.new(1, -120, 1, 0)
+				nameLbl.Position = UDim2.fromOffset(12, 0)
+				nameLbl.BackgroundTransparency = 1
+				nameLbl.TextColor3 = Color3.fromRGB(245, 245, 245)
+				nameLbl.Font = Enum.Font.GothamBold
+				nameLbl.TextSize = 13
+				nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+				nameLbl.Text = string.format("%s  ×%d (¥%d)", itemName, cnt, unitPrice * cnt)
+				nameLbl.ZIndex = 33
+				nameLbl.Parent = row
+
+				local removeBtn = Instance.new('TextButton')
+				removeBtn.AnchorPoint = Vector2.new(1, 0.5)
+				removeBtn.Position = UDim2.new(1, -8, 0.5, 0)
+				removeBtn.Size = UDim2.fromOffset(100, 28)
+				removeBtn.BackgroundColor3 = Color3.fromRGB(180, 55, 45)
+				removeBtn.Text = '[-] 1つ戻す'
+				removeBtn.TextColor3 = Color3.new(1, 1, 1)
+				removeBtn.Font = Enum.Font.GothamBold
+				removeBtn.TextSize = 12
+				removeBtn.ZIndex = 33
+				removeBtn.Parent = row
+				corner(removeBtn, 6)
+
+				local targetId = itId
+				removeBtn.Activated:Connect(function()
+					RemoteController.fire('InventoryAction', { action = 'remove_basket_item', itemId = targetId })
+				end)
+
+				order += 1
+			end
+		end
+
+		if basketModalTotal then
+			basketModalTotal.Text = string.format("合計: %d点  ¥%d  •  ※お会計はレジ[E]で行ってください", totalItems, totalYen)
+		end
+	end
+
+	local function toggleBasketModal()
+		if not basketModal and gui then
+			basketModal = Instance.new('Frame')
+			basketModal.Name = 'KonbiniBasketModal'
+			basketModal.AnchorPoint = Vector2.new(0.5, 1)
+			basketModal.Position = UDim2.new(0.5, 0, 1, -74)
+			basketModal.Size = UDim2.fromOffset(480, 260)
+			basketModal.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+			basketModal.BackgroundTransparency = 0.05
+			basketModal.ZIndex = 30
+			basketModal.Visible = false
+			basketModal.Parent = gui
+			corner(basketModal, 12)
+
+			local stroke = Instance.new('UIStroke')
+			stroke.Color = Color3.fromRGB(240, 195, 30)
+			stroke.Thickness = 1.5
+			stroke.Parent = basketModal
+			UIScaling.fit(basketModal)
+
+			local title = Instance.new('TextLabel')
+			title.Size = UDim2.new(1, -50, 0, 36)
+			title.Position = UDim2.fromOffset(14, 2)
+			title.BackgroundTransparency = 1
+			title.TextColor3 = Color3.fromRGB(255, 235, 170)
+			title.Font = Enum.Font.GothamBold
+			title.TextSize = 15
+			title.TextXAlignment = Enum.TextXAlignment.Left
+			title.Text = '🛒 買い物かごの中身 (Basket Contents)'
+			title.ZIndex = 31
+			title.Parent = basketModal
+
+			local closeBtn = Instance.new('TextButton')
+			closeBtn.AnchorPoint = Vector2.new(1, 0)
+			closeBtn.Position = UDim2.new(1, -8, 0, 6)
+			closeBtn.Size = UDim2.fromOffset(28, 28)
+			closeBtn.BackgroundColor3 = Color3.fromRGB(160, 50, 50)
+			closeBtn.Text = '×'
+			closeBtn.TextColor3 = Color3.new(1, 1, 1)
+			closeBtn.Font = Enum.Font.GothamBold
+			closeBtn.TextSize = 16
+			closeBtn.ZIndex = 31
+			closeBtn.Parent = basketModal
+			corner(closeBtn, 6)
+			closeBtn.Activated:Connect(function()
+				basketModal.Visible = false
+			end)
+
+			basketModalList = Instance.new('ScrollingFrame')
+			basketModalList.Name = 'BasketItemList'
+			basketModalList.Position = UDim2.fromOffset(10, 40)
+			basketModalList.Size = UDim2.new(1, -20, 1, -80)
+			basketModalList.BackgroundTransparency = 1
+			basketModalList.ScrollBarThickness = 5
+			basketModalList.ZIndex = 31
+			basketModalList.Parent = basketModal
+
+			local layout = Instance.new('UIListLayout')
+			layout.Padding = UDim.new(0, 6)
+			layout.Parent = basketModalList
+
+			basketModalTotal = Instance.new('TextLabel')
+			basketModalTotal.Size = UDim2.new(1, -20, 0, 30)
+			basketModalTotal.Position = UDim2.new(0, 10, 1, -34)
+			basketModalTotal.BackgroundTransparency = 1
+			basketModalTotal.TextColor3 = Color3.fromRGB(255, 235, 170)
+			basketModalTotal.Font = Enum.Font.GothamBold
+			basketModalTotal.TextSize = 12
+			basketModalTotal.TextXAlignment = Enum.TextXAlignment.Left
+			basketModalTotal.ZIndex = 31
+			basketModalTotal.Parent = basketModal
+		end
+
+		if basketModal then
+			basketModal.Visible = not basketModal.Visible
+			if basketModal.Visible then
+				renderBasketModalRows(currentBasketData)
+			end
+		end
+	end
 
 	local function updateBasketGui(basketData: any)
+		currentBasketData = basketData
 		local count = if basketData then (basketData.count or basketData.totalCount or 0) else 0
 		local yen = if basketData then (basketData.yen or basketData.totalYen or 0) else 0
+
 		if count <= 0 then
 			if basketBar then
 				basketBar.Visible = false
 			end
+			if basketModal then
+				basketModal.Visible = false
+			end
 			return
 		end
+
 		if not basketBar and gui then
 			basketBar = Instance.new('Frame')
 			basketBar.Name = 'KonbiniBasketBar'
 			basketBar.AnchorPoint = Vector2.new(0.5, 1)
 			basketBar.Position = UDim2.new(0.5, 0, 1, -22)
-			basketBar.Size = UDim2.fromOffset(470, 46)
+			basketBar.Size = UDim2.fromOffset(500, 46)
 			basketBar.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 			basketBar.BackgroundTransparency = 0.12
 			basketBar.ZIndex = 25
@@ -603,7 +810,7 @@ function InventoryController.init()
 			UIScaling.fit(basketBar)
 
 			basketLabel = Instance.new('TextLabel')
-			basketLabel.Size = UDim2.new(1, -185, 1, 0)
+			basketLabel.Size = UDim2.new(1, -220, 1, 0)
 			basketLabel.Position = UDim2.fromOffset(12, 0)
 			basketLabel.BackgroundTransparency = 1
 			basketLabel.TextColor3 = Color3.fromRGB(255, 235, 170)
@@ -615,8 +822,8 @@ function InventoryController.init()
 
 			local clearBtn = Instance.new('TextButton')
 			clearBtn.AnchorPoint = Vector2.new(1, 0.5)
-			clearBtn.Position = UDim2.new(1, -94, 0.5, 0)
-			clearBtn.Size = UDim2.fromOffset(80, 32)
+			clearBtn.Position = UDim2.new(1, -114, 0.5, 0)
+			clearBtn.Size = UDim2.fromOffset(96, 32)
 			clearBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 50)
 			clearBtn.Text = '取消 (Cancel)'
 			clearBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -629,27 +836,31 @@ function InventoryController.init()
 				RemoteController.fire('InventoryAction', { action = 'clear_basket' })
 			end)
 
-			local payBtn = Instance.new('TextButton')
-			payBtn.AnchorPoint = Vector2.new(1, 0.5)
-			payBtn.Position = UDim2.new(1, -8, 0.5, 0)
-			payBtn.Size = UDim2.fromOffset(80, 32)
-			payBtn.BackgroundColor3 = Color3.fromRGB(42, 140, 78)
-			payBtn.Text = 'お会計 (E)'
-			payBtn.TextColor3 = Color3.new(1, 1, 1)
-			payBtn.Font = Enum.Font.GothamBold
-			payBtn.TextSize = 12
-			payBtn.ZIndex = 26
-			payBtn.Parent = basketBar
-			corner(payBtn, 8)
-			payBtn.Activated:Connect(function()
-				RemoteController.fire('InventoryAction', { action = 'checkout_basket' })
+			local viewBtn = Instance.new('TextButton')
+			viewBtn.AnchorPoint = Vector2.new(1, 0.5)
+			viewBtn.Position = UDim2.new(1, -8, 0.5, 0)
+			viewBtn.Size = UDim2.fromOffset(98, 32)
+			viewBtn.BackgroundColor3 = Color3.fromRGB(48, 105, 175)
+			viewBtn.Text = '中身を見る (View)'
+			viewBtn.TextColor3 = Color3.new(1, 1, 1)
+			viewBtn.Font = Enum.Font.GothamBold
+			viewBtn.TextSize = 12
+			viewBtn.ZIndex = 26
+			viewBtn.Parent = basketBar
+			corner(viewBtn, 8)
+			viewBtn.Activated:Connect(function()
+				toggleBasketModal()
 			end)
 		end
+
 		if basketLabel then
-			basketLabel.Text = string.format("🛒 買い物かご: %d点 (¥%d) • レジへどうぞ", count, yen)
+			basketLabel.Text = string.format("🛒 買い物かご: %d点 (¥%d) • レジへお進みください", count, yen)
 		end
 		if basketBar then
 			basketBar.Visible = true
+		end
+		if basketModal and basketModal.Visible then
+			renderBasketModalRows(basketData)
 		end
 	end
 
@@ -696,6 +907,15 @@ function InventoryController.init()
 
 			-- FishingController manages the reel/bite controls during active fishing sessions
 			if tool:GetAttribute('FishingSessionTool') == true then
+				if actionGui then
+					actionGui:Destroy()
+					actionGui = nil
+				end
+				return
+			end
+
+			-- Konbini shopping basket is managed by the KonbiniBasketBar HUD, suppress "Put Away" action bar
+			if tool:GetAttribute('BasketTool') == true or tool.Name == 'KonbiniBasket' then
 				if actionGui then
 					actionGui:Destroy()
 					actionGui = nil
