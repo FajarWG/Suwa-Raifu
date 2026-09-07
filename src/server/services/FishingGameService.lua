@@ -19,10 +19,7 @@ local BITE_WINDOW = 3.6
 local MAX_SPOT_DISTANCE = 32
 
 -- Konbini Sound Assets
--- NOTE: Roblox requires sound files to be uploaded to Roblox to receive an rbxassetid://
 -- Upload assets/irasshaimase.mp3 and assets/arigatougozaimasu.mp3 via Roblox Studio Asset Manager or Creator Dashboard.
-local SOUND_KONBINI_DOOR_CHIME = 'rbxassetid://116480334166185' -- FamilyMart/7-11 door chime
-local SOUND_KONBINI_REGISTER_BEEP = 'rbxassetid://9069609200' -- Register checkout beep
 local SOUND_KONBINI_WELCOME_IRASSHAIMASE = 'rbxassetid://118590628485091' -- 「いらっしゃいませ！」 by fathurzoy7
 local SOUND_KONBINI_THANK_YOU_ARIGATOU = 'rbxassetid://107094107671003' -- 「ありがとうございます！」 by fathurzoy7
 
@@ -40,6 +37,20 @@ local function getArigatouSoundId(): string
 		return s.SoundId
 	end
 	return SOUND_KONBINI_THANK_YOU_ARIGATOU
+end
+
+local function playKonbiniVoice(parent: Instance?, soundId: string, volume: number?)
+	if not parent then
+		return
+	end
+	local s = Instance.new('Sound')
+	s.SoundId = soundId
+	s.Volume = volume or 1.0
+	s.RollOffMaxDistance = 45
+	s.RollOffMinDistance = 5
+	s.Parent = parent
+	s:Play()
+	game:GetService('Debris'):AddItem(s, 3.0)
 end
 
 type FishingSession = {
@@ -1486,16 +1497,6 @@ local function processCashierCheckout(player: Player, cashierPart: BasePart?)
 
 		if profile.economy.yen < b.totalYen then
 			local diff = b.totalYen - profile.economy.yen
-			local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
-			if hrp then
-				local beep = Instance.new('Sound')
-				beep.SoundId = SOUND_KONBINI_REGISTER_BEEP
-				beep.Pitch = 0.7
-				beep.Volume = 1.0
-				beep.Parent = hrp
-				beep:Play()
-				game:GetService('Debris'):AddItem(beep, 2)
-			end
 			RemoteRegistry.fireClient(player, 'ShopResult', false, '所持金が足りません！ (¥' .. tostring(diff) .. ' 不足) - 合計: ¥' .. tostring(b.totalYen) .. ' (所持金: ¥' .. tostring(profile.economy.yen) .. ')')
 			RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ 所持金が足りません！ (¥' .. tostring(diff) .. ' 不足)')
 			return
@@ -1518,37 +1519,14 @@ local function processCashierCheckout(player: Player, cashierPart: BasePart?)
 		pushInventory(player)
 
 		local soundParent = cashierPart or (player.Character and player.Character:FindFirstChild('HumanoidRootPart'))
-		if soundParent then
-			-- Cash register sound
-			local regSound = Instance.new('Sound')
-			regSound.SoundId = SOUND_KONBINI_REGISTER_BEEP
-			regSound.Volume = 0.95
-			regSound.Parent = soundParent
-			regSound:Play()
-			game:GetService('Debris'):AddItem(regSound, 2.5)
-
-			-- Authentic Japanese "Arigatou gozaimasu!" voice clip
-			local voiceSound = Instance.new('Sound')
-			voiceSound.SoundId = getArigatouSoundId()
-			voiceSound.Volume = 1.0
-			voiceSound.Parent = soundParent
-			voiceSound:Play()
-			game:GetService('Debris'):AddItem(voiceSound, 2.5)
-		end
+		playKonbiniVoice(soundParent, getArigatouSoundId(), 1.0)
 
 		RemoteRegistry.fireClient(player, 'ShopResult', true, 'お会計完了！ 合計 ¥' .. tostring(totalPaid) .. ' (' .. tostring(totalItems) .. '点) をかばん[B]に入れました！')
 		RemoteRegistry.fireClient(player, 'InventoryToast', '「ありがとうございました！」')
 	else
 		-- Basket is empty -> Friendly clerk greeting "Irasshaimase!" and open direct catalog
 		local soundParent = cashierPart or (player.Character and player.Character:FindFirstChild('HumanoidRootPart'))
-		if soundParent then
-			local voiceSound = Instance.new('Sound')
-			voiceSound.SoundId = getIrasshaimaseSoundId()
-			voiceSound.Volume = 0.9
-			voiceSound.Parent = soundParent
-			voiceSound:Play()
-			game:GetService('Debris'):AddItem(voiceSound, 2.5)
-		end
+		playKonbiniVoice(soundParent, getIrasshaimaseSoundId(), 0.95)
 
 		RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」')
 
@@ -1858,18 +1836,6 @@ local function setupSevenElevenStore()
 	sensor.Anchored = true
 	sensor.Parent = sevenEleven
 
-	local chimeSound = Instance.new('Sound')
-	chimeSound.Name = 'DoorChime'
-	chimeSound.SoundId = SOUND_KONBINI_DOOR_CHIME -- Iconic Japanese konbini doorbell chime
-	chimeSound.Volume = 0.8
-	chimeSound.Parent = sensor
-
-	local voiceSound = Instance.new('Sound')
-	voiceSound.Name = 'WelcomeVoice'
-	voiceSound.SoundId = getIrasshaimaseSoundId() -- Japanese greeting voice
-	voiceSound.Volume = 0.85
-	voiceSound.Parent = sensor
-
 	local lastChimeTimes = {}
 	local lastExitBlockTimes = {}
 	sensor.Touched:Connect(function(hit)
@@ -1878,35 +1844,34 @@ local function setupSevenElevenStore()
 		if player then
 			local b = playerBaskets[player.UserId]
 			local hrp = char:FindFirstChild('HumanoidRootPart')
-			-- If player is carrying an unpaid basket and walking out (Z < 38.5)
-			if b and b.totalCount > 0 and hrp and hrp.Position.Z < 38.5 then
+			if not hrp then
+				return
+			end
+
+			-- If player is carrying an unpaid basket and walking out towards negative Z (exit)
+			if b and b.totalCount > 0 and hrp.Position.Z < 38.5 then
 				hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y, 41.0)
 				local now = os.clock()
-				if not lastExitBlockTimes[player] or (now - lastExitBlockTimes[player]) > 2 then
-					lastExitBlockTimes[player] = now
-					local buzzer = Instance.new('Sound')
-					buzzer.SoundId = SOUND_KONBINI_REGISTER_BEEP
-					buzzer.Pitch = 0.65
-					buzzer.Volume = 1.0
-					buzzer.Parent = hrp
-					buzzer:Play()
-					game:GetService('Debris'):AddItem(buzzer, 2)
+				if not lastExitBlockTimes[player.UserId] or (now - lastExitBlockTimes[player.UserId]) > 2 then
+					lastExitBlockTimes[player.UserId] = now
 					RemoteRegistry.fireClient(player, 'ShopResult', false, '未会計の商品があります！ 先にレジでお会計をしてください (Please pay at cashier before leaving!)')
 					RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ 未会計の商品があります！ 先にレジでお会計をしてください')
 				end
 				return
 			end
 
-			local now = os.clock()
-			if not lastChimeTimes[player] or (now - lastChimeTimes[player]) > 10 then
-				lastChimeTimes[player] = now
-				chimeSound:Play()
-				task.delay(0.8, function()
-					if voiceSound and voiceSound.Parent then
-						voiceSound:Play()
-					end
-				end)
-				RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」')
+			-- Only greet "Irasshaimase!" when ENTERING the store (moving inward +Z or coming from outside Z <= 37.0)
+			-- Do NOT greet when walking OUT of the store!
+			local isEntering = (hrp.AssemblyLinearVelocity.Z > 0.2) or (hrp.Position.Z < 36.8)
+			local isLeaving = (hrp.AssemblyLinearVelocity.Z < -0.5) and (hrp.Position.Z >= 36.8)
+
+			if isEntering and not isLeaving then
+				local now = os.clock()
+				if not lastChimeTimes[player.UserId] or (now - lastChimeTimes[player.UserId]) > 10 then
+					lastChimeTimes[player.UserId] = now
+					playKonbiniVoice(sensor, getIrasshaimaseSoundId(), 1.0)
+					RemoteRegistry.fireClient(player, 'InventoryToast', '「いらっしゃいませ！」')
+				end
 			end
 		end
 	end)
@@ -2003,16 +1968,6 @@ local function buyItem(player: Player, payload: any)
 	local price = selected.price or 0
 	if price > 0 and profile.economy.yen < price then
 		local diff = price - profile.economy.yen
-		local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
-		if hrp then
-			local beep = Instance.new('Sound')
-			beep.SoundId = SOUND_KONBINI_REGISTER_BEEP
-			beep.Pitch = 0.7
-			beep.Volume = 1.0
-			beep.Parent = hrp
-			beep:Play()
-			game:GetService('Debris'):AddItem(beep, 2)
-		end
 		RemoteRegistry.fireClient(player, 'ShopResult', false, '所持金が足りません (¥' .. tostring(diff) .. ' 不足)')
 		RemoteRegistry.fireClient(player, 'InventoryToast', '⚠️ 所持金が足りません！ (¥' .. tostring(diff) .. ' 不足)')
 		return
@@ -2051,22 +2006,8 @@ local function buyItem(player: Player, payload: any)
 		))
 
 	if isKonbini then
-		local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
-		if hrp then
-			local regSound = Instance.new('Sound')
-			regSound.SoundId = SOUND_KONBINI_REGISTER_BEEP
-			regSound.Volume = 0.95
-			regSound.Parent = hrp
-			regSound:Play()
-			game:GetService('Debris'):AddItem(regSound, 2.5)
-
-			local voiceSound = Instance.new('Sound')
-			voiceSound.SoundId = getArigatouSoundId()
-			voiceSound.Volume = 1.0
-			voiceSound.Parent = hrp
-			voiceSound:Play()
-			game:GetService('Debris'):AddItem(voiceSound, 2.5)
-		end
+		local soundParent = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+		playKonbiniVoice(soundParent, getArigatouSoundId(), 1.0)
 		RemoteRegistry.fireClient(player, 'ShopResult', true, selected.name .. ' を購入しました！ (¥' .. tostring(price) .. ')')
 		RemoteRegistry.fireClient(player, 'InventoryToast', '「ありがとうございました！」')
 	else

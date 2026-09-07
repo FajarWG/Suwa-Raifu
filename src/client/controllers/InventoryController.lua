@@ -45,7 +45,7 @@ end
 
 local function clearRows(container: Instance)
 	for _, child in container:GetChildren() do
-		if child:IsA('GuiObject') and child.Name == 'InventoryRow' then
+		if child:IsA('GuiObject') and not child:IsA('UIListLayout') and not child:IsA('UIPadding') and not child:IsA('UIGridLayout') and not child:IsA('UIAspectRatioConstraint') then
 			child:Destroy()
 		end
 	end
@@ -291,27 +291,6 @@ local function makeShopRow(item: any, order: number)
 	end)
 end
 
-local SOUND_IRASSHAIMASE = 'rbxassetid://118590628485091'
-local SOUND_ARIGATOU = 'rbxassetid://107094107671003'
-
-local function playLocalVoice(soundId: string)
-	local sound = Instance.new('Sound')
-	sound.SoundId = soundId
-	sound.Volume = 1.0
-	sound.Parent = SoundService
-	if sound.IsLoaded then
-		sound:Play()
-	else
-		task.spawn(function()
-			if not sound.IsLoaded then
-				sound.Loaded:Wait()
-			end
-			sound:Play()
-		end)
-	end
-	game:GetService('Debris'):AddItem(sound, 3.5)
-end
-
 local function showToast(message: string)
 	toast.Text = message
 	toast.Visible = true
@@ -322,12 +301,6 @@ local function showToast(message: string)
 	else
 		toast.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 		toast.TextColor3 = Color3.fromRGB(255, 235, 170)
-	end
-
-	if string.find(message, 'いらっしゃいませ') then
-		playLocalVoice(SOUND_IRASSHAIMASE)
-	elseif string.find(message, 'ありがとうございました') or string.find(message, 'ありがとうございます') then
-		playLocalVoice(SOUND_ARIGATOU)
 	end
 
 	task.delay(2.8, function()
@@ -782,6 +755,10 @@ function InventoryController.init()
 		local yen = if basketData then (basketData.yen or basketData.totalYen or 0) else 0
 
 		if count <= 0 then
+			currentBasketData = nil
+			if basketModalList then
+				clearRows(basketModalList)
+			end
 			if basketBar then
 				basketBar.Visible = false
 			end

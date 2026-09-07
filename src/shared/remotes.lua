@@ -43,6 +43,8 @@ local Remotes: RemoteDefinitions = {
 		'NPCInteract',
 		'BasketUpdated',
 		'InventoryToast',
+		'WhiteboardUpdate',
+		'WhiteboardClear',
 	},
 	functions = {
 		'GetProfile',
@@ -50,6 +52,7 @@ local Remotes: RemoteDefinitions = {
 		'GetTimeInfo',
 		'GetInventory',
 		'NPCGetDialog',
+		'WhiteboardGetData',
 	},
 }
 

@@ -232,7 +232,7 @@ function ProfileService.getProfile(playerId: number): ProfileTypes.Profile?
 		profiles[playerId] = profile
 	end
 	if profile and profile.economy then
-		if profile.economy.yen == nil or profile.economy.yen > 2000 then
+		if profile.economy.yen == nil then
 			profile.economy.yen = 500
 		end
 	end

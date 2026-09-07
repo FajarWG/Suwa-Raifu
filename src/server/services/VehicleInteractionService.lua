@@ -175,8 +175,8 @@ local function getSeatActionAndObject(seat: Seat | VehicleSeat, rawObjectText: s
 	local objLower = cleanObj:lower()
 	if objLower:find('bench') then
 		cleanObj = 'Bench'
-	elseif objLower:find('chair') then
-		cleanObj = 'Chair'
+	elseif objLower:find('chair') or objLower:find('desk') or cleanObj:find('โต๊ะ') or cleanObj:find('ก่าว') then
+		cleanObj = 'Desk'
 	elseif objLower:find('basket') or ownerLower:find('ferris') then
 		cleanObj = 'Ferris Wheel'
 	elseif objLower:find('swan') or objLower:find('duck') then

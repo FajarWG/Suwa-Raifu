@@ -85,18 +85,43 @@ async function run() {
     },
     {
       path: 'src/server/runner.server.lua',
-      target: 'game:GetService("ServerScriptService").Server.runner',
+      targetParent: 'game:GetService("ServerScriptService").Server',
       name: 'runner',
+    },
+    {
+      path: 'src/server/services/WhiteboardService.lua',
+      targetParent: 'game:GetService("ServerScriptService").Server.services',
+      name: 'WhiteboardService',
+    },
+    {
+      path: 'src/client/controllers/WhiteboardController.lua',
+      targetParent: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers',
+      name: 'WhiteboardController',
     },
   ];
 
   for (const item of files) {
     const src = fs.readFileSync(item.path, 'utf-8');
-    const lua = `
+    let lua;
+    if (item.targetParent) {
+      lua = `
+local parent = ${item.targetParent}
+local target = parent:FindFirstChild("${item.name}")
+if not target then
+  target = Instance.new("ModuleScript")
+  target.Name = "${item.name}"
+  target.Parent = parent
+end
+target.Source = [====[${src}]====]
+return "SUCCESS: Updated " .. target:GetFullName() .. " (" .. tostring(#target.Source) .. " bytes)"
+`;
+    } else {
+      lua = `
 local target = ${item.target}
 target.Source = [====[${src}]====]
 return "SUCCESS: Updated " .. target:GetFullName() .. " (" .. tostring(#target.Source) .. " bytes)"
 `;
+    }
     const res = await executeLuau(lua, 'Edit');
     console.log(item.name, '->', res);
   }
