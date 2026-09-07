@@ -282,6 +282,10 @@ local function refreshItemList()
 				}):Play()
 
 				-- Send order to server
+				if currentMode == 'dine_in' then
+					isOrderPending = true
+				end
+
 				RemoteController.fire('SushiOrder', {
 					mode = currentMode,
 					itemId = item.id,
@@ -576,10 +580,33 @@ local function setupFloatingOrderButton()
 	floatingOrderBtn.Parent = hudGui
 end
 
+local function getOrFindFloatingButton(): TextButton?
+	if floatingOrderBtn and floatingOrderBtn.Parent then
+		return floatingOrderBtn
+	end
+	local hudGui = playerGui:FindFirstChild('SuwaSushiHUD')
+	if hudGui then
+		local btn = hudGui:FindFirstChild('TableOrderFloatingBtn')
+		if btn and btn:IsA('TextButton') then
+			floatingOrderBtn = btn
+			return btn
+		end
+	end
+	return nil
+end
+
+local isOrderPending: boolean = false
+
 function SushiRestaurantController.open(data: any)
 	currentMode = (data and data.mode) or 'takeaway'
 	currentTableId = (data and data.tableId) or currentTableId
 	currentYen = (data and data.yen) or currentYen
+
+	-- Always hide floating HUD button when menu modal is open
+	local btn = getOrFindFloatingButton()
+	if btn then
+		btn.Visible = false
+	end
 
 	if not screenGui then
 		createUI()
@@ -610,10 +637,21 @@ function SushiRestaurantController.close()
 	if screenGui then
 		screenGui.Enabled = false
 	end
+
+	-- Only restore floating button if seated and not currently waiting for / eating food
+	local btn = getOrFindFloatingButton()
+	if btn then
+		if isCurrentlySeatedAtSushi and not isOrderPending then
+			btn.Visible = true
+		else
+			btn.Visible = false
+		end
+	end
 end
 
 -- Seating detection for dining chairs
 local function handleHumanoidSeated(active: boolean, currentSeat: any)
+	local btn = getOrFindFloatingButton()
 	if active and currentSeat and currentSeat:IsA('Seat') then
 		local isSushiSeat = currentSeat:GetAttribute('IsSushiSeat')
 		if isSushiSeat == true then
@@ -621,8 +659,8 @@ local function handleHumanoidSeated(active: boolean, currentSeat: any)
 			currentSeatPart = currentSeat
 			currentTableId = currentSeat:GetAttribute('TableId') or 'Table'
 
-			if floatingOrderBtn then
-				floatingOrderBtn.Visible = true
+			if btn and not isOrderPending and (not screenGui or not screenGui.Enabled) then
+				btn.Visible = true
 			end
 			return
 		end
@@ -631,8 +669,9 @@ local function handleHumanoidSeated(active: boolean, currentSeat: any)
 	-- Stood up or seated elsewhere
 	isCurrentlySeatedAtSushi = false
 	currentSeatPart = nil
-	if floatingOrderBtn then
-		floatingOrderBtn.Visible = false
+	isOrderPending = false
+	if btn then
+		btn.Visible = false
 	end
 
 	-- If dine-in menu is open, auto close when getting up
@@ -661,6 +700,12 @@ function SushiRestaurantController.init()
 	-- Table served celebration sound / notification
 	RemoteController.onEvent('SushiTableServed', function(data: any)
 		playLocalSound(SOUND_SERVE)
+		task.delay(8, function()
+			isOrderPending = false
+			if isCurrentlySeatedAtSushi and floatingOrderBtn and (not screenGui or not screenGui.Enabled) then
+				floatingOrderBtn.Visible = true
+			end
+		end)
 	end)
 
 	-- Yen updates

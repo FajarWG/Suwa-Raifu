@@ -15,6 +15,7 @@ local SoundService = game:GetService('SoundService')
 
 local RemoteRegistry = require(script.Parent:WaitForChild('RemoteRegistryService'))
 local ProfileService = require(script.Parent:WaitForChild('ProfileService'))
+local InventoryService = require(script.Parent:WaitForChild('InventoryService'))
 
 local VendingMachineService = {}
 
@@ -30,38 +31,49 @@ export type VendingItem = {
 }
 
 local CATALOG: { VendingItem } = {
-	{ id = 'Cola', name = 'Coca-Cola', japanese = 'コカ・コーラ', category = 'drink', price = 120, icon = '🥤', color = Color3.fromRGB(220, 40, 40), tool = 'Cola' },
-	{ id = 'Pepsi', name = 'Pepsi', japanese = 'ペプシ', category = 'drink', price = 120, icon = '🥤', color = Color3.fromRGB(30, 80, 200), tool = 'Pepsi' },
-	{ id = 'Sprite', name = 'Sprite', japanese = 'スプライト', category = 'drink', price = 120, icon = '🍋', color = Color3.fromRGB(30, 160, 70), tool = 'Sprite' },
-	{ id = 'MountainDew', name = 'Mountain Dew', japanese = 'マウンテンデュー', category = 'drink', price = 120, icon = '⚡', color = Color3.fromRGB(120, 190, 30), tool = 'MountainDew' },
-	{ id = 'DrPepper', name = 'Dr Pepper', japanese = 'ドクターペッパー', category = 'drink', price = 120, icon = '🍒', color = Color3.fromRGB(150, 20, 50), tool = 'DrPepper' },
-	{ id = 'Milk', name = 'Fresh Milk', japanese = 'おいしい牛乳', category = 'drink', price = 110, icon = '🥛', color = Color3.fromRGB(240, 240, 245), tool = 'Milk' },
-	{ id = 'OrangeJuice', name = 'Orange Juice', japanese = 'オレンジジュース', category = 'drink', price = 120, icon = '🍊', color = Color3.fromRGB(245, 140, 20), tool = 'OrangeJuice' },
+	{ id = 'coca_cola', name = 'Coca-Cola', japanese = 'コカ・コーラ', category = 'drink', price = 120, icon = '🥤', color = Color3.fromRGB(220, 40, 40), tool = 'coca_cola' },
+	{ id = 'pepsi', name = 'Pepsi', japanese = 'ペプシ', category = 'drink', price = 120, icon = '🥤', color = Color3.fromRGB(30, 80, 200), tool = 'pepsi' },
+	{ id = 'sprite', name = 'Sprite', japanese = 'スプライト', category = 'drink', price = 120, icon = '🍋', color = Color3.fromRGB(30, 160, 70), tool = 'sprite' },
+	{ id = 'mountain_dew', name = 'Mountain Dew', japanese = 'マウンテンデュー', category = 'drink', price = 120, icon = '⚡', color = Color3.fromRGB(120, 190, 30), tool = 'mountain_dew' },
+	{ id = 'dr_pepper', name = 'Dr Pepper', japanese = 'ドクターペッパー', category = 'drink', price = 120, icon = '🍒', color = Color3.fromRGB(150, 20, 50), tool = 'dr_pepper' },
+	{ id = 'fresh_milk', name = 'Fresh Milk', japanese = 'おいしい牛乳', category = 'drink', price = 110, icon = '🥛', color = Color3.fromRGB(240, 240, 245), tool = 'fresh_milk' },
+	{ id = 'orange_juice', name = 'Orange Juice', japanese = 'オレンジジュース', category = 'drink', price = 120, icon = '🍊', color = Color3.fromRGB(245, 140, 20), tool = 'orange_juice' },
 
-	{ id = 'Doritos', name = 'Doritos Chips', japanese = 'ドリトス', category = 'snack', price = 150, icon = '🔺', color = Color3.fromRGB(220, 60, 30), tool = 'Doritos' },
-	{ id = 'Hersheys', name = "Hershey's Chocolate", japanese = 'ハーシーズチョコ', category = 'snack', price = 130, icon = '🍫', color = Color3.fromRGB(100, 50, 30), tool = 'Hersheys' },
-	{ id = 'Cookie', name = 'Choco Chip Cookie', japanese = 'クッキー', category = 'snack', price = 130, icon = '🍪', color = Color3.fromRGB(190, 130, 60), tool = 'Cookie' },
-	{ id = 'Waffle', name = 'Golden Waffle', japanese = '焼きたてワッフル', category = 'snack', price = 140, icon = '🧇', color = Color3.fromRGB(220, 160, 40), tool = 'Waffle' },
-	{ id = 'EpicSnack', name = 'Bloxy Snack', japanese = 'ブロックスナック', category = 'snack', price = 150, icon = '⭐', color = Color3.fromRGB(235, 185, 25), tool = 'EpicSnack' },
+	{ id = 'doritos_chips', name = 'Doritos Chips', japanese = 'ドリトス', category = 'snack', price = 150, icon = '🔺', color = Color3.fromRGB(220, 60, 30), tool = 'doritos_chips' },
+	{ id = 'hersheys_chocolate', name = "Hershey's Chocolate", japanese = 'ハーシーズチョコ', category = 'snack', price = 130, icon = '🍫', color = Color3.fromRGB(100, 50, 30), tool = 'hersheys_chocolate' },
+	{ id = 'choco_chip_cookie', name = 'Choco Chip Cookie', japanese = 'クッキー', category = 'snack', price = 130, icon = '🍪', color = Color3.fromRGB(190, 130, 60), tool = 'choco_chip_cookie' },
+	{ id = 'golden_waffle', name = 'Golden Waffle', japanese = '焼きたてワッフル', category = 'snack', price = 140, icon = '🧇', color = Color3.fromRGB(220, 160, 40), tool = 'golden_waffle' },
+	{ id = 'bloxy_snack', name = 'Bloxy Snack', japanese = 'ブロックスナック', category = 'snack', price = 150, icon = '⭐', color = Color3.fromRGB(235, 185, 25), tool = 'bloxy_snack' },
 }
 
 local BUTTON_ITEM_MAP: { [string]: string } = {
-	ColaB = 'Cola',
-	PepsiB = 'Pepsi',
-	SpriteB = 'Sprite',
-	MDB = 'MountainDew',
-	DrPepper = 'DrPepper',
-	DrPepperB = 'DrPepper',
-	MilkB = 'Milk',
-	OrangeJuiceB = 'OrangeJuice',
-	LaysB = 'Doritos',
-	HersheyB = 'Hersheys',
-	TwixB = 'Hersheys',
-	CookiesB = 'Cookie',
-	WaffleB = 'Waffle',
-	WAFFLEB = 'Waffle',
-	EpicSnackB = 'EpicSnack',
-	AWB = 'Cola',
+	ColaB = 'coca_cola',
+	Cola = 'coca_cola',
+	PepsiB = 'pepsi',
+	Pepsi = 'pepsi',
+	SpriteB = 'sprite',
+	Sprite = 'sprite',
+	MDB = 'mountain_dew',
+	MountainDew = 'mountain_dew',
+	DrPepper = 'dr_pepper',
+	DrPepperB = 'dr_pepper',
+	MilkB = 'fresh_milk',
+	Milk = 'fresh_milk',
+	OrangeJuiceB = 'orange_juice',
+	OrangeJuice = 'orange_juice',
+	LaysB = 'doritos_chips',
+	Doritos = 'doritos_chips',
+	HersheyB = 'hersheys_chocolate',
+	Hersheys = 'hersheys_chocolate',
+	TwixB = 'hersheys_chocolate',
+	CookiesB = 'choco_chip_cookie',
+	Cookie = 'choco_chip_cookie',
+	WaffleB = 'golden_waffle',
+	WAFFLEB = 'golden_waffle',
+	Waffle = 'golden_waffle',
+	EpicSnackB = 'bloxy_snack',
+	EpicSnack = 'bloxy_snack',
+	AWB = 'coca_cola',
 }
 
 -- Sounds
@@ -74,35 +86,6 @@ local function findCatalogItem(id: string): VendingItem?
 			return item
 		end
 	end
-	return nil
-end
-
-local function getTemplateTool(toolName: string): Tool?
-	local templates = ReplicatedStorage:FindFirstChild('VendingTemplates')
-	if templates then
-		local t = templates:FindFirstChild(toolName)
-		if t and t:IsA('Tool') then
-			return t
-		end
-	end
-
-	-- Fallback to workspace items
-	local v1 = Workspace:FindFirstChild('VendingMachine')
-	if v1 and v1:FindFirstChild('Model') and v1.Model:FindFirstChild('Items') then
-		local t = v1.Model.Items:FindFirstChild(toolName)
-		if t and t:IsA('Tool') then
-			return t
-		end
-	end
-
-	local v2 = Workspace:FindFirstChild('Vending Machine')
-	if v2 then
-		local t = v2:FindFirstChild(toolName)
-		if t and t:IsA('Tool') then
-			return t
-		end
-	end
-
 	return nil
 end
 
@@ -124,32 +107,17 @@ function VendingMachineService.dispense(player: Player, itemId: string, machineM
 		return false
 	end
 
-	-- Deduct Yen
+	-- Deduct Yen & sync in real-time
 	if profile and profile.economy and profile.economy.yen then
 		profile.economy.yen = math.max(0, profile.economy.yen - price)
 		RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
 	end
 
-	-- Find master Tool
-	local template = getTemplateTool(item.tool)
-	if not template and (item.tool == 'Cola' or item.tool == 'Coke') then
-		template = getTemplateTool('Coke') or getTemplateTool('Cola')
-	end
-
-	if template then
-		local clone = template:Clone()
-		clone.Parent = player.Backpack
-
-		-- Try to equip if character is currently empty-handed
-		local char = player.Character
-		if char and not char:FindFirstChildOfClass('Tool') then
-			local hum = char:FindFirstChildOfClass('Humanoid')
-			if hum then
-				hum:EquipTool(clone)
-			end
-		end
-	else
-		warn(`[VendingMachineService] Could not locate template for tool {item.tool}`)
+	-- Add directly to Bag (InventoryService) - no auto-equip
+	local invRes = InventoryService.addItem(player.UserId, item.id, 1)
+	local snap = InventoryService.getSnapshot(player.UserId)
+	if snap then
+		RemoteRegistry.fireClient(player, 'InventoryUpdated', snap)
 	end
 
 	-- Audio & Visual feedback at machine
@@ -186,7 +154,7 @@ function VendingMachineService.dispense(player: Player, itemId: string, machineM
 	-- Notify client
 	local msg = `🥤「ガタン！」 {item.name} ({item.japanese}) を購入しました！ (¥{price})`
 	RemoteRegistry.fireClient(player, 'ShopResult', true, msg)
-	RemoteRegistry.fireClient(player, 'InventoryToast', `🥤 {item.name} dispensed! / ガタン！出てきました！`)
+	RemoteRegistry.fireClient(player, 'InventoryToast', `🎒 Packaged {item.name} in your bag! / バッグに入りました`)
 
 	return true
 end

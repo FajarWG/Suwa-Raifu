@@ -58,15 +58,14 @@ end
 
 -- Catalog items for Suwa Sushi
 local SUSHI_CATALOG = {
-	{ id = 'sushi_salmon_nigiri', name = 'Salmon Nigiri', japanese = 'サーモン握り寿司', category = 'nigiri', price = 420, icon = '🍣', desc = 'Fresh Atlantic salmon on seasoned sushi rice' },
-	{ id = 'sushi_maguro_nigiri', name = 'Tuna Nigiri', japanese = '本マグロ握り寿司', category = 'nigiri', price = 480, icon = '🍣', desc = 'Prime bluefin maguro tuna, melt in your mouth' },
-	{ id = 'sushi_california_roll', name = 'California Roll', japanese = 'カリフォルニアロール', category = 'nigiri', price = 380, icon = '🍱', desc = 'Crab salad, fresh avocado & cucumber with sesame' },
-	{ id = 'sushi_sashimi_combo', name = 'Sashimi Platter', japanese = '特選刺身盛り合わせ', category = 'dishes', price = 780, icon = '🥢', desc = "Chef's premium slices of salmon, tuna & sweetfish" },
-	{ id = 'sushi_tempura_platter', name = 'Crispy Tempura', japanese = '天ぷら盛り合わせ', category = 'dishes', price = 550, icon = '🍤', desc = 'Light crispy battered prawns, lotus root & pumpkin' },
-	{ id = 'sushi_miso_soup', name = 'Tofu Miso Soup', japanese = 'わかめと豆腐の味噌汁', category = 'dishes', price = 150, icon = '🍲', desc = 'Warm comforting dashi miso broth with silk tofu' },
-	{ id = 'sushi_edamame', name = 'Steamed Edamame', japanese = '塩ゆで枝豆', category = 'dishes', price = 200, icon = '🌱', desc = 'Warm salted young Japanese soybeans' },
-	{ id = 'sushi_green_tea', name = 'Hot Sencha Green Tea', japanese = '熱い宇治煎茶', category = 'drinks', price = 120, icon = '🍵', desc = 'Steaming aromatic Japanese roasted green tea' },
-	{ id = 'ramune', name = 'Cold Ramune Soda', japanese = '冷たいラムネ', category = 'drinks', price = 140, icon = '🥤', desc = 'Classic Japanese marble soda pop' },
+	{ id = 'sushi_salmon_nigiri', name = 'Salmon Nigiri', japanese = 'サーモン握り', category = 'sushi', price = 450, icon = '🍣', desc = 'Fresh Atlantic salmon on seasoned sushi rice' },
+	{ id = 'sushi_maguro_nigiri', name = 'Maguro Nigiri', japanese = '本マグロ握り', category = 'sushi', price = 550, icon = '🍣', desc = 'Prime bluefin maguro tuna, melt in your mouth' },
+	{ id = 'sushi_california_roll', name = 'California Roll', japanese = 'カリフォルニアロール', category = 'sushi', price = 600, icon = '🍱', desc = 'Crab salad, fresh avocado & cucumber with sesame' },
+	{ id = 'sushi_sashimi_combo', name = 'Sashimi Combo Platter', japanese = '特選刺身盛り合わせ', category = 'sushi', price = 1200, icon = '🥢', desc = "Chef's premium slices of salmon, tuna & sweetfish" },
+	{ id = 'sushi_tempura_platter', name = 'Crispy Tempura Platter', japanese = '天ぷら盛り合わせ', category = 'dish', price = 850, icon = '🍤', desc = 'Light crispy battered prawns, lotus root & pumpkin' },
+	{ id = 'sushi_miso_soup', name = 'Wakame Miso Soup', japanese = 'わかめ豆腐味噌汁', category = 'dish', price = 200, icon = '🍲', desc = 'Warm comforting dashi miso broth with silk tofu' },
+	{ id = 'sushi_edamame', name = 'Salted Edamame', japanese = '枝豆', category = 'dish', price = 250, icon = '🌱', desc = 'Warm salted young Japanese soybeans' },
+	{ id = 'sushi_green_tea', name = 'Uji Matcha Green Tea', japanese = '宇治抹茶・緑茶', category = 'drink', price = 150, icon = '🍵', desc = 'Steaming aromatic Japanese roasted green tea' },
 }
 
 -- References
@@ -165,35 +164,81 @@ local function createStaffNPC(name: string, roleTitle: string, cf: CFrame): Mode
 	hum.WalkSpeed = 12
 	hum.Parent = npc
 
+	-- Arms
+	local leftArm = Instance.new('Part')
+	leftArm.Name = 'LeftUpperArm'
+	leftArm.Size = Vector3.new(0.9, 1.8, 0.9)
+	leftArm.CFrame = cf * CFrame.new(0, 0, -1.45)
+	leftArm.Color = Color3.fromRGB(24, 30, 48)
+	leftArm.Material = Enum.Material.Fabric
+	leftArm.CanCollide = false
+	leftArm.Parent = npc
+
+	local weld5 = Instance.new('WeldConstraint')
+	weld5.Part0 = hrp
+	weld5.Part1 = leftArm
+	weld5.Parent = hrp
+
+	local rightArm = Instance.new('Part')
+	rightArm.Name = 'RightUpperArm'
+	rightArm.Size = Vector3.new(0.9, 1.8, 0.9)
+	rightArm.CFrame = cf * CFrame.new(0, 0, 1.45)
+	rightArm.Color = Color3.fromRGB(24, 30, 48)
+	rightArm.Material = Enum.Material.Fabric
+	rightArm.CanCollide = false
+	rightArm.Parent = npc
+
+	local weld6 = Instance.new('WeldConstraint')
+	weld6.Part0 = hrp
+	weld6.Part1 = rightArm
+	weld6.Parent = hrp
+
 	-- Overhead Billboard
 	local bb = Instance.new('BillboardGui')
 	bb.Name = 'RoleTag'
-	bb.Size = UDim2.fromOffset(180, 48)
-	bb.StudsOffset = Vector3.new(0, 2.8, 0)
-	bb.AlwaysOnTop = true
+	bb.Size = UDim2.fromOffset(200, 50)
+	bb.StudsOffset = Vector3.new(0, 3.0, 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 24
 	bb.Adornee = head
 	bb.Parent = head
 
+	local badgeBg = Instance.new('Frame')
+	badgeBg.Name = 'BadgeBg'
+	badgeBg.Size = UDim2.fromScale(1, 1)
+	badgeBg.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
+	badgeBg.BackgroundTransparency = 0.2
+	badgeBg.BorderSizePixel = 0
+	badgeBg.Parent = bb
+
+	local bCorner = Instance.new('UICorner')
+	bCorner.CornerRadius = UDim.new(0, 8)
+	bCorner.Parent = badgeBg
+
+	local bStroke = Instance.new('UIStroke')
+	bStroke.Color = Color3.fromRGB(220, 175, 75)
+	bStroke.Thickness = 1.2
+	bStroke.Parent = badgeBg
+
 	local roleLbl = Instance.new('TextLabel')
-	roleLbl.Size = UDim2.new(1, 0, 0.5, 0)
+	roleLbl.Size = UDim2.new(1, 0, 0.48, 0)
+	roleLbl.Position = UDim2.new(0, 0, 0.04, 0)
 	roleLbl.BackgroundTransparency = 1
 	roleLbl.Font = Enum.Font.FredokaOne
 	roleLbl.TextSize = 13
 	roleLbl.TextColor3 = Color3.fromRGB(255, 215, 80)
-	roleLbl.TextStrokeTransparency = 0.4
 	roleLbl.Text = roleTitle
-	roleLbl.Parent = bb
+	roleLbl.Parent = badgeBg
 
 	local nameLbl = Instance.new('TextLabel')
-	nameLbl.Position = UDim2.new(0, 0, 0.5, 0)
-	nameLbl.Size = UDim2.new(1, 0, 0.5, 0)
+	nameLbl.Position = UDim2.new(0, 0, 0.50, 0)
+	nameLbl.Size = UDim2.new(1, 0, 0.46, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Font = Enum.Font.FredokaOne
-	nameLbl.TextSize = 14
-	nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-	nameLbl.TextStrokeTransparency = 0.3
+	nameLbl.TextSize = 12
+	nameLbl.TextColor3 = Color3.fromRGB(245, 248, 255)
 	nameLbl.Text = name
-	nameLbl.Parent = bb
+	nameLbl.Parent = badgeBg
 
 	local staffFolder = (restaurantModel or Workspace):FindFirstChild('Staff')
 	if not staffFolder then
@@ -208,17 +253,17 @@ end
 -- Spawn Cashier & Waiter NPCs
 local function setupNPCs()
 	-- 1. Cashier NPC behind counter
-	local cashierCF = CFrame.new(24.5, 11.0, 89.0) * CFrame.Angles(0, math.rad(90), 0)
+	local cashierCF = CFrame.new(24.5, 12.85, 89.0) * CFrame.Angles(0, math.rad(90), 0)
 	cashierNPC = createStaffNPC('Tenin Akira (店員あきら)', '🍣 Cashier / レジ係', cashierCF)
 	if cashierNPC.PrimaryPart then
 		cashierNPC.PrimaryPart.Anchored = true
 	end
 
 	-- 2. Floor Waiter NPC near kitchen passage
-	local waiterCF = CFrame.new(22.5, 11.0, 78.0) * CFrame.Angles(0, math.rad(90), 0)
+	local waiterCF = CFrame.new(22.5, 12.85, 78.0) * CFrame.Angles(0, math.rad(90), 0)
 	waiterNPC = createStaffNPC('Tenin Ren (店員れん)', '🥢 Waiter / 配膳係', waiterCF)
 	if waiterNPC.PrimaryPart then
-		waiterNPC.PrimaryPart.Anchored = false
+		waiterNPC.PrimaryPart.Anchored = true
 	end
 end
 
@@ -323,6 +368,15 @@ local function setupDiningTables()
 				local isTerrace = cf.Position.Z < 55
 				local tableName = if isTerrace then `Terrace Table {tableIdx} (テラス席)` else `Dining Table {tableIdx} (店内席)`
 
+				if child.Name == 'Table_7' then
+					local pivot = child:GetPivot()
+					if pivot.Position.X < 24 then
+						child:PivotTo(pivot + Vector3.new(2.5, 0, 0))
+						cf, sz = child:GetBoundingBox()
+						tableCenters[tableId] = cf.Position
+					end
+				end
+
 				-- Remove any prior DiningSeats if re-running
 				for _, s in ipairs(child:GetChildren()) do
 					if s:IsA('Seat') and s.Name:find('DiningSeat') then
@@ -337,24 +391,21 @@ local function setupDiningTables()
 						local benchPos = part.Position
 						local lookDir = Vector3.new(cf.Position.X - benchPos.X, 0, cf.Position.Z - benchPos.Z)
 
-						-- Place 2 comfortable seats per bench cushion
-						local rightVec = CFrame.lookAt(Vector3.zero, lookDir).RightVector
-						for _, sideOffset in ipairs({ -0.75, 0.75 }) do
-							local seat = Instance.new('Seat')
-							seat.Name = `DiningSeat_{seatNum}`
-							seat.Size = Vector3.new(1.2, 0.4, 1.2)
-							local basePos = benchPos + Vector3.new(0, 0.5, 0) + (rightVec * sideOffset)
-							seat.CFrame = CFrame.lookAt(basePos, basePos + lookDir)
-							seat.Transparency = 1
-							seat.Anchored = true
-							seat.CanCollide = false
-							seat:SetAttribute('IsSushiSeat', true)
-							seat:SetAttribute('TableId', tableId)
-							seat:SetAttribute('TableName', tableName)
-							seat:SetAttribute('TablePos', cf.Position)
-							seat.Parent = child
-							seatNum += 1
-						end
+						-- Place 1 perfectly centered seat per chair cushion
+						local seat = Instance.new('Seat')
+						seat.Name = `DiningSeat_{seatNum}`
+						seat.Size = Vector3.new(1.4, 0.4, 1.4)
+						local basePos = benchPos + Vector3.new(0, 0.45, 0)
+						seat.CFrame = CFrame.lookAt(basePos, basePos + lookDir)
+						seat.Transparency = 1
+						seat.Anchored = true
+						seat.CanCollide = false
+						seat:SetAttribute('IsSushiSeat', true)
+						seat:SetAttribute('TableId', tableId)
+						seat:SetAttribute('TableName', tableName)
+						seat:SetAttribute('TablePos', cf.Position)
+						seat.Parent = child
+						seatNum += 1
 					end
 				end
 
@@ -365,12 +416,12 @@ local function setupDiningTables()
 	print(`[SushiRestaurantService] Initialized {tableIdx - 1} dining tables with interactive seats`)
 end
 
--- Spawn a temporary visual food dish on table
-local function placeFoodOnTable(tablePos: Vector3, itemName: string)
+-- Spawn an interactive food dish on table that the player eats bite-by-bite
+function SushiRestaurantService.placeFoodOnTable(tablePos: Vector3, itemName: string, isDrink: boolean, orderingPlayer: Player?)
 	local plate = Instance.new('Part')
 	plate.Name = 'ServedDish'
 	plate.Size = Vector3.new(2.4, 0.25, 1.6)
-	plate.CFrame = CFrame.new(tablePos.X, 11.75, tablePos.Z)
+	plate.CFrame = CFrame.new(tablePos.X, 14.15, tablePos.Z)
 	plate.Color = Color3.fromRGB(50, 42, 38) -- Dark lacquer sushi geta board
 	plate.Material = Enum.Material.Wood
 	plate.Anchored = true
@@ -378,92 +429,232 @@ local function placeFoodOnTable(tablePos: Vector3, itemName: string)
 
 	local food = Instance.new('Part')
 	food.Name = 'Food'
-	food.Size = Vector3.new(2.0, 0.35, 1.2)
-	food.CFrame = plate.CFrame * CFrame.new(0, 0.25, 0)
-	food.Color = Color3.fromRGB(240, 110, 80) -- Salmon orange / sushi accents
-	food.Material = Enum.Material.SmoothPlastic
+	food.Size = if isDrink then Vector3.new(0.9, 1.3, 0.9) else Vector3.new(2.0, 0.35, 1.2)
+	food.CFrame = plate.CFrame * CFrame.new(0, if isDrink then 0.75 else 0.25, 0)
+	food.Color = if isDrink then Color3.fromRGB(60, 140, 70) else Color3.fromRGB(240, 110, 80)
+	food.Material = if isDrink then Enum.Material.Glass else Enum.Material.SmoothPlastic
 	food.Anchored = true
 	food.CanCollide = false
 	food.Parent = plate
 
+	local bitesRemaining = 3
+	plate:SetAttribute('BitesRemaining', bitesRemaining)
+
+	local prompt = Instance.new('ProximityPrompt')
+	prompt.Name = 'EatPrompt'
+	prompt.ActionText = if isDrink then 'Take a sip / 一口飲む' else 'Take a bite / 一口食べる'
+	prompt.ObjectText = `{itemName} ({bitesRemaining} bites left / 3口)`
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = plate
+
+	local clickDetector = Instance.new('ClickDetector')
+	clickDetector.MaxActivationDistance = 16
+	clickDetector.Parent = plate
+
+	local function onEat(eatingPlayer: Player)
+		if bitesRemaining <= 0 then return end
+		bitesRemaining -= 1
+		plate:SetAttribute('BitesRemaining', bitesRemaining)
+
+		local sound = Instance.new('Sound')
+		sound.SoundId = if isDrink then 'http://www.roblox.com/asset/?id=10722059' else 'http://www.roblox.com/asset/?id=15047813'
+		sound.Volume = 1.0
+		sound.Parent = plate
+		sound:Play()
+		Debris:AddItem(sound, 2)
+
+		-- Update player stats
+		local profile = ProfileService.getProfile(eatingPlayer.UserId)
+		if profile and profile.progress then
+			profile.progress.energy = math.min(100, (profile.progress.energy or 50) + (if isDrink then 10 else 18))
+			profile.progress.hunger = math.max(0, (profile.progress.hunger or 0) - (if isDrink then 8 else 20))
+		end
+
+		if bitesRemaining > 0 then
+			local scale = bitesRemaining / 3
+			food.Size = if isDrink then Vector3.new(0.9 * scale, 1.3 * scale, 0.9 * scale) else Vector3.new(2.0 * scale, 0.35, 1.2 * scale)
+			prompt.ObjectText = `{itemName} ({bitesRemaining} bites left / 残り{bitesRemaining}口)`
+			RemoteRegistry.fireClient(eatingPlayer, 'InventoryToast', if isDrink then `🍵 *Sip* ({bitesRemaining} sips left / 残り{bitesRemaining}口)` else `🍣 *Nom nom* ({bitesRemaining} bites left / 残り{bitesRemaining}口)`)
+		else
+			food:Destroy()
+			prompt.Enabled = false
+			clickDetector.MaxActivationDistance = 0
+			RemoteRegistry.fireClient(eatingPlayer, 'InventoryToast', if isDrink then `🍵 Finished drink! Refreshing! / 完飲！ごちそうさまでした！` else `🍣 Finished meal! Delicious! / 完食！ごちそうさまでした！`)
+			task.delay(1.5, function()
+				if plate and plate.Parent then
+					plate:Destroy()
+				end
+			end)
+		end
+	end
+
+	prompt.Triggered:Connect(onEat)
+	clickDetector.MouseClick:Connect(onEat)
+
 	plate.Parent = restaurantModel or Workspace
-	Debris:AddItem(plate, 120) -- Cleans up after 2 minutes
+	Debris:AddItem(plate, 180)
+	return plate
 end
 
--- Create edible Tool for the player
-local function createEdibleTool(itemId: string, itemName: string, isDrink: boolean): Tool
-	local tool = Instance.new('Tool')
-	tool.Name = itemName
-	tool:SetAttribute('ItemId', itemId)
-	tool.CanBeDropped = false
+-- Helper to smoothly walk an NPC along a list of Vector3 waypoints
+local function walkNpcWaypoints(npc: Model, waypoints: { Vector3 }, speed: number?)
+	local hrp = npc:FindFirstChild('HumanoidRootPart') :: BasePart?
+	if not hrp then return end
+	local walkSpeed = speed or 13.5 -- studs per second
 
-	local handle = Instance.new('Part')
-	handle.Name = 'Handle'
-	handle.Size = if isDrink then Vector3.new(1, 1.4, 1) else Vector3.new(1.8, 0.4, 1.2)
-	handle.Color = if isDrink then Color3.fromRGB(50, 120, 60) else Color3.fromRGB(230, 110, 70)
-	handle.Material = if isDrink then Enum.Material.Ceramic else Enum.Material.SmoothPlastic
-	handle.CanCollide = false
-	handle.Parent = tool
+	for i = 1, #waypoints do
+		local targetPos = waypoints[i]
+		local startPos = hrp.Position
+		local flatCurrent = Vector3.new(startPos.X, targetPos.Y, startPos.Z)
+		local delta = targetPos - flatCurrent
+		local dist = delta.Magnitude
 
-	local sound = Instance.new('Sound')
-	sound.Name = 'ConsumeSound'
-	sound.SoundId = if isDrink then 'http://www.roblox.com/asset/?id=10722059' else 'http://www.roblox.com/asset/?id=15047813'
-	sound.Volume = 1.0
-	sound.Parent = handle
+		if dist > 0.4 then
+			local duration = dist / walkSpeed
+			local steps = math.max(3, math.floor(duration / 0.035))
+			local lookDir = Vector3.new(delta.X, 0, delta.Z).Unit
 
-	tool.Activated:Connect(function()
-		sound:Play()
-		local char = tool.Parent
-		local player = char and Players:GetPlayerFromCharacter(char)
-		if player then
-			local profile = ProfileService.getProfile(player.UserId)
-			if profile and profile.progress then
-				profile.progress.energy = math.min(100, (profile.progress.energy or 50) + (if isDrink then 20 else 35))
-				profile.progress.hunger = math.max(0, (profile.progress.hunger or 0) - (if isDrink then 15 else 45))
+			for step = 1, steps do
+				local alpha = step / steps
+				local currentInterPos = startPos:Lerp(targetPos, alpha)
+				local lookTarget = currentInterPos + lookDir
+				npc:PivotTo(CFrame.lookAt(currentInterPos, Vector3.new(lookTarget.X, currentInterPos.Y, lookTarget.Z)))
+				task.wait(0.035)
 			end
-			RemoteRegistry.fireClient(player, 'ShopResult', true, if isDrink then `*Gulp* Refreshing {itemName}!` else `*Nom nom* Delicious {itemName}!`)
 		end
-		task.wait(1)
-		tool:Destroy()
-	end)
-
-	return tool
+	end
 end
 
 -- Waiter serves the table
-local function serveTable(player: Player, tableId: string, item: any)
-	if waiterBusy or not waiterNPC then
-		-- Instant fallback if waiter is occupied
-		local tPos = tableCenters[tableId] or Vector3.new(41.5, 12.4, 67.3)
-		placeFoodOnTable(tPos, item.name)
-		local tool = createEdibleTool(item.id, item.name, item.category == 'drinks')
-		tool.Parent = player.Backpack
+function SushiRestaurantService.serveTable(player: Player, tableId: string, item: any)
+	local isDrink = item.category == 'drink' or item.category == 'drinks'
+	local resolvedTableId = tostring(tableId or '')
+	local tPos: Vector3? = tableCenters[resolvedTableId]
+	if not tPos then
+		local numOnly = resolvedTableId:gsub('%D', '')
+		if numOnly ~= '' then
+			tPos = tableCenters['Table_' .. numOnly]
+		end
+	end
+	if not tPos and restaurantModel then
+		local sub = restaurantModel:FindFirstChild('Model')
+		local tModel = sub and (sub:FindFirstChild(resolvedTableId) or sub:FindFirstChild('Table_' .. resolvedTableId:gsub('%D', '')))
+		if tModel and tModel:IsA('Model') then
+			local cf = tModel:GetBoundingBox()
+			tPos = cf.Position
+		end
+	end
+	if not tPos then
+		local char = player.Character
+		local hum = char and char:FindFirstChild('Humanoid')
+		local seat = hum and hum.SeatPart
+		if seat and seat:GetAttribute('TablePos') then
+			tPos = seat:GetAttribute('TablePos')
+		end
+	end
+	tPos = tPos or tableCenters['Table_7'] or Vector3.new(25.37, 12.42, 42.92)
+
+	if waiterBusy or not waiterNPC or not waiterNPC.PrimaryPart then
+		SushiRestaurantService.placeFoodOnTable(tPos, item.name, isDrink, player)
 		return
 	end
 
 	waiterBusy = true
-	local hum = waiterNPC:FindFirstChildOfClass('Humanoid')
-	local tPos = tableCenters[tableId] or Vector3.new(41.5, 12.4, 67.3)
+	local stationPos = Vector3.new(22.5, 12.85, 78.0)
+	local isTerrace = tPos.Z < 55
 
 	task.spawn(function()
-		-- 1. Walk to table
-		if hum then
-			hum:MoveTo(tPos + Vector3.new(3, 0, 0))
-			hum.MoveToFinished:Wait()
+		-- 1. Create Serving Tray welded in front of Waiter Ren
+		local tray = Instance.new('Part')
+		tray.Name = 'LacquerTray'
+		tray.Size = Vector3.new(2.2, 0.18, 1.5)
+		tray.Color = Color3.fromRGB(45, 36, 32)
+		tray.Material = Enum.Material.Wood
+		tray.CanCollide = false
+		tray.Anchored = false
+
+		local trayFood = Instance.new('Part')
+		trayFood.Name = 'TrayFood'
+		trayFood.Size = if isDrink then Vector3.new(0.8, 1.1, 0.8) else Vector3.new(1.8, 0.3, 1.1)
+		trayFood.Color = if isDrink then Color3.fromRGB(60, 140, 70) else Color3.fromRGB(240, 110, 80)
+		trayFood.Material = if isDrink then Enum.Material.Glass else Enum.Material.SmoothPlastic
+		trayFood.CanCollide = false
+		trayFood.Anchored = false
+		trayFood.Parent = tray
+
+		local weldDish = Instance.new('WeldConstraint')
+		weldDish.Part0 = tray
+		weldDish.Part1 = trayFood
+		weldDish.Parent = tray
+		trayFood.CFrame = tray.CFrame * CFrame.new(0, if isDrink then 0.6 else 0.2, 0)
+
+		local hrp = waiterNPC.PrimaryPart :: BasePart
+		tray.CFrame = hrp.CFrame * CFrame.new(0, -0.2, -1.5)
+		local weldTray = Instance.new('WeldConstraint')
+		weldTray.Part0 = hrp
+		weldTray.Part1 = tray
+		weldTray.Parent = hrp
+		tray.Parent = waiterNPC
+
+		-- 2. Determine Outbound and Inbound Waypoints
+		local outboundWaypoints: { Vector3 } = {}
+		local inboundWaypoints: { Vector3 } = {}
+
+		if isTerrace then
+			-- Terrace table pathing through interior aisle and door (X=48.71, Z=55.8)
+			local deliverySpot = Vector3.new(tPos.X, 12.85, tPos.Z - 3.2)
+			outboundWaypoints = {
+				Vector3.new(34.0, 12.85, 78.0),
+				Vector3.new(48.7, 12.85, 68.0),
+				Vector3.new(48.7, 12.85, 55.8), -- Door
+				Vector3.new(48.7, 12.85, 48.0), -- Terrace walkway
+				Vector3.new(tPos.X, 12.85, 48.0),
+				deliverySpot,
+			}
+			inboundWaypoints = {
+				Vector3.new(tPos.X, 12.85, 48.0),
+				Vector3.new(48.7, 12.85, 48.0),
+				Vector3.new(48.7, 12.85, 55.8), -- Door
+				Vector3.new(48.7, 12.85, 68.0),
+				Vector3.new(34.0, 12.85, 78.0),
+				stationPos,
+			}
+		else
+			-- Indoor dining table pathing along central aisle
+			local aisleX = 34.0
+			local deliverySpot = Vector3.new(tPos.X + (if tPos.X < aisleX then 3.2 else -3.2), 12.85, tPos.Z)
+			outboundWaypoints = {
+				Vector3.new(aisleX, 12.85, 78.0),
+				Vector3.new(aisleX, 12.85, tPos.Z),
+				deliverySpot,
+			}
+			inboundWaypoints = {
+				Vector3.new(aisleX, 12.85, tPos.Z),
+				Vector3.new(aisleX, 12.85, 78.0),
+				stationPos,
+			}
 		end
 
-		-- 2. Bow & speak
+		-- 3. Walk out to table
+		walkNpcWaypoints(waiterNPC, outboundWaypoints, 13.5)
+
+		-- 4. Arrive at table, face the table / customer
+		local arrivalPos = hrp.Position
+		waiterNPC:PivotTo(CFrame.lookAt(arrivalPos, Vector3.new(tPos.X, arrivalPos.Y, tPos.Z)))
+
+		-- Remove tray from hands
+		tray:Destroy()
+
+		-- Bow & speak
 		local head = waiterNPC:FindFirstChild('Head')
-		playVoice(head, getArigatouSoundId(), 1.0)
-		playVoice(head, SOUND_SERVE, 0.8)
+		playVoice(head, getIrasshaimaseSoundId(), 1.0)
+		playVoice(head, SOUND_SERVE, 0.9)
 
-		-- 3. Place dish on table
-		placeFoodOnTable(tPos, item.name)
-
-		-- 4. Give player edible tool
-		local isDrink = item.category == 'drinks'
-		local tool = createEdibleTool(item.id, item.name, isDrink)
-		tool.Parent = player.Backpack
+		-- 5. Place interactive dish on table
+		SushiRestaurantService.placeFoodOnTable(tPos, item.name, isDrink, player)
 
 		RemoteRegistry.fireClient(player, 'SushiTableServed', {
 			tableId = tableId,
@@ -471,27 +662,29 @@ local function serveTable(player: Player, tableId: string, item: any)
 		})
 		RemoteRegistry.fireClient(player, 'InventoryToast', `🍣「へい、お待ち！」 {item.name} が配膳されました！`)
 
-		task.wait(2)
+		-- Stay for 3.5 seconds so the customer clearly sees the waiter serving
+		task.wait(3.5)
 
-		-- 5. Return to station
-		if hum and waiterNPC then
-			hum:MoveTo(Vector3.new(22.5, 11.0, 78.0))
-		end
+		-- 6. Walk back along waypoints to station
+		walkNpcWaypoints(waiterNPC, inboundWaypoints, 13.5)
+
+		-- Face default counter direction
+		waiterNPC:PivotTo(CFrame.new(stationPos) * CFrame.Angles(0, math.rad(90), 0))
 		waiterBusy = false
 	end)
 end
 
 function SushiRestaurantService.init()
-	restaurantModel = Workspace:FindFirstChild('DiningDistrictPlaza') and Workspace.DiningDistrictPlaza:FindFirstChild('SuwaSushiRestaurant') :: Model?
+	local plaza = Workspace:FindFirstChild('DiningDistrictPlaza') or Workspace:WaitForChild('DiningDistrictPlaza', 10)
+	restaurantModel = plaza and (plaza:FindFirstChild('SuwaSushiRestaurant') or plaza:WaitForChild('SuwaSushiRestaurant', 10)) :: Model?
 	if not restaurantModel then
 		warn('[SushiRestaurantService] SuwaSushiRestaurant model not found!')
-		return
+	else
+		setupNPCs()
+		setupCashierRegister()
+		setupEntranceSensor()
+		setupDiningTables()
 	end
-
-	setupNPCs()
-	setupCashierRegister()
-	setupEntranceSensor()
-	setupDiningTables()
 
 	-- Remote Handler: Order from Takeaway or Dine-in Table
 	RemoteRegistry.registerEvent('SushiOrder', function(player: Player, payload: any)
@@ -521,7 +714,7 @@ function SushiRestaurantService.init()
 			return
 		end
 
-		-- Deduct payment
+		-- Deduct payment & sync real-time
 		if profile and profile.economy and profile.economy.yen then
 			profile.economy.yen = math.max(0, profile.economy.yen - price)
 			RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
@@ -532,19 +725,19 @@ function SushiRestaurantService.init()
 			local soundPart = cashierNPC and cashierNPC:FindFirstChild('Head') or (player.Character and player.Character:FindFirstChild('HumanoidRootPart'))
 			playVoice(soundPart, getArigatouSoundId(), 1.0)
 
-			-- Add to InventoryService & Backpack
+			-- Add to InventoryService & sync bag real-time
 			InventoryService.addItem(player.UserId, selectedItem.id, 1)
-
-			local isDrink = selectedItem.category == 'drinks'
-			local tool = createEdibleTool(selectedItem.id, selectedItem.name, isDrink)
-			tool.Parent = player.Backpack
+			local snap = InventoryService.getSnapshot(player.UserId)
+			if snap then
+				RemoteRegistry.fireClient(player, 'InventoryUpdated', snap)
+			end
 
 			RemoteRegistry.fireClient(player, 'ShopResult', true, `「ありがとうございました！」 {selectedItem.name} を購入しました！ (¥{price})`)
-			RemoteRegistry.fireClient(player, 'InventoryToast', `🥡 Packaged {selectedItem.name} in your bag! / お持ち帰り`)
+			RemoteRegistry.fireClient(player, 'InventoryToast', `🎒 Packaged {selectedItem.name} in your bag! / バッグに入りました`)
 		else
 			-- Dine-In: Waiter serves to table
 			RemoteRegistry.fireClient(player, 'ShopResult', true, `ご注文を承りました！ (¥{price})`)
-			serveTable(player, tableId or 'Table_1', selectedItem)
+			SushiRestaurantService.serveTable(player, tableId or 'Table_7', selectedItem)
 		end
 	end)
 

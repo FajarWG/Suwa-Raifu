@@ -145,7 +145,7 @@ local function clearDisplayedTool(player: Player)
 			return
 		end
 		for _, child in container:GetChildren() do
-			if child:IsA('Tool') and (child:GetAttribute('InventoryDisplayTool') or child:GetAttribute('FishingSessionTool')) then
+			if child:IsA('Tool') and not child:GetAttribute('FishingSessionTool') and not child:GetAttribute('BasketTool') then
 				child:Destroy()
 			end
 		end
@@ -936,6 +936,148 @@ local function createSimpleItemTool(player: Player, itemId: string, displayName:
 	elseif itemId == 'shrimp_bait' then
 		handle.Color = Color3.fromRGB(210, 95, 75)
 		handle.Size = Vector3.new(1.4, 0.55, 1.1)
+		handle.Material = Enum.Material.SmoothPlastic
+
+	elseif itemId == 'coca_cola' or itemId == 'pepsi' or itemId == 'sprite' or itemId == 'mountain_dew' or itemId == 'dr_pepper' or itemId == 'orange_juice' then
+		isDrink = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local can = Instance.new('Part')
+		can.Name = 'Can'
+		can.Shape = Enum.PartType.Cylinder
+		can.Size = Vector3.new(1.2, 0.72, 0.72)
+		can.Color = if itemId == 'coca_cola' then Color3.fromRGB(220, 35, 35)
+			elseif itemId == 'pepsi' then Color3.fromRGB(30, 80, 200)
+			elseif itemId == 'sprite' then Color3.fromRGB(30, 160, 70)
+			elseif itemId == 'mountain_dew' then Color3.fromRGB(120, 190, 30)
+			elseif itemId == 'dr_pepper' then Color3.fromRGB(150, 20, 50)
+			else Color3.fromRGB(245, 140, 20)
+		can.Material = Enum.Material.Metal
+		can.Parent = tool
+		weldTo(handle, can, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local top = Instance.new('Part')
+		top.Name = 'CanTop'
+		top.Shape = Enum.PartType.Cylinder
+		top.Size = Vector3.new(0.12, 0.7, 0.7)
+		top.Color = Color3.fromRGB(200, 205, 210)
+		top.Material = Enum.Material.Metal
+		top.Parent = tool
+		weldTo(handle, top, CFrame.new(0, 0.62, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+	elseif itemId == 'fresh_milk' then
+		isDrink = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local carton = Instance.new('Part')
+		carton.Name = 'Carton'
+		carton.Size = Vector3.new(0.7, 1.3, 0.7)
+		carton.Color = Color3.fromRGB(245, 245, 250)
+		carton.Material = Enum.Material.SmoothPlastic
+		carton.Parent = tool
+		weldTo(handle, carton, CFrame.new(0, 0, 0))
+
+		local top = Instance.new('WedgePart')
+		top.Name = 'CartonTop'
+		top.Size = Vector3.new(0.7, 0.35, 0.7)
+		top.Color = Color3.fromRGB(45, 110, 210)
+		top.Material = Enum.Material.SmoothPlastic
+		top.Parent = tool
+		weldTo(handle, top, CFrame.new(0, 0.8, 0))
+
+	elseif itemId == 'doritos_chips' or itemId == 'bloxy_snack' then
+		isFood = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local bag = Instance.new('Part')
+		bag.Name = 'SnackBag'
+		bag.Size = Vector3.new(0.35, 1.3, 0.9)
+		bag.Color = if itemId == 'doritos_chips' then Color3.fromRGB(220, 60, 30) else Color3.fromRGB(235, 185, 25)
+		bag.Material = Enum.Material.SmoothPlastic
+		bag.Parent = tool
+		weldTo(handle, bag, CFrame.new(0, 0, 0))
+
+	elseif itemId == 'hersheys_chocolate' then
+		isFood = true
+		handle.Size = Vector3.new(0.25, 1.2, 0.65)
+		handle.Color = Color3.fromRGB(80, 45, 30)
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local foil = Instance.new('Part')
+		foil.Name = 'Foil'
+		foil.Size = Vector3.new(0.27, 0.6, 0.67)
+		foil.Color = Color3.fromRGB(130, 40, 40)
+		foil.Material = Enum.Material.SmoothPlastic
+		foil.Parent = tool
+		weldTo(handle, foil, CFrame.new(0, -0.3, 0))
+
+	elseif itemId == 'choco_chip_cookie' or itemId == 'golden_waffle' then
+		isFood = true
+		handle.Shape = Enum.PartType.Cylinder
+		handle.Size = Vector3.new(0.25, 0.95, 0.95)
+		handle.Color = if itemId == 'choco_chip_cookie' then Color3.fromRGB(190, 130, 60) else Color3.fromRGB(225, 165, 45)
+		handle.Material = Enum.Material.SmoothPlastic
+
+	elseif itemId == 'sushi_salmon_nigiri' or itemId == 'sushi_maguro_nigiri' then
+		isFood = true
+		handle.Size = Vector3.new(0.55, 0.45, 1.0)
+		handle.Color = Color3.fromRGB(250, 250, 248) -- Seasoned rice
+		handle.Material = Enum.Material.SmoothPlastic
+
+		local fishNeta = Instance.new('Part')
+		fishNeta.Name = 'FishNeta'
+		fishNeta.Size = Vector3.new(0.62, 0.22, 1.15)
+		fishNeta.Color = if itemId == 'sushi_salmon_nigiri' then Color3.fromRGB(245, 110, 75) else Color3.fromRGB(205, 55, 65)
+		fishNeta.Material = Enum.Material.SmoothPlastic
+		fishNeta.Parent = tool
+		weldTo(handle, fishNeta, CFrame.new(0, 0.3, 0))
+
+	elseif itemId == 'sushi_california_roll' or itemId == 'sushi_sashimi_combo' or itemId == 'sushi_tempura_platter' then
+		isFood = true
+		handle.Size = Vector3.new(1.1, 0.4, 1.1)
+		handle.Color = Color3.fromRGB(35, 38, 42) -- Black lacquer tray
+		handle.Material = Enum.Material.Wood
+
+		local dish = Instance.new('Part')
+		dish.Name = 'DishContent'
+		dish.Size = Vector3.new(0.95, 0.3, 0.95)
+		dish.Color = if itemId == 'sushi_california_roll' then Color3.fromRGB(105, 165, 95)
+			elseif itemId == 'sushi_tempura_platter' then Color3.fromRGB(230, 160, 50)
+			else Color3.fromRGB(225, 90, 100)
+		dish.Material = Enum.Material.SmoothPlastic
+		dish.Parent = tool
+		weldTo(handle, dish, CFrame.new(0, 0.25, 0))
+
+	elseif itemId == 'sushi_miso_soup' or itemId == 'sushi_green_tea' then
+		isDrink = true
+		handle.Transparency = 1
+		handle.Size = Vector3.new(0.4, 0.6, 0.4)
+
+		local bowl = Instance.new('Part')
+		bowl.Name = 'Bowl'
+		bowl.Shape = Enum.PartType.Cylinder
+		bowl.Size = Vector3.new(0.8, 0.85, 0.85)
+		bowl.Color = if itemId == 'sushi_miso_soup' then Color3.fromRGB(40, 30, 25) else Color3.fromRGB(50, 110, 60)
+		bowl.Material = Enum.Material.Wood
+		bowl.Parent = tool
+		weldTo(handle, bowl, CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+		local liquid = Instance.new('Part')
+		liquid.Name = 'Liquid'
+		liquid.Shape = Enum.PartType.Cylinder
+		liquid.Size = Vector3.new(0.1, 0.78, 0.78)
+		liquid.Color = if itemId == 'sushi_miso_soup' then Color3.fromRGB(175, 130, 70) else Color3.fromRGB(75, 150, 75)
+		liquid.Material = Enum.Material.SmoothPlastic
+		liquid.Parent = tool
+		weldTo(handle, liquid, CFrame.new(0, 0.38, 0) * CFrame.Angles(0, 0, math.rad(90)))
+
+	elseif itemId == 'sushi_edamame' then
+		isFood = true
+		handle.Size = Vector3.new(0.4, 0.25, 1.2)
+		handle.Color = Color3.fromRGB(90, 175, 75)
 		handle.Material = Enum.Material.SmoothPlastic
 
 	elseif itemId == 'old_boot' then
