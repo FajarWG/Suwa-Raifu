@@ -47,6 +47,9 @@ local Remotes: RemoteDefinitions = {
 		'WhiteboardClear',
 		'VendingOpen',
 		'VendingBuy',
+		'SushiOpenMenu',
+		'SushiOrder',
+		'SushiTableServed',
 	},
 	functions = {
 		'GetProfile',

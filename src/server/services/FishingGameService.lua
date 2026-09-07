@@ -2034,6 +2034,8 @@ local function consumeDirect(player: Player, itemId: string)
 		or itemId == 'slurpee_blue_ice'
 		or itemId == 'fountain_coca_cola'
 		or itemId == 'fountain_melon_soda'
+		or itemId == 'sushi_green_tea'
+		or itemId == 'sushi_miso_soup'
 
 	local isFood = itemId == 'dango'
 		or itemId == 'yakisoba'
@@ -2048,6 +2050,7 @@ local function consumeDirect(player: Player, itemId: string)
 		or itemId == 'pocky_box'
 		or string.find(itemId, 'ice_cream') ~= nil
 		or itemId == 'apple_sorbet'
+		or string.find(itemId, 'sushi_') ~= nil
 
 	if not isFood and not isDrink then
 		return

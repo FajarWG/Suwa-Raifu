@@ -108,6 +108,16 @@ async function run() {
       targetParent: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers',
       name: 'VendingMachineController',
     },
+    {
+      path: 'src/server/services/SushiRestaurantService.lua',
+      targetParent: 'game:GetService("ServerScriptService").Server.services',
+      name: 'SushiRestaurantService',
+    },
+    {
+      path: 'src/client/controllers/SushiRestaurantController.lua',
+      targetParent: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers',
+      name: 'SushiRestaurantController',
+    },
   ];
 
   for (const item of files) {
