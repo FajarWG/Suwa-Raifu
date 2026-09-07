@@ -45,6 +45,8 @@ local Remotes: RemoteDefinitions = {
 		'InventoryToast',
 		'WhiteboardUpdate',
 		'WhiteboardClear',
+		'VendingOpen',
+		'VendingBuy',
 	},
 	functions = {
 		'GetProfile',

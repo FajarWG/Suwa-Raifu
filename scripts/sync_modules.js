@@ -98,6 +98,16 @@ async function run() {
       targetParent: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers',
       name: 'WhiteboardController',
     },
+    {
+      path: 'src/server/services/VendingMachineService.lua',
+      targetParent: 'game:GetService("ServerScriptService").Server.services',
+      name: 'VendingMachineService',
+    },
+    {
+      path: 'src/client/controllers/VendingMachineController.lua',
+      targetParent: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers',
+      name: 'VendingMachineController',
+    },
   ];
 
   for (const item of files) {
