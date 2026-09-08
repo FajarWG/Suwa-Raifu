@@ -524,11 +524,11 @@ local function setupFloatingOrderButton()
 	-- Position above standard Roblox bottom controls, mobile-aware
 	local bottomOffset = if UIScaling.isTouch() then -110 else -80
 	floatingOrderBtn.Position = UDim2.new(0.5, 0, 1, bottomOffset)
-	floatingOrderBtn.Size = UDim2.fromOffset(260, 52)
-	floatingOrderBtn.BackgroundColor3 = Color3.fromRGB(215, 65, 55)
+	floatingOrderBtn.Size = UDim2.fromOffset(290, 50)
+	floatingOrderBtn.BackgroundColor3 = Color3.fromRGB(218, 62, 52)
 	floatingOrderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	floatingOrderBtn.Font = Enum.Font.FredokaOne
-	floatingOrderBtn.TextSize = 16
+	floatingOrderBtn.Font = Enum.Font.GothamBold
+	floatingOrderBtn.TextSize = 15
 	floatingOrderBtn.Text = '🍣 Order at Table / 席で注文する'
 	floatingOrderBtn.ZIndex = 15
 	floatingOrderBtn.Visible = false
@@ -538,6 +538,7 @@ local function setupFloatingOrderButton()
 	bCorner.Parent = floatingOrderBtn
 
 	local bStroke = Instance.new('UIStroke')
+	bStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bStroke.Color = Color3.fromRGB(255, 220, 120)
 	bStroke.Thickness = 2
 	bStroke.Parent = floatingOrderBtn
@@ -708,16 +709,34 @@ function SushiRestaurantController.init()
 		end)
 	end)
 
-	-- Yen updates
+	local function updateClientYen(newYen: number)
+		currentYen = newYen
+		if yenBadge then
+			yenBadge.Text = `💰 ¥{currentYen}`
+		end
+		if screenGui and screenGui.Enabled then
+			refreshItemList()
+		end
+	end
+
+	-- Real-time Yen updates via ProfileUpdated
 	RemoteController.onEvent('ProfileUpdated', function(profile: any)
-		if profile and profile.economy and profile.economy.yen then
-			currentYen = profile.economy.yen
-			if yenBadge then
-				yenBadge.Text = `💰 ¥{currentYen}`
-			end
-			if screenGui and screenGui.Enabled then
-				refreshItemList()
-			end
+		if profile and profile.economy and profile.economy.yen ~= nil then
+			updateClientYen(profile.economy.yen)
+		end
+	end)
+
+	-- Real-time Yen updates via InventoryUpdated
+	RemoteController.onEvent('InventoryUpdated', function(snap: any)
+		if snap and snap.yen ~= nil then
+			updateClientYen(snap.yen)
+		end
+	end)
+
+	-- Real-time Yen updates via InventorySnapshot
+	RemoteController.onEvent('InventorySnapshot', function(snap: any)
+		if snap and snap.yen ~= nil then
+			updateClientYen(snap.yen)
 		end
 	end)
 

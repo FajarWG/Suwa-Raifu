@@ -121,6 +121,10 @@ local function pushInventory(player: Player)
 	if current then
 		RemoteRegistry.fireClient(player, 'InventoryUpdated', current)
 	end
+	local profile = ProfileService.getProfile(player.UserId)
+	if profile then
+		RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+	end
 end
 
 local function sendState(player: Player, state: string, payload: any?)

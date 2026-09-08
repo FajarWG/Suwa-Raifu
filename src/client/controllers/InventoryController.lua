@@ -437,11 +437,37 @@ local function buildGui()
 		end
 	end)
 
+	local function hideSushiFloatingButtonIfModalsOpen()
+		local p = Players.LocalPlayer
+		local pGui = p and p:FindFirstChild('PlayerGui')
+		local hud = pGui and pGui:FindFirstChild('SuwaSushiHUD')
+		local floatingBtn = hud and hud:FindFirstChild('TableOrderFloatingBtn')
+		if floatingBtn then
+			if (bagPanel and bagPanel.Visible) or (shopPanel and shopPanel.Visible) then
+				floatingBtn.Visible = false
+			end
+		end
+	end
+
 	bagButton.Activated:Connect(function()
 		bagPanel.Visible = not bagPanel.Visible
+		if bagPanel.Visible and latestSnapshot then
+			renderInventory(latestSnapshot)
+		end
+		hideSushiFloatingButtonIfModalsOpen()
 	end)
 	closeBag.Activated:Connect(function()
 		bagPanel.Visible = false
+		local p = Players.LocalPlayer
+		local pGui = p and p:FindFirstChild('PlayerGui')
+		local hud = pGui and pGui:FindFirstChild('SuwaSushiHUD')
+		local floatingBtn = hud and hud:FindFirstChild('TableOrderFloatingBtn')
+		local char = p and p.Character
+		local hum = char and char:FindFirstChild('Humanoid')
+		local seat = hum and hum.SeatPart
+		if floatingBtn and seat and seat:GetAttribute('IsSushiSeat') then
+			floatingBtn.Visible = true
+		end
 	end)
 
 	-- 3. Shop Popup Panel
@@ -548,12 +574,31 @@ function InventoryController.init()
 				if bagPanel.Visible and latestSnapshot then
 					renderInventory(latestSnapshot)
 				end
+				local p = Players.LocalPlayer
+				local pGui = p and p:FindFirstChild('PlayerGui')
+				local hud = pGui and pGui:FindFirstChild('SuwaSushiHUD')
+				local floatingBtn = hud and hud:FindFirstChild('TableOrderFloatingBtn')
+				if floatingBtn then
+					if bagPanel.Visible then
+						floatingBtn.Visible = false
+					else
+						local char = p and p.Character
+						local hum = char and char:FindFirstChild('Humanoid')
+						local seat = hum and hum.SeatPart
+						if seat and seat:GetAttribute('IsSushiSeat') then
+							floatingBtn.Visible = true
+						end
+					end
+				end
 			end
 		end
 	end)
 
 	local function onInventoryUpdate(data)
 		latestSnapshot = data
+		if yenLabel and data and data.yen ~= nil then
+			yenLabel.Text = `Bag   (¥{data.yen})`
+		end
 		if bagPanel and bagPanel.Visible then
 			renderInventory(data)
 		end
@@ -564,6 +609,24 @@ function InventoryController.init()
 
 	RemoteController.onEvent('InventoryUpdated', onInventoryUpdate)
 	RemoteController.onEvent('InventorySnapshot', onInventoryUpdate)
+
+	RemoteController.onEvent('ProfileUpdated', function(profile)
+		if profile and profile.economy and profile.economy.yen ~= nil then
+			if not latestSnapshot then
+				latestSnapshot = {}
+			end
+			latestSnapshot.yen = profile.economy.yen
+			if yenLabel then
+				yenLabel.Text = `Bag   (¥{profile.economy.yen})`
+			end
+			if bagPanel and bagPanel.Visible and latestSnapshot then
+				renderInventory(latestSnapshot)
+			end
+			if shopPanel and shopPanel.Visible and currentShopData then
+				renderShop(currentShopData)
+			end
+		end
+	end)
 
 	RemoteController.onEvent('OpenShop', function(data)
 		renderShop(data)

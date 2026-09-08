@@ -393,12 +393,31 @@ function VendingMachineController.init()
 		VendingMachineController.open(data)
 	end)
 
+	local function updateVendingYen(newYen: number)
+		currentYen = newYen
+		if yenBadge then
+			yenBadge.Text = `💰 ¥{currentYen}`
+		end
+		if screenGui and screenGui.Enabled then
+			refreshItemList()
+		end
+	end
+
 	RemoteController.onEvent('ProfileUpdated', function(profile: any)
-		if profile and profile.economy and profile.economy.yen then
-			currentYen = profile.economy.yen
-			if yenBadge then
-				yenBadge.Text = `💰 ¥{currentYen}`
-			end
+		if profile and profile.economy and profile.economy.yen ~= nil then
+			updateVendingYen(profile.economy.yen)
+		end
+	end)
+
+	RemoteController.onEvent('InventoryUpdated', function(snap: any)
+		if snap and snap.yen ~= nil then
+			updateVendingYen(snap.yen)
+		end
+	end)
+
+	RemoteController.onEvent('InventorySnapshot', function(snap: any)
+		if snap and snap.yen ~= nil then
+			updateVendingYen(snap.yen)
 		end
 	end)
 

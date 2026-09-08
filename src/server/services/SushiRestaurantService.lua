@@ -404,6 +404,25 @@ local function setupDiningTables()
 						seat:SetAttribute('TableId', tableId)
 						seat:SetAttribute('TableName', tableName)
 						seat:SetAttribute('TablePos', cf.Position)
+
+						seat:GetPropertyChangedSignal('Occupant'):Connect(function()
+							local occ = seat.Occupant
+							if occ then
+								local char = occ.Parent
+								local player = char and Players:GetPlayerFromCharacter(char)
+								if player then
+									local profile = ProfileService.getProfile(player.UserId)
+									if profile then
+										RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+									end
+									local snap = InventoryService.getSnapshot(player.UserId)
+									if snap then
+										RemoteRegistry.fireClient(player, 'InventoryUpdated', snap)
+									end
+								end
+							end
+						end)
+
 						seat.Parent = child
 						seatNum += 1
 					end
@@ -715,9 +734,15 @@ function SushiRestaurantService.init()
 		end
 
 		-- Deduct payment & sync real-time
-		if profile and profile.economy and profile.economy.yen then
+		if profile and profile.economy and profile.economy.yen ~= nil then
 			profile.economy.yen = math.max(0, profile.economy.yen - price)
 			RemoteRegistry.fireClient(player, 'ProfileUpdated', profile)
+
+			-- Always sync Inventory snapshot so Bag Yen updates immediately for both Dine-In and Takeaway!
+			local snap = InventoryService.getSnapshot(player.UserId)
+			if snap then
+				RemoteRegistry.fireClient(player, 'InventoryUpdated', snap)
+			end
 		end
 
 		if mode == 'takeaway' then
