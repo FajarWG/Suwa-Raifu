@@ -16,6 +16,12 @@ function ProfileController.getProfile(): ProfileTypes.Profile?
 end
 
 function ProfileController.init()
+	RemoteController.onEvent('ProfileUpdated', function(newProfile)
+		if type(newProfile) == 'table' then
+			profile = newProfile
+		end
+	end)
+
 	task.spawn(function()
 		local result = RemoteController.invoke('GetProfile')
 		if type(result) == 'table' then

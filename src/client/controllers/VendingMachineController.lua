@@ -34,7 +34,21 @@ local mainWindow: Frame? = nil
 local yenBadge: TextLabel? = nil
 local itemsList: ScrollingFrame? = nil
 
-local currentCatalog: { VendingItem } = {}
+local currentCatalog: { VendingItem } = {
+	{ id = 'coca_cola', name = 'Coca-Cola', japanese = 'コカ・コーラ', category = 'drink', price = 120, icon = '🥤', color = Color3.fromRGB(220, 40, 40), tool = 'coca_cola' },
+	{ id = 'pepsi', name = 'Pepsi', japanese = 'ペプシ', category = 'drink', price = 120, icon = '🥤', color = Color3.fromRGB(30, 80, 200), tool = 'pepsi' },
+	{ id = 'sprite', name = 'Sprite', japanese = 'スプライト', category = 'drink', price = 120, icon = '🍋', color = Color3.fromRGB(30, 160, 70), tool = 'sprite' },
+	{ id = 'mountain_dew', name = 'Mountain Dew', japanese = 'マウンテンデュー', category = 'drink', price = 120, icon = '⚡', color = Color3.fromRGB(120, 190, 30), tool = 'mountain_dew' },
+	{ id = 'dr_pepper', name = 'Dr Pepper', japanese = 'ドクターペッパー', category = 'drink', price = 120, icon = '🍒', color = Color3.fromRGB(150, 20, 50), tool = 'dr_pepper' },
+	{ id = 'fresh_milk', name = 'Fresh Milk', japanese = 'おいしい牛乳', category = 'drink', price = 110, icon = '🥛', color = Color3.fromRGB(240, 240, 245), tool = 'fresh_milk' },
+	{ id = 'orange_juice', name = 'Orange Juice', japanese = 'オレンジジュース', category = 'drink', price = 120, icon = '🍊', color = Color3.fromRGB(245, 140, 20), tool = 'orange_juice' },
+
+	{ id = 'doritos_chips', name = 'Doritos Chips', japanese = 'ドリトス', category = 'snack', price = 150, icon = '🔺', color = Color3.fromRGB(220, 60, 30), tool = 'doritos_chips' },
+	{ id = 'hersheys_chocolate', name = "Hershey's Chocolate", japanese = 'ハーシーズチョコ', category = 'snack', price = 130, icon = '🍫', color = Color3.fromRGB(100, 50, 30), tool = 'hersheys_chocolate' },
+	{ id = 'choco_chip_cookie', name = 'Choco Chip Cookie', japanese = 'クッキー', category = 'snack', price = 130, icon = '🍪', color = Color3.fromRGB(190, 130, 60), tool = 'choco_chip_cookie' },
+	{ id = 'golden_waffle', name = 'Golden Waffle', japanese = '焼きたてワッフル', category = 'snack', price = 140, icon = '🧇', color = Color3.fromRGB(220, 160, 40), tool = 'golden_waffle' },
+	{ id = 'bloxy_snack', name = 'Bloxy Snack', japanese = 'ブロックスナック', category = 'snack', price = 150, icon = '⭐', color = Color3.fromRGB(235, 185, 25), tool = 'bloxy_snack' },
+}
 local currentFilter: string = 'all' -- 'all' | 'drink' | 'snack'
 local currentYen: number = 500
 
@@ -51,6 +65,22 @@ local function playLocalSound(soundId: string)
 end
 
 local function refreshItemList()
+	if not screenGui or not screenGui.Parent then
+		if playerGui then
+			screenGui = playerGui:FindFirstChild('VendingMachineScreenGui')
+		end
+	end
+	if not itemsList or not itemsList.Parent then
+		if screenGui then
+			itemsList = screenGui:FindFirstChild('ItemsList', true)
+		end
+		if not itemsList and playerGui then
+			local sg = playerGui:FindFirstChild('VendingMachineScreenGui')
+			if sg then
+				itemsList = sg:FindFirstChild('ItemsList', true)
+			end
+		end
+	end
 	if not itemsList then return end
 
 	-- Clear previous item cards
@@ -65,6 +95,8 @@ local function refreshItemList()
 			continue
 		end
 
+		local canAfford = currentYen >= item.price
+
 		local card = Instance.new('Frame')
 		card.Name = `ItemCard_{item.id}`
 		card.BackgroundColor3 = Color3.fromRGB(32, 36, 46)
@@ -76,7 +108,7 @@ local function refreshItemList()
 		cCorner.Parent = card
 
 		local cStroke = Instance.new('UIStroke')
-		cStroke.Color = Color3.fromRGB(55, 62, 78)
+		cStroke.Color = if canAfford then Color3.fromRGB(55, 62, 78) else Color3.fromRGB(40, 44, 52)
 		cStroke.Thickness = 1.2
 		cStroke.Parent = card
 
@@ -141,7 +173,7 @@ local function refreshItemList()
 		priceLbl.Size = UDim2.new(1, -165, 0, 18)
 		priceLbl.Font = Enum.Font.FredokaOne
 		priceLbl.TextSize = 14
-		priceLbl.TextColor3 = Color3.fromRGB(255, 215, 80)
+		priceLbl.TextColor3 = if canAfford then Color3.fromRGB(255, 215, 80) else Color3.fromRGB(160, 145, 110)
 		priceLbl.TextXAlignment = Enum.TextXAlignment.Left
 		priceLbl.Text = `¥{item.price}`
 		priceLbl.ZIndex = 4
@@ -152,10 +184,7 @@ local function refreshItemList()
 		buyBtn.Name = 'BuyBtn'
 		buyBtn.AnchorPoint = Vector2.new(1, 0.5)
 		buyBtn.Position = UDim2.new(1, -10, 0.5, 0)
-		buyBtn.Size = UDim2.fromOffset(86, 36)
-		buyBtn.BackgroundColor3 = if item.category == 'drink' then Color3.fromRGB(25, 105, 215) else Color3.fromRGB(215, 95, 25)
-		buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		buyBtn.Text = 'Buy / 買う'
+		buyBtn.Size = UDim2.fromOffset(92, 36)
 		buyBtn.Font = Enum.Font.FredokaOne
 		buyBtn.TextSize = 13
 		buyBtn.ZIndex = 4
@@ -164,20 +193,61 @@ local function refreshItemList()
 		bCorner.CornerRadius = UDim.new(0, 8)
 		bCorner.Parent = buyBtn
 
-		buyBtn.MouseButton1Click:Connect(function()
-			playLocalSound(SOUND_COIN)
-			buyBtn.Text = 'Dispensing...'
-			buyBtn.BackgroundColor3 = Color3.fromRGB(70, 80, 100)
+		if canAfford then
+			buyBtn.BackgroundColor3 = if item.category == 'drink' then Color3.fromRGB(25, 105, 215) else Color3.fromRGB(215, 95, 25)
+			buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			buyBtn.Text = 'Buy / 買う'
+			buyBtn.AutoButtonColor = true
 
-			RemoteController.fire('VendingBuy', item.id)
+			buyBtn.MouseButton1Click:Connect(function()
+				playLocalSound(SOUND_COIN)
+				buyBtn.Text = 'Dispensing...'
+				buyBtn.BackgroundColor3 = Color3.fromRGB(70, 80, 100)
 
-			task.delay(0.6, function()
-				if buyBtn and buyBtn.Parent then
-					buyBtn.Text = 'Buy / 買う'
-					buyBtn.BackgroundColor3 = if item.category == 'drink' then Color3.fromRGB(25, 105, 215) else Color3.fromRGB(215, 95, 25)
-				end
+				RemoteController.fire('VendingBuy', item.id)
+
+				task.delay(0.6, function()
+					if buyBtn and buyBtn.Parent then
+						buyBtn.Text = 'Buy / 買う'
+						buyBtn.BackgroundColor3 = if item.category == 'drink' then Color3.fromRGB(25, 105, 215) else Color3.fromRGB(215, 95, 25)
+					end
+				end)
 			end)
-		end)
+		else
+			buyBtn.BackgroundColor3 = Color3.fromRGB(48, 52, 62)
+			buyBtn.TextColor3 = Color3.fromRGB(150, 155, 165)
+			buyBtn.Text = 'No Yen / 不足'
+			buyBtn.AutoButtonColor = false
+
+			-- Subtle error shake animation if clicked when funds are insufficient (never says "Dispensing")
+			local isShaking = false
+			buyBtn.MouseButton1Click:Connect(function()
+				if isShaking then return end
+				isShaking = true
+
+				local origPos = buyBtn.Position
+				local origColor = buyBtn.BackgroundColor3
+				buyBtn.BackgroundColor3 = Color3.fromRGB(140, 45, 45)
+
+				task.delay(0.06, function()
+					if buyBtn and buyBtn.Parent then
+						buyBtn.Position = UDim2.new(1, -14, 0.5, 0)
+					end
+				end)
+				task.delay(0.12, function()
+					if buyBtn and buyBtn.Parent then
+						buyBtn.Position = UDim2.new(1, -6, 0.5, 0)
+					end
+				end)
+				task.delay(0.18, function()
+					if buyBtn and buyBtn.Parent then
+						buyBtn.Position = origPos
+						buyBtn.BackgroundColor3 = origColor
+						isShaking = false
+					end
+				end)
+			end)
+		end
 
 		buyBtn.Parent = card
 		card.Parent = itemsList
@@ -363,19 +433,57 @@ local function createUI()
 	gridLayout.Parent = itemsList
 end
 
+local function updateVendingYen(newYen: number)
+	currentYen = newYen
+	if not screenGui or not screenGui.Parent then
+		if playerGui then
+			screenGui = playerGui:FindFirstChild('VendingMachineScreenGui')
+		end
+	end
+	if not yenBadge or not yenBadge.Parent then
+		if screenGui then
+			yenBadge = screenGui:FindFirstChild('YenBadge', true)
+		end
+		if not yenBadge and playerGui then
+			local sg = playerGui:FindFirstChild('VendingMachineScreenGui')
+			if sg then
+				yenBadge = sg:FindFirstChild('YenBadge', true)
+			end
+		end
+	end
+	if yenBadge then
+		yenBadge.Text = `💰 ¥{currentYen}`
+	end
+	if (screenGui and screenGui.Enabled) or (playerGui and playerGui:FindFirstChild('VendingMachineScreenGui') and playerGui.VendingMachineScreenGui.Enabled) then
+		refreshItemList()
+	end
+end
+
 function VendingMachineController.open(data: any)
 	currentCatalog = (data and data.catalog) or currentCatalog
 	currentYen = (data and data.yen) or currentYen
 
-	if not screenGui then
+	if not screenGui or not screenGui.Parent then
 		createUI()
 	end
+
+	yenBadge = screenGui and screenGui:FindFirstChild('YenBadge', true)
+	itemsList = screenGui and screenGui:FindFirstChild('ItemsList', true)
 
 	if yenBadge then
 		yenBadge.Text = `💰 ¥{currentYen}`
 	end
 
 	refreshItemList()
+
+	-- Also fetch latest profile yen asynchronously to guarantee fresh balance
+	task.spawn(function()
+		local prof = RemoteController.invoke('GetProfile')
+		local pYen = if prof and prof.economy and prof.economy.yen ~= nil then prof.economy.yen elseif prof and prof.yen ~= nil then prof.yen else nil
+		if pYen ~= nil then
+			updateVendingYen(pYen)
+		end
+	end)
 
 	if screenGui then
 		screenGui.Enabled = true
@@ -393,19 +501,10 @@ function VendingMachineController.init()
 		VendingMachineController.open(data)
 	end)
 
-	local function updateVendingYen(newYen: number)
-		currentYen = newYen
-		if yenBadge then
-			yenBadge.Text = `💰 ¥{currentYen}`
-		end
-		if screenGui and screenGui.Enabled then
-			refreshItemList()
-		end
-	end
-
 	RemoteController.onEvent('ProfileUpdated', function(profile: any)
-		if profile and profile.economy and profile.economy.yen ~= nil then
-			updateVendingYen(profile.economy.yen)
+		local pYen = if profile and profile.economy and profile.economy.yen ~= nil then profile.economy.yen elseif profile and profile.yen ~= nil then profile.yen else nil
+		if pYen ~= nil then
+			updateVendingYen(pYen)
 		end
 	end)
 
@@ -415,9 +514,11 @@ function VendingMachineController.init()
 		end
 	end)
 
-	RemoteController.onEvent('InventorySnapshot', function(snap: any)
-		if snap and snap.yen ~= nil then
-			updateVendingYen(snap.yen)
+	task.spawn(function()
+		local profile = RemoteController.invoke('GetProfile')
+		local pYen = if profile and profile.economy and profile.economy.yen ~= nil then profile.economy.yen elseif profile and profile.yen ~= nil then profile.yen else nil
+		if pYen ~= nil then
+			updateVendingYen(pYen)
 		end
 	end)
 

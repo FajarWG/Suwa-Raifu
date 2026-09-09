@@ -142,6 +142,22 @@ local function playLocalSound(soundId: string)
 end
 
 local function refreshItemList()
+	if not screenGui or not screenGui.Parent then
+		if playerGui then
+			screenGui = playerGui:FindFirstChild('SuwaSushiGui')
+		end
+	end
+	if not itemsList or not itemsList.Parent then
+		if screenGui then
+			itemsList = screenGui:FindFirstChild('ItemsList', true)
+		end
+		if not itemsList and playerGui then
+			local sg = playerGui:FindFirstChild('SuwaSushiGui')
+			if sg then
+				itemsList = sg:FindFirstChild('ItemsList', true)
+			end
+		end
+	end
 	if not itemsList then return end
 
 	-- Clear old cards
@@ -301,8 +317,40 @@ local function refreshItemList()
 	end
 end
 
+local function updateClientYen(newYen: number)
+	currentYen = newYen
+	if not screenGui or not screenGui.Parent then
+		if playerGui then
+			screenGui = playerGui:FindFirstChild('SuwaSushiGui')
+		end
+	end
+	if not yenBadge or not yenBadge.Parent then
+		if screenGui then
+			yenBadge = screenGui:FindFirstChild('YenBadge', true)
+		end
+		if not yenBadge and playerGui then
+			local sg = playerGui:FindFirstChild('SuwaSushiGui')
+			if sg then
+				yenBadge = sg:FindFirstChild('YenBadge', true)
+			end
+		end
+	end
+	if yenBadge then
+		yenBadge.Text = `💰 ¥{currentYen}`
+	end
+	if (screenGui and screenGui.Enabled) or (playerGui and playerGui:FindFirstChild('SuwaSushiGui') and playerGui.SuwaSushiGui.Enabled) then
+		refreshItemList()
+	end
+end
+
 local function createUI()
-	if screenGui then return end
+	if playerGui then
+		local existing = playerGui:FindFirstChild('SuwaSushiGui')
+		while existing do
+			existing:Destroy()
+			existing = playerGui:FindFirstChild('SuwaSushiGui')
+		end
+	end
 
 	screenGui = Instance.new('ScreenGui')
 	screenGui.Name = 'SuwaSushiGui'
@@ -518,18 +566,22 @@ local function setupFloatingOrderButton()
 		hudGui = newHud
 	end
 
+	local existingBtn = hudGui:FindFirstChild('TableOrderFloatingBtn')
+	while existingBtn do
+		existingBtn:Destroy()
+		existingBtn = hudGui:FindFirstChild('TableOrderFloatingBtn')
+	end
+
 	floatingOrderBtn = Instance.new('TextButton')
 	floatingOrderBtn.Name = 'TableOrderFloatingBtn'
 	floatingOrderBtn.AnchorPoint = Vector2.new(0.5, 1)
 	-- Position above standard Roblox bottom controls, mobile-aware
 	local bottomOffset = if UIScaling.isTouch() then -110 else -80
 	floatingOrderBtn.Position = UDim2.new(0.5, 0, 1, bottomOffset)
-	floatingOrderBtn.Size = UDim2.fromOffset(290, 50)
+	floatingOrderBtn.Size = UDim2.fromOffset(300, 52)
 	floatingOrderBtn.BackgroundColor3 = Color3.fromRGB(218, 62, 52)
-	floatingOrderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	floatingOrderBtn.Font = Enum.Font.GothamBold
-	floatingOrderBtn.TextSize = 15
-	floatingOrderBtn.Text = '🍣 Order at Table / 席で注文する'
+	floatingOrderBtn.AutoButtonColor = true
+	floatingOrderBtn.Text = ''
 	floatingOrderBtn.ZIndex = 15
 	floatingOrderBtn.Visible = false
 
@@ -539,9 +591,21 @@ local function setupFloatingOrderButton()
 
 	local bStroke = Instance.new('UIStroke')
 	bStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	bStroke.Color = Color3.fromRGB(255, 220, 120)
+	bStroke.Color = Color3.fromRGB(255, 215, 100)
 	bStroke.Thickness = 2
 	bStroke.Parent = floatingOrderBtn
+
+	local btnLabel = Instance.new('TextLabel')
+	btnLabel.Name = 'Label'
+	btnLabel.Size = UDim2.fromScale(1, 1)
+	btnLabel.Position = UDim2.fromScale(0, 0)
+	btnLabel.BackgroundTransparency = 1
+	btnLabel.Font = Enum.Font.GothamBold
+	btnLabel.TextSize = 15
+	btnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btnLabel.Text = '🍣 Order at Table / 席で注文する'
+	btnLabel.ZIndex = 16
+	btnLabel.Parent = floatingOrderBtn
 
 	-- Subtle floating glow animation
 	local function pulse()
@@ -599,9 +663,16 @@ end
 local isOrderPending: boolean = false
 
 function SushiRestaurantController.open(data: any)
-	currentMode = (data and data.mode) or 'takeaway'
-	currentTableId = (data and data.tableId) or currentTableId
-	currentYen = (data and data.yen) or currentYen
+	if typeof(data) == 'table' then
+		currentMode = data.mode or currentMode or 'takeaway'
+		currentTableId = data.tableId or currentTableId
+		currentYen = data.yen or currentYen
+		if data.catalog and #data.catalog > 0 then
+			currentCatalog = data.catalog
+		end
+	elseif typeof(data) == 'string' then
+		currentMode = data
+	end
 
 	-- Always hide floating HUD button when menu modal is open
 	local btn = getOrFindFloatingButton()
@@ -609,9 +680,13 @@ function SushiRestaurantController.open(data: any)
 		btn.Visible = false
 	end
 
-	if not screenGui then
+	if not screenGui or not screenGui.Parent then
 		createUI()
 	end
+
+	yenBadge = screenGui and screenGui:FindFirstChild('YenBadge', true)
+	modeBadge = screenGui and screenGui:FindFirstChild('ModeBadge', true)
+	itemsList = screenGui and screenGui:FindFirstChild('ItemsList', true)
 
 	if modeBadge then
 		if currentMode == 'takeaway' then
@@ -628,6 +703,16 @@ function SushiRestaurantController.open(data: any)
 	end
 
 	refreshItemList()
+
+	-- Also fetch latest profile yen asynchronously to guarantee fresh balance
+	task.spawn(function()
+		local prof = RemoteController.invoke('GetProfile')
+		if prof and prof.economy and prof.economy.yen ~= nil then
+			updateClientYen(prof.economy.yen)
+		elseif prof and prof.yen ~= nil then
+			updateClientYen(prof.yen)
+		end
+	end)
 
 	if screenGui then
 		screenGui.Enabled = true
@@ -691,6 +776,7 @@ local function bindCharacter(char: Model)
 end
 
 function SushiRestaurantController.init()
+	createUI()
 	setupFloatingOrderButton()
 
 	-- Listen for takeaway menu event from cash register
@@ -709,20 +795,12 @@ function SushiRestaurantController.init()
 		end)
 	end)
 
-	local function updateClientYen(newYen: number)
-		currentYen = newYen
-		if yenBadge then
-			yenBadge.Text = `💰 ¥{currentYen}`
-		end
-		if screenGui and screenGui.Enabled then
-			refreshItemList()
-		end
-	end
-
 	-- Real-time Yen updates via ProfileUpdated
 	RemoteController.onEvent('ProfileUpdated', function(profile: any)
 		if profile and profile.economy and profile.economy.yen ~= nil then
 			updateClientYen(profile.economy.yen)
+		elseif profile and profile.yen ~= nil then
+			updateClientYen(profile.yen)
 		end
 	end)
 
@@ -733,12 +811,16 @@ function SushiRestaurantController.init()
 		end
 	end)
 
-	-- Real-time Yen updates via InventorySnapshot
-	RemoteController.onEvent('InventorySnapshot', function(snap: any)
-		if snap and snap.yen ~= nil then
-			updateClientYen(snap.yen)
+	-- Fetch initial Yen balance on startup
+	task.spawn(function()
+		local profile = RemoteController.invoke('GetProfile')
+		if profile and profile.economy and profile.economy.yen ~= nil then
+			updateClientYen(profile.economy.yen)
+		elseif profile and profile.yen ~= nil then
+			updateClientYen(profile.yen)
 		end
 	end)
+
 
 	-- Character setup for seating detection
 	if localPlayer.Character then

@@ -19,6 +19,11 @@ async function run() {
       name: 'SuwaCostumeConfig',
     },
     {
+      path: 'src/client/controllers/ProfileController.lua',
+      target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.ProfileController',
+      name: 'ProfileController',
+    },
+    {
       path: 'src/client/controllers/InventoryController.lua',
       target: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers.InventoryController',
       name: 'InventoryController',
@@ -32,6 +37,11 @@ async function run() {
       path: 'scripts/scratch_BebeqAvatarLocal.lua',
       target: 'game:GetService("StarterPlayer").StarterPlayerScripts.BebeqAvatarLocal',
       name: 'BebeqAvatarLocal',
+    },
+    {
+      path: 'src/server/services/ProfileAPI.lua',
+      target: 'game:GetService("ServerScriptService").Server.services.ProfileAPI',
+      name: 'ProfileAPI',
     },
     {
       path: 'src/server/services/ProfileService.lua',
@@ -52,6 +62,11 @@ async function run() {
       path: 'src/server/services/InventoryService.lua',
       target: 'game:GetService("ServerScriptService").Server.services.InventoryService',
       name: 'InventoryService',
+    },
+    {
+      path: 'src/server/services/EconomyService.lua',
+      target: 'game:GetService("ServerScriptService").Server.services.EconomyService',
+      name: 'EconomyService',
     },
     {
       path: 'src/server/services/VehicleInteractionService.lua',
@@ -145,6 +160,10 @@ return "SUCCESS: Updated " .. target:GetFullName() .. " (" .. tostring(#target.S
     const res = await executeLuau(lua, 'Edit');
     console.log(item.name, '->', res);
   }
+  process.exit(0);
 }
 
-run().catch(console.error);
+run().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

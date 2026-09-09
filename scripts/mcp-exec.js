@@ -1,157 +1,214 @@
 const { spawn } = require('child_process');
+const fs = require('fs');
 
-async function callMcpRaw(toolName, args = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn('/Applications/RobloxStudio.app/Contents/MacOS/StudioMCP');
-    let buffer = '';
-    let result = null;
-    let error = null;
+class StudioMCPClient {
+  constructor() {
+    this.child = null;
+    this.buffer = '';
+    this.nextId = 1;
+    this.pending = new Map();
+    this.connectedStudioId = null;
+  }
 
-    child.stdout.on('data', (d) => {
-      buffer += d.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep last incomplete line
+  async start() {
+    if (this.child) return;
+    this.child = spawn('/Applications/RobloxStudio.app/Contents/MacOS/StudioMCP');
+
+    this.child.stdout.on('data', (d) => {
+      this.buffer += d.toString();
+      const lines = this.buffer.split('\n');
+      this.buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
           const msg = JSON.parse(line.trim());
-          if (msg.id === 2) {
-            if (msg.error) {
-              error = msg.error;
-            } else {
-              result = msg.result;
-            }
-            child.kill();
+          if (msg.id && this.pending.has(msg.id)) {
+            const { resolve, reject } = this.pending.get(msg.id);
+            this.pending.delete(msg.id);
+            if (msg.error) reject(new Error(JSON.stringify(msg.error)));
+            else resolve(msg.result);
           }
         } catch (e) {}
       }
     });
 
-    child.stderr.on('data', (d) => {
-      // console.error('[MCP Stderr]:', d.toString());
+    this.child.on('close', () => {
+      this.child = null;
+      for (const { reject } of this.pending.values()) {
+        reject(new Error('StudioMCP closed'));
+      }
+      this.pending.clear();
     });
 
-    // Timeout
-    const killTimer = setTimeout(() => {
-      child.kill();
-    }, 15000);
-    killTimer.unref();
-
-    child.on('close', () => {
-      clearTimeout(killTimer);
-      if (error) reject(new Error(JSON.stringify(error)));
-      else if (result) resolve(result);
-      else reject(new Error('No response received from StudioMCP'));
+    // Initialize
+    await this.sendRequest('initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'antigravity', version: '1.0' }
     });
+  }
 
-    // 1. Initialize
-    child.stdin.write(JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'antigravity', version: '1.0' } }
-    }) + '\n');
-
-    // 2. Call tool
-    const callTimer = setTimeout(() => {
-      child.stdin.write(JSON.stringify({
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'tools/call',
-        params: {
-          name: toolName,
-          arguments: args
+  sendRequest(method, params = {}) {
+    return new Promise((resolve, reject) => {
+      const id = this.nextId++;
+      const timer = setTimeout(() => {
+        if (this.pending.has(id)) {
+          this.pending.delete(id);
+          reject(new Error(`Timeout waiting for response to ${method} (id ${id})`));
         }
+      }, 25000);
+
+      this.pending.set(id, {
+        resolve: (val) => { clearTimeout(timer); resolve(val); },
+        reject: (err) => { clearTimeout(timer); reject(err); }
+      });
+
+      this.child.stdin.write(JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        method,
+        params
       }) + '\n');
-    }, 250);
-    callTimer.unref();
-  });
+    });
+  }
+
+  async callTool(name, args = {}) {
+    await this.start();
+    return this.sendRequest('tools/call', { name, arguments: args });
+  }
+
+  async getStudioId() {
+    if (this.connectedStudioId) return this.connectedStudioId;
+    await this.start();
+    // Poll list_roblox_studios until studio connects (up to 12s, checking every 600ms)
+    for (let i = 0; i < 20; i++) {
+      try {
+        const res = await this.callTool('list_roblox_studios', {});
+        const text = res?.content?.[0]?.text;
+        if (text) {
+          const data = JSON.parse(text);
+          if (data.studios && data.studios.length > 0) {
+            this.connectedStudioId = data.studios[0].id;
+            return this.connectedStudioId;
+          }
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 600));
+    }
+    throw new Error('No active Roblox Studio connected after waiting 12s');
+  }
+
+  async executeLuau(code, datamodel = 'Edit') {
+    const studioId = await this.getStudioId();
+    return this.callTool('execute_luau', {
+      studio_id: studioId,
+      datamodel_type: datamodel,
+      code
+    });
+  }
+
+  async captureScreen(outputPath, cameraPos, lookAtPos) {
+    const studioId = await this.getStudioId();
+    if (cameraPos && !Array.isArray(cameraPos)) cameraPos = Object.values(cameraPos);
+    if (lookAtPos && !Array.isArray(lookAtPos)) lookAtPos = Object.values(lookAtPos);
+    const args = {
+      studio_id: studioId,
+      capture_id: 'capture_' + Date.now()
+    };
+    if (cameraPos && lookAtPos) {
+      args.camera_position = cameraPos;
+      args.look_at_position = lookAtPos;
+    }
+    const res = await this.callTool('screen_capture', args);
+    const item = res?.content?.[0];
+    if (item && item.data) {
+      fs.writeFileSync(outputPath, Buffer.from(item.data, 'base64'));
+      return { success: true, path: outputPath };
+    }
+    throw new Error('Capture failed: ' + JSON.stringify(res));
+  }
+
+  async getStudioState() {
+    const studioId = await this.getStudioId();
+    return this.callTool('get_studio_state', { studio_id: studioId });
+  }
+
+  async setPlayState(isStart) {
+    const studioId = await this.getStudioId();
+    return this.callTool('start_stop_play', {
+      studio_id: studioId,
+      is_start: isStart
+    });
+  }
+
+  close() {
+    if (this.child) {
+      this.child.kill();
+      this.child = null;
+    }
+  }
+}
+
+// Module-level singleton
+const defaultClient = new StudioMCPClient();
+
+async function callMcpRaw(toolName, args = {}) {
+  return defaultClient.callTool(toolName, args);
 }
 
 async function getActiveStudioId() {
-  const res = await callMcpRaw('list_roblox_studios', {});
-  const text = res?.content?.[0]?.text;
-  if (text) {
-    const data = JSON.parse(text);
-    if (data.studios && data.studios.length > 0) {
-      return data.studios[0].id;
-    }
-  }
-  throw new Error('No active Roblox Studio found: ' + JSON.stringify(res));
+  return defaultClient.getStudioId();
 }
 
 async function getStudioState() {
-  const studioId = await getActiveStudioId();
-  return callMcpRaw('get_studio_state', { studio_id: studioId });
+  return defaultClient.getStudioState();
 }
 
 async function setPlayState(isStart) {
-  const studioId = await getActiveStudioId();
-  return callMcpRaw('start_stop_play', {
-    studio_id: studioId,
-    is_start: isStart
-  });
+  return defaultClient.setPlayState(isStart);
 }
 
 async function executeLuau(code, datamodel = 'Edit') {
-  const studioId = await getActiveStudioId();
-  return callMcpRaw('execute_luau', {
-    studio_id: studioId,
-    datamodel_type: datamodel,
-    code: code
-  });
+  return defaultClient.executeLuau(code, datamodel);
 }
 
 async function captureScreen(outputPath, cameraPos, lookAtPos) {
-  const fs = require('fs');
-  const studioId = await getActiveStudioId();
-  if (cameraPos && !Array.isArray(cameraPos)) cameraPos = Object.values(cameraPos);
-  if (lookAtPos && !Array.isArray(lookAtPos)) lookAtPos = Object.values(lookAtPos);
-  const args = {
-    studio_id: studioId,
-    capture_id: 'capture_' + Date.now()
-  };
-  if (cameraPos && lookAtPos) {
-    args.camera_position = cameraPos;
-    args.look_at_position = lookAtPos;
-  }
-  const res = await callMcpRaw('screen_capture', args);
-  const item = res?.content?.[0];
-  if (item && item.data) {
-    fs.writeFileSync(outputPath, Buffer.from(item.data, 'base64'));
-    return { success: true, path: outputPath };
-  }
-  throw new Error('Capture failed: ' + JSON.stringify(res));
+  return defaultClient.captureScreen(outputPath, cameraPos, lookAtPos);
 }
 
 async function main() {
   const action = process.argv[2] || 'exec';
+  const client = new StudioMCPClient();
   
-  if (action === 'stop') {
-    const res = await setPlayState(false);
-    console.log('Stop Play Result:', JSON.stringify(res, null, 2));
-  } else if (action === 'start') {
-    const res = await setPlayState(true);
-    console.log('Start Play Result:', JSON.stringify(res, null, 2));
-  } else if (action === 'state') {
-    const res = await getStudioState();
-    console.log('Studio State:', JSON.stringify(res, null, 2));
-  } else if (action === 'capture') {
-    const out = process.argv[3] || '/tmp/capture.png';
-    const cam = process.argv[4] ? [parseFloat(process.argv[4]), parseFloat(process.argv[5]), parseFloat(process.argv[6])] : undefined;
-    const look = process.argv[7] ? [parseFloat(process.argv[7]), parseFloat(process.argv[8]), parseFloat(process.argv[9])] : undefined;
-    const res = await captureScreen(out, cam, look);
-    console.log('Captured screen to:', res.path);
-  } else {
-    let code = process.argv[2];
-    let datamodel = process.argv[3] || 'Edit';
-    if (action === 'exec') {
-      code = process.argv[3];
-      datamodel = process.argv[4] || 'Edit';
+  try {
+    if (action === 'stop') {
+      const res = await client.setPlayState(false);
+      console.log('Stop Play Result:', JSON.stringify(res, null, 2));
+    } else if (action === 'start') {
+      const res = await client.setPlayState(true);
+      console.log('Start Play Result:', JSON.stringify(res, null, 2));
+    } else if (action === 'state') {
+      const res = await client.getStudioState();
+      console.log('Studio State:', JSON.stringify(res, null, 2));
+    } else if (action === 'capture') {
+      const out = process.argv[3] || '/tmp/capture.png';
+      const cam = process.argv[4] ? [parseFloat(process.argv[4]), parseFloat(process.argv[5]), parseFloat(process.argv[6])] : undefined;
+      const look = process.argv[7] ? [parseFloat(process.argv[7]), parseFloat(process.argv[8]), parseFloat(process.argv[9])] : undefined;
+      const res = await client.captureScreen(out, cam, look);
+      console.log('Captured screen to:', res.path);
+    } else {
+      let code = process.argv[2];
+      let datamodel = process.argv[3] || 'Edit';
+      if (action === 'exec') {
+        code = process.argv[3];
+        datamodel = process.argv[4] || 'Edit';
+      }
+      const res = await client.executeLuau(code, datamodel);
+      console.log(JSON.stringify(res, null, 2));
     }
-    const res = await executeLuau(code, datamodel);
-    console.log(JSON.stringify(res, null, 2));
+  } finally {
+    client.close();
   }
 }
 
@@ -162,7 +219,12 @@ if (require.main === module) {
   });
 }
 
-module.exports = { callMcpRaw, getActiveStudioId, getStudioState, setPlayState, executeLuau, captureScreen };
-
-
-
+module.exports = {
+  StudioMCPClient,
+  callMcpRaw,
+  getActiveStudioId,
+  getStudioState,
+  setPlayState,
+  executeLuau,
+  captureScreen
+};

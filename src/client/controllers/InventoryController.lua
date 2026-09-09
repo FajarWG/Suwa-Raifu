@@ -43,6 +43,39 @@ local function textLabel(parent: Instance, text: string, size: UDim2, textSize: 
 	return label
 end
 
+local function updateBagYenLabel(amount: number)
+	if not yenLabel or not yenLabel.Parent then
+		if bagPanel then
+			yenLabel = bagPanel:FindFirstChild('YenLabel') or bagPanel:FindFirstChild('TextLabel')
+		end
+		if not yenLabel and gui then
+			yenLabel = gui:FindFirstChild('YenLabel', true) or gui:FindFirstChild('TextLabel', true)
+		end
+	end
+	if yenLabel and amount ~= nil then
+		yenLabel.Text = `Bag   (¥{amount})`
+	end
+end
+
+local function updateSushiFloatingButtonVisibility()
+	local p = Players.LocalPlayer
+	local pGui = p and p:FindFirstChild('PlayerGui')
+	local hud = pGui and pGui:FindFirstChild('SuwaSushiHUD')
+	local floatingBtn = hud and hud:FindFirstChild('TableOrderFloatingBtn')
+	if not floatingBtn then return end
+
+	if (bagPanel and bagPanel.Visible) or (shopPanel and shopPanel.Visible) then
+		floatingBtn.Visible = false
+	else
+		local char = p and p.Character
+		local hum = char and char:FindFirstChild('Humanoid')
+		local seat = hum and hum.SeatPart
+		if seat and seat:GetAttribute('IsSushiSeat') then
+			floatingBtn.Visible = true
+		end
+	end
+end
+
 local function clearRows(container: Instance)
 	for _, child in container:GetChildren() do
 		if child:IsA('GuiObject') and not child:IsA('UIListLayout') and not child:IsA('UIPadding') and not child:IsA('UIGridLayout') and not child:IsA('UIAspectRatioConstraint') then
@@ -313,7 +346,8 @@ end
 local function renderInventory(data: any)
 	latestSnapshot = data
 	clearRows(bagList)
-	yenLabel.Text = `Bag   (¥{data.yen or 500})`
+	local currentYen = if data and data.yen ~= nil then data.yen elseif latestSnapshot and latestSnapshot.yen ~= nil then latestSnapshot.yen else 500
+	updateBagYenLabel(currentYen)
 
 	local order = 1
 	for id, item in pairs(data.items or {}) do
@@ -374,6 +408,7 @@ local function buildGui()
 
 	-- 2. Bag Popup Panel
 	bagPanel = Instance.new('Frame')
+	bagPanel.Name = 'BagPanel'
 	bagPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	bagPanel.Position = UDim2.fromScale(0.5, 0.5)
 	bagPanel.Size = UDim2.fromOffset(440, 440)
@@ -390,8 +425,12 @@ local function buildGui()
 	panelStroke.Parent = bagPanel
 
 	yenLabel = textLabel(bagPanel, 'Bag', UDim2.new(1, -70, 0, 52), 20)
+	yenLabel.Name = 'YenLabel'
 	yenLabel.Position = UDim2.fromOffset(16, 0)
 	yenLabel.ZIndex = 11
+	if latestSnapshot and latestSnapshot.yen ~= nil then
+		updateBagYenLabel(latestSnapshot.yen)
+	end
 
 	local closeBag = Instance.new('TextButton')
 	closeBag.AnchorPoint = Vector2.new(1, 0)
@@ -422,39 +461,30 @@ local function buildGui()
 	layout.Parent = bagList
 
 	bagPanel:GetPropertyChangedSignal('Visible'):Connect(function()
+		updateSushiFloatingButtonVisibility()
 		if bagPanel.Visible then
-			if latestSnapshot then
-				renderInventory(latestSnapshot)
-			else
-				task.spawn(function()
-					local snapshot = RemoteController.invoke('GetInventory')
-					if snapshot then
-						latestSnapshot = snapshot
-						renderInventory(snapshot)
-					end
-				end)
+			if latestSnapshot and latestSnapshot.yen ~= nil then
+				updateBagYenLabel(latestSnapshot.yen)
 			end
+			task.spawn(function()
+				local snapshot = RemoteController.invoke('GetInventory')
+				if snapshot then
+					latestSnapshot = snapshot
+					if snapshot.yen ~= nil then
+						updateBagYenLabel(snapshot.yen)
+					end
+					renderInventory(snapshot)
+				end
+			end)
 		end
 	end)
-
-	local function hideSushiFloatingButtonIfModalsOpen()
-		local p = Players.LocalPlayer
-		local pGui = p and p:FindFirstChild('PlayerGui')
-		local hud = pGui and pGui:FindFirstChild('SuwaSushiHUD')
-		local floatingBtn = hud and hud:FindFirstChild('TableOrderFloatingBtn')
-		if floatingBtn then
-			if (bagPanel and bagPanel.Visible) or (shopPanel and shopPanel.Visible) then
-				floatingBtn.Visible = false
-			end
-		end
-	end
 
 	bagButton.Activated:Connect(function()
 		bagPanel.Visible = not bagPanel.Visible
 		if bagPanel.Visible and latestSnapshot then
 			renderInventory(latestSnapshot)
 		end
-		hideSushiFloatingButtonIfModalsOpen()
+		updateSushiFloatingButtonVisibility()
 	end)
 	closeBag.Activated:Connect(function()
 		bagPanel.Visible = false
@@ -472,6 +502,7 @@ local function buildGui()
 
 	-- 3. Shop Popup Panel
 	shopPanel = Instance.new('Frame')
+	shopPanel.Name = 'ShopPanel'
 	shopPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 	shopPanel.Position = UDim2.fromScale(0.5, 0.5)
 	shopPanel.Size = UDim2.fromOffset(480, 420)
@@ -522,6 +553,10 @@ local function buildGui()
 	corner(closeShop, 8)
 	closeShop.Activated:Connect(function()
 		shopPanel.Visible = false
+	end)
+
+	shopPanel:GetPropertyChangedSignal('Visible'):Connect(function()
+		updateSushiFloatingButtonVisibility()
 	end)
 
 	-- 4. Toast Notification
@@ -596,8 +631,8 @@ function InventoryController.init()
 
 	local function onInventoryUpdate(data)
 		latestSnapshot = data
-		if yenLabel and data and data.yen ~= nil then
-			yenLabel.Text = `Bag   (¥{data.yen})`
+		if data and data.yen ~= nil then
+			updateBagYenLabel(data.yen)
 		end
 		if bagPanel and bagPanel.Visible then
 			renderInventory(data)
@@ -608,23 +643,38 @@ function InventoryController.init()
 	end
 
 	RemoteController.onEvent('InventoryUpdated', onInventoryUpdate)
-	RemoteController.onEvent('InventorySnapshot', onInventoryUpdate)
 
 	RemoteController.onEvent('ProfileUpdated', function(profile)
-		if profile and profile.economy and profile.economy.yen ~= nil then
+		local pYen = if profile and profile.economy and profile.economy.yen ~= nil then profile.economy.yen elseif profile and profile.yen ~= nil then profile.yen else nil
+		if pYen ~= nil then
 			if not latestSnapshot then
 				latestSnapshot = {}
 			end
-			latestSnapshot.yen = profile.economy.yen
-			if yenLabel then
-				yenLabel.Text = `Bag   (¥{profile.economy.yen})`
-			end
+			latestSnapshot.yen = pYen
+			updateBagYenLabel(pYen)
 			if bagPanel and bagPanel.Visible and latestSnapshot then
 				renderInventory(latestSnapshot)
 			end
 			if shopPanel and shopPanel.Visible and currentShopData then
 				renderShop(currentShopData)
 			end
+		end
+	end)
+
+	-- Initial snapshot fetch on startup
+	task.spawn(function()
+		local snapshot = RemoteController.invoke('GetInventory')
+		if snapshot then
+			onInventoryUpdate(snapshot)
+		end
+		local profile = RemoteController.invoke('GetProfile')
+		local pYen = if profile and profile.economy and profile.economy.yen ~= nil then profile.economy.yen elseif profile and profile.yen ~= nil then profile.yen else nil
+		if pYen ~= nil then
+			if not latestSnapshot then
+				latestSnapshot = {}
+			end
+			latestSnapshot.yen = pYen
+			updateBagYenLabel(pYen)
 		end
 	end)
 
