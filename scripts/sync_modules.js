@@ -133,6 +133,11 @@ async function run() {
       targetParent: 'game:GetService("StarterPlayer").StarterPlayerScripts.Client.controllers',
       name: 'SushiRestaurantController',
     },
+    {
+      path: 'src/server/services/FireworksFestivalService.lua',
+      targetParent: 'game:GetService("ServerScriptService").Server.services',
+      name: 'FireworksFestivalService',
+    },
   ];
 
   for (const item of files) {

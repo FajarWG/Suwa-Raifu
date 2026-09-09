@@ -1,4 +1,6 @@
---!strict
+local svc = game:GetService("ServerScriptService").Server.services:FindFirstChild("FireworksFestivalService")
+if svc then
+    svc.Source = [=====[--!strict
 
 -- Suwa-style lake fireworks. Safe (non-damaging), driven by a rhythm director
 -- so the show mixes single shells, salvos, sequenced rows and finales instead
@@ -1266,3 +1268,8 @@ end
 
 return FireworksFestivalService
 
+]=====]
+    print("SUCCESSFULLY SET svc.Source! New length: " .. #svc.Source .. " has_pier=" .. tostring(string.find(svc.Source, "ShorePierWalkway") ~= nil))
+else
+    print("svc not found in ServerScriptService.Server.services")
+end
