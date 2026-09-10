@@ -904,11 +904,228 @@ if hotelPlaza then
 end
 return "Hotel plaza not found"
 `;
-  const resHotelPlaza = await executeLuau(codeHotelPlaza, 'Edit');
-  console.log('Hotel Plaza Fix:', resHotelPlaza?.content?.[0]?.text);
+  // =========================================================================
+  // 5b. FIX MCDONALD'S PARKING LOT & BOUNDARIES
+  // =========================================================================
+  console.log('\n[5b] Fixing McDonald\'s Parking Lot & Road Boundaries...');
+  const codeMcd = `
+    local pl = workspace:FindFirstChild("TownRoadNetwork") and workspace.TownRoadNetwork:FindFirstChild("TownBlocks") and workspace.TownRoadNetwork.TownBlocks:FindFirstChild("McDonaldsParkingLot")
+    if pl then
+      local ASPHALT_COLOR = Color3.fromRGB(35, 36, 38)
+      local CURB_COLOR = Color3.fromRGB(180, 180, 175)
+      local TOP_Y = 6.06
+      local THICKNESS = 2.0
+      local POS_Y = TOP_Y - (THICKNESS / 2)
+
+      workspace.Terrain:FillBlock(CFrame.new(-381.5, 3.5, 63), Vector3.new(104, 6, 114), Enum.Material.Air)
+
+      local asphalt = pl:FindFirstChild("AsphaltLot")
+      if asphalt then
+        asphalt.Size = Vector3.new(99, THICKNESS, 110)
+        asphalt.Position = Vector3.new(-381.5, POS_Y, 63)
+        asphalt.Color = ASPHALT_COLOR
+      end
+
+      local driveway = pl:FindFirstChild("DrivewayLink")
+      if driveway then
+        driveway.Size = Vector3.new(28, THICKNESS, 6)
+        driveway.Position = Vector3.new(-380, POS_Y, 5)
+        driveway.Color = ASPHALT_COLOR
+      end
+
+      local westDrive = pl:FindFirstChild("DrivewayLink_West")
+      if westDrive then
+        westDrive.Size = Vector3.new(8, THICKNESS, 14)
+        westDrive.Position = Vector3.new(-428, POS_Y, 25)
+        westDrive.Color = ASPHALT_COLOR
+      end
+
+      local eastDrive = pl:FindFirstChild("DrivewayLink_East")
+      if eastDrive then
+        eastDrive.Size = Vector3.new(6, THICKNESS, 14)
+        eastDrive.Position = Vector3.new(-335, POS_Y, 85)
+        eastDrive.Color = ASPHALT_COLOR
+      end
+
+      local function makeCurb(name, size, pos)
+        local c = pl:FindFirstChild(name) or Instance.new("Part")
+        c.Name = name
+        c.Anchored = true
+        c.CanCollide = true
+        c.Material = Enum.Material.Concrete
+        c.Color = CURB_COLOR
+        c.Size = size
+        c.Position = pos
+        c.Parent = pl
+      end
+
+      makeCurb("Curb_North_West", Vector3.new(37, 0.4, 0.6), Vector3.new(-412.5, 6.18, 8.3))
+      makeCurb("Curb_North_East", Vector3.new(34, 0.4, 0.6), Vector3.new(-349, 6.18, 8.3))
+      makeCurb("Curb_Entrance_Left", Vector3.new(0.6, 0.35, 6), Vector3.new(-394.3, 6.18, 5))
+      makeCurb("Curb_Entrance_Right", Vector3.new(0.6, 0.35, 6), Vector3.new(-365.7, 6.18, 5))
+      makeCurb("Curb_West_North", Vector3.new(0.6, 0.35, 10), Vector3.new(-430.7, 6.18, 13))
+      makeCurb("Curb_West_South", Vector3.new(0.6, 0.35, 86), Vector3.new(-430.7, 6.18, 75))
+      makeCurb("Curb_East_North", Vector3.new(0.6, 0.35, 70), Vector3.new(-332.3, 6.18, 43))
+      makeCurb("Curb_East_South", Vector3.new(0.6, 0.35, 26), Vector3.new(-332.3, 6.18, 105))
+      makeCurb("Curb_South_Back", Vector3.new(99, 0.35, 0.6), Vector3.new(-381.5, 6.18, 117.7))
+
+      local lineXList = { -420, -408, -396, -384, -372, -360, -348, -336 }
+      local lines = {}
+      for _, p in ipairs(pl:GetChildren()) do
+        if p.Name == "ParkingLine" then table.insert(lines, p) end
+      end
+      for i, x in ipairs(lineXList) do
+        local p = lines[i] or Instance.new("Part")
+        p.Name = "ParkingLine"
+        p.Anchored = true
+        p.CanCollide = false
+        p.Material = Enum.Material.SmoothPlastic
+        p.Color = Color3.fromRGB(245, 245, 245)
+        p.Size = Vector3.new(0.45, 0.04, 14)
+        p.Position = Vector3.new(x, TOP_Y + 0.02, 35)
+        p.Parent = pl
+      end
+
+      local stallCenters = { -414, -402, -390, -378, -366, -354, -342 }
+      for _, p in ipairs(pl:GetChildren()) do
+        if p.Name:find("WheelStop") then p:Destroy() end
+      end
+      for i, cx in ipairs(stallCenters) do
+        local ws = Instance.new("Part")
+        ws.Name = "WheelStop_" .. i
+        ws.Anchored = true
+        ws.CanCollide = true
+        ws.Material = Enum.Material.Concrete
+        ws.Color = Color3.fromRGB(235, 195, 30)
+        ws.Size = Vector3.new(5.5, 0.35, 0.8)
+        ws.Position = Vector3.new(cx, TOP_Y + 0.175, 41)
+        ws.Parent = pl
+      end
+
+      local r50 = workspace.TownRoadNetwork:FindFirstChild("Route50MainRoad")
+      if r50 then
+        local whiteLine = r50:FindFirstChild("Route50_WhiteEdge_1")
+        if whiteLine then
+          whiteLine.Position = Vector3.new(whiteLine.Position.X, 6.07, 1.20)
+        end
+      end
+      return "McDonald's lot normalized!"
+    end
+    return "McDonaldsParkingLot not found"
+  `;
+  const resMcd = await executeLuau(codeMcd, 'Edit');
+  console.log('McDonald\'s Lot Fix:', resMcd?.content?.[0]?.text);
 
   // =========================================================================
-  // 6. SET WAYPOINT AND FOCUS ROBLOX STUDIO
+  // =========================================================================
+  // 5c. FIX LANGUAGE ACADEMY (GAKKOU) SOLID FULL BASE PAD & CURBS
+  // =========================================================================
+  console.log('\n[5c] Fixing Language Academy (Gakkou) Solid Base & Curbs...');
+  const codeSchool = `
+    local la = workspace:FindFirstChild("LanguageAcademy", true)
+    if la then
+      local grounds = la:FindFirstChild("SchoolGroundsAndPlaza")
+      local land = la:FindFirstChild("SchoolLandscaping")
+      if grounds and land then
+        local ASPHALT_COLOR = Color3.fromRGB(35, 36, 38)
+        local CURB_COLOR = Color3.fromRGB(180, 180, 175)
+        local LAWN_COLOR = Color3.fromRGB(60, 130, 50)
+        local CONCRETE_COLOR = Color3.fromRGB(200, 200, 195)
+        local BASE_TOP_Y = 6.06
+        local THICKNESS = 2.0
+        local POS_Y = BASE_TOP_Y - (THICKNESS / 2)
+
+        workspace.Terrain:FillBlock(
+          CFrame.new(-221.0, 12.0, 68.0),
+          Vector3.new(210, 20, 136),
+          Enum.Material.Air
+        )
+
+        local basePad = grounds:FindFirstChild("SchoolFullBasePad") or Instance.new("Part")
+        basePad.Name = "SchoolFullBasePad"
+        basePad.Anchored = true
+        basePad.CanCollide = true
+        basePad.Material = Enum.Material.Concrete
+        basePad.Color = CONCRETE_COLOR
+        basePad.Size = Vector3.new(198, THICKNESS, 120)
+        basePad.Position = Vector3.new(-221.0, POS_Y, 68.0)
+        basePad.Parent = grounds
+
+        local frontPlaza = grounds:FindFirstChild("FrontPlazaAsphalt")
+        if frontPlaza then
+          frontPlaza.Material = Enum.Material.Asphalt
+          frontPlaza.Color = ASPHALT_COLOR
+          frontPlaza.Size = Vector3.new(155.2, 0.4, 17.2)
+          frontPlaza.Position = Vector3.new(-217.5, BASE_TOP_Y + 0.02, 17.4)
+        end
+
+        local courtyard = grounds:FindFirstChild("RearCourtyardAsphalt")
+        if courtyard then
+          courtyard.Material = Enum.Material.Asphalt
+          courtyard.Color = ASPHALT_COLOR
+          courtyard.Size = Vector3.new(196.4, 0.4, 43.6)
+          courtyard.Position = Vector3.new(-221.0, BASE_TOP_Y + 0.02, 106.2)
+        end
+
+        local function makeCurb(parent, name, size, pos)
+          local c = parent:FindFirstChild(name) or Instance.new("Part")
+          c.Name = name
+          c.Anchored = true
+          c.CanCollide = true
+          c.Material = Enum.Material.Concrete
+          c.Color = CURB_COLOR
+          c.Size = size
+          c.Position = pos
+          c.Parent = parent
+          return c
+        end
+
+        makeCurb(land, "Curb_West_Perimeter", Vector3.new(0.8, 0.4, 120), Vector3.new(-319.6, BASE_TOP_Y + 0.2, 68.0))
+        makeCurb(land, "Curb_East_Perimeter", Vector3.new(0.8, 0.4, 120), Vector3.new(-122.4, BASE_TOP_Y + 0.2, 68.0))
+
+        local rearCurb = grounds:FindFirstChild("RearCurb")
+        if rearCurb then
+          rearCurb.Size = Vector3.new(198, 0.4, 0.8)
+          rearCurb.Position = Vector3.new(-221.0, BASE_TOP_Y + 0.2, 127.6)
+        end
+
+        local frontCurb = grounds:FindFirstChild("FrontCurb")
+        if frontCurb then
+          frontCurb.Size = Vector3.new(198, 0.4, 0.8)
+          frontCurb.Position = Vector3.new(-221.0, BASE_TOP_Y + 0.2, 8.4)
+        end
+
+        makeCurb(land, "Curb_West_Lawn_South", Vector3.new(19.6, 0.35, 0.8), Vector3.new(-309.4, BASE_TOP_Y + 0.175, 84.0))
+        makeCurb(land, "Curb_West_Lawn_East", Vector3.new(0.8, 0.35, 17.2), Vector3.new(-295.5, BASE_TOP_Y + 0.175, 17.4))
+        makeCurb(land, "Curb_East_Lawn_South", Vector3.new(12.6, 0.35, 0.8), Vector3.new(-129.1, BASE_TOP_Y + 0.175, 84.0))
+        makeCurb(land, "Curb_East_Lawn_West", Vector3.new(0.8, 0.35, 17.2), Vector3.new(-139.5, BASE_TOP_Y + 0.175, 17.4))
+
+        local function makeLawn(name, size, pos)
+          local l = land:FindFirstChild(name) or Instance.new("Part")
+          l.Name = name
+          l.Anchored = true
+          l.CanCollide = true
+          l.Material = Enum.Material.Grass
+          l.Color = LAWN_COLOR
+          l.Size = size
+          l.Position = pos
+          l.Parent = land
+          return l
+        end
+
+        makeLawn("WestSideGrassLawn", Vector3.new(19.6, 0.2, 57.6), Vector3.new(-309.4, BASE_TOP_Y + 0.1, 54.8))
+        makeLawn("FrontLeftGrassLawn", Vector3.new(23.3, 0.2, 17.2), Vector3.new(-307.55, BASE_TOP_Y + 0.1, 17.4))
+        makeLawn("EastSideGrassLawn", Vector3.new(12.6, 0.2, 57.6), Vector3.new(-129.1, BASE_TOP_Y + 0.1, 54.8))
+        makeLawn("FrontRightGrassLawn", Vector3.new(16.3, 0.2, 17.2), Vector3.new(-130.95, BASE_TOP_Y + 0.1, 17.4))
+
+        return "Language Academy solid base pad and perimeter normalized!"
+      end
+    end
+    return "LanguageAcademy not found"
+  `;
+  const resSchool = await executeLuau(codeSchool, 'Edit');
+  console.log('School Lot Fix:', resSchool?.content?.[0]?.text);
+
   // =========================================================================
   console.log('\n[6/6] Finalizing waypoint and focusing Studio...');
   const codeWaypoint = `
