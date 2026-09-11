@@ -1209,6 +1209,13 @@ local function attachConsole(base: BasePart)
 		end)
 	end
 
+	FireworksFestivalService.startShow = function(startOffsetSecs: any)
+		triggerShow(startOffsetSecs or 0)
+	end
+	_G.SuwaFireworks = {
+		start = FireworksFestivalService.startShow,
+	}
+
 	prompt.Triggered:Connect(function()
 		triggerShow(0)
 	end)
