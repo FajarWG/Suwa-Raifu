@@ -80,9 +80,8 @@ local function standUp()
 	end
 	standingCFrame = nil
 	chillFacing = nil
-	if button then
-		button.Text = IDLE_TEXT
-		button.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	if standUpPill then
+		standUpPill.Visible = false
 	end
 end
 
@@ -160,10 +159,8 @@ local function enterPose(poseName: string)
 	root.CFrame = CFrame.new(root.Position.X, groundY + pose.groundOffset, root.Position.Z) * lieRotation
 	root.Anchored = true
 
-	if button then
-		button.Text = pose.nextButtonText
-		button.BackgroundColor3 = Color3.fromRGB(48, 70, 100)
-	end
+	local pill = getOrCreateStandUpPill()
+	pill.Visible = true
 end
 
 local function toggle()
@@ -180,40 +177,60 @@ local function toggle()
 	end
 end
 
-local function buildButton()
-	local playerGui = player:WaitForChild('PlayerGui')
-	local existing = playerGui:FindFirstChild('SuwaLieDownGui')
-	if existing then
-		existing:Destroy()
+local TextChatService = game:GetService('TextChatService')
+
+local standUpPill: TextButton? = nil
+
+local function getOrCreateStandUpPill(): TextButton
+	if standUpPill and standUpPill.Parent then
+		return standUpPill
+	end
+	local pill = UIDock.contextPill('Stand Up', Color3.fromRGB(48, 70, 100))
+	pill.Name = 'LieDownStandUpPill'
+	pill.Visible = false
+	pill.Activated:Connect(function()
+		standUp()
+	end)
+	standUpPill = pill
+	return pill
+end
+
+local function setupChatCommands()
+	local function onChatMessage(messageText: string)
+		local clean = string.lower(string.gsub(messageText, "^%s+", ""):gsub("%s+$", ""))
+		if clean == '/lay' or clean == '/sleep' or clean == '/rebahan' or clean == '/tidur' or clean == '/laydown' then
+			toggle()
+		elseif clean == '/stand' or clean == '/bangun' or clean == '/wake' then
+			standUp()
+		end
 	end
 
-	local gui = Instance.new('ScreenGui')
-	gui.Name = 'SuwaLieDownGui'
-	gui.ResetOnSpawn = false
-	gui.Parent = playerGui
+	player.Chatted:Connect(onChatMessage)
 
-	-- 1. Top-Right Dock Button
-	local btn = UIDock.pillButton(
-		if currentPose and POSES[currentPose] then POSES[currentPose].nextButtonText else IDLE_TEXT,
-		1
-	)
-	btn.Name = 'LieDownButton'
-	btn.ZIndex = 2
-	btn.Parent = UIDock.getTopRightRow()
-	button = btn
-
-	btn.MouseButton1Click:Connect(toggle)
+	task.spawn(function()
+		pcall(function()
+			if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+				local textChannels = TextChatService:WaitForChild('TextChannels', 5)
+				if textChannels then
+					local rbxGeneral = textChannels:WaitForChild('RBXGeneral', 5)
+					if rbxGeneral and rbxGeneral:IsA('TextChannel') then
+						rbxGeneral.MessageReceived:Connect(function(textChatMessage)
+							if textChatMessage.TextSource and textChatMessage.TextSource.UserId == player.UserId then
+								onChatMessage(textChatMessage.Text)
+							end
+						end)
+					end
+				end
+			end
+		end)
+	end)
 end
 
 local function updateVisibility()
-	if not button then
-		return
-	end
 	local humanoid = currentHumanoid
 	local character = if humanoid then humanoid.Parent :: Model? else nil
 
 	if not humanoid or not character or humanoid.Health <= 0 then
-		button.Visible = false
 		if currentPose then
 			standUp()
 		end
@@ -222,12 +239,9 @@ local function updateVisibility()
 
 	local busy = isPlayerBusy(humanoid, character)
 	if busy then
-		button.Visible = false
 		if currentPose then
 			standUp()
 		end
-	else
-		button.Visible = true
 	end
 end
 
@@ -237,9 +251,8 @@ local function hookCharacter(character: Model)
 	chillFacing = nil
 	currentHumanoid = character:FindFirstChildOfClass('Humanoid') or character:WaitForChild('Humanoid')
 	currentRoot = character:FindFirstChild('HumanoidRootPart') :: BasePart?
-	if button then
-		button.Text = IDLE_TEXT
-		button.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	if standUpPill then
+		standUpPill.Visible = false
 	end
 
 	local hum = currentHumanoid
@@ -284,8 +297,28 @@ local function hookCharacter(character: Model)
 	updateVisibility()
 end
 
+function LieDownController.toggle()
+	toggle()
+end
+
+function LieDownController.standUp()
+	standUp()
+end
+
+function LieDownController.enterPose(poseName: string)
+	enterPose(poseName)
+end
+
 function LieDownController.init()
-	buildButton()
+	setupChatCommands()
+
+	-- Export globally so other controllers/UI (like Emote System) can trigger it
+	_G.SuwaLieDown = {
+		toggle = toggle,
+		standUp = standUp,
+		enterPose = enterPose,
+		isLyingDown = function() return currentPose ~= nil end,
+	}
 
 	if player.Character then
 		hookCharacter(player.Character)

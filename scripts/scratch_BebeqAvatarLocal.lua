@@ -506,27 +506,6 @@ task.spawn(function()
 	table.insert(_G.SuwaTopbarApps, wardrobeIcon)
 end)
 
--- Top-Right Dock integration for instant visibility (never hidden, visible on PC & Mobile)
-task.spawn(function()
-	local ok, UIDock = pcall(function()
-		return require(player.PlayerScripts.Client.controllers.UIDock)
-	end)
-	if ok and UIDock then
-		local avatarBtn = UIDock.pillButton("Avatar", 3)
-		avatarBtn.Name = "AvatarButton"
-		avatarBtn.ZIndex = 2
-		avatarBtn.Parent = UIDock.getTopRightRow()
-		avatarBtn.Activated:Connect(function()
-			if isOpen then
-				CloseUI()
-				pcall(function() wardrobeIcon:deselect() end)
-			else
-				OpenUI()
-				pcall(function() wardrobeIcon:select() end)
-			end
-		end)
-	end
-end)
 
 CloseBtn.MouseButton1Click:Connect(function()
 	pcall(function() wardrobeIcon:deselect() end)

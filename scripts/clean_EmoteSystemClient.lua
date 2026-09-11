@@ -140,9 +140,13 @@ local function canPlayEmote()
 end
 
 -- Check whether the EmoteButton should be visible on HUD
+local dockButton = nil
+
 local function updateEmoteButtonVisibility()
+	emoteButton.Visible = false -- Always keep old blue square button hidden!
+
 	if not chara or not chara.Parent then
-		emoteButton.Visible = false
+		if dockButton then dockButton.Visible = false end
 		if mainFrame.Visible then mainFrame.Visible = false end
 		stopCurrentEmote()
 		return
@@ -150,7 +154,7 @@ local function updateEmoteButtonVisibility()
 
 	local humanoid = chara:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then
-		emoteButton.Visible = false
+		if dockButton then dockButton.Visible = false end
 		if mainFrame.Visible then mainFrame.Visible = false end
 		stopCurrentEmote()
 		return
@@ -165,13 +169,13 @@ local function updateEmoteButtonVisibility()
 	local isBusy = isSeated or isSwimming or isClimbing or isSleeping
 
 	if isBusy then
-		emoteButton.Visible = false
+		if dockButton then dockButton.Visible = false end
 		if mainFrame.Visible then
 			mainFrame.Visible = false
 		end
 		stopCurrentEmote()
 	else
-		emoteButton.Visible = true
+		if dockButton then dockButton.Visible = true end
 	end
 end
 
@@ -315,6 +319,58 @@ updateEmoteList = function(emotes)
 		end
 	end
 
+	-- Special Actions (Lay Down / Relaxation Poses)
+	local function createSpecialAction(actionName, callback)
+		local sBtn = Instance.new("TextButton")
+		sBtn.Name = "SpecialAction_" .. actionName
+		sBtn.Size = CONFIG.ButtonSize
+		sBtn.BackgroundColor3 = Color3.fromRGB(30, 42, 60)
+		sBtn.BorderSizePixel = 0
+		sBtn.Text = "  " .. actionName
+		sBtn.TextColor3 = Color3.fromRGB(220, 235, 255)
+		sBtn.Font = CONFIG.ButtonFont
+		sBtn.TextSize = CONFIG.ButtonTextSize
+		sBtn.TextXAlignment = Enum.TextXAlignment.Left
+		sBtn.AutoButtonColor = true
+		sBtn.ClipsDescendants = true
+		sBtn.LayoutOrder = -100
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = sBtn
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(90, 130, 180)
+		stroke.Thickness = 1
+		stroke.Transparency = 0.5
+		stroke.Parent = sBtn
+
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft = UDim.new(0, 8)
+		pad.Parent = sBtn
+
+		sBtn.Activated:Connect(function()
+			stopCurrentEmote()
+			callback()
+			mainFrame.Visible = false
+		end)
+		sBtn.Parent = emoteList
+	end
+
+	if not showingFavorites and (not searchBar or searchBar.Text == "") then
+		createSpecialAction("🛌 Lay Down (Terlentang)", function()
+			if _G.SuwaLieDown then
+				_G.SuwaLieDown.enterPose("Terlentang")
+			end
+		end)
+		createSpecialAction("🛌 Lay Down (Tengkurap)", function()
+			if _G.SuwaLieDown then
+				_G.SuwaLieDown.enterPose("Tengkurap")
+			end
+		end)
+	end
+
+
 	for _, emoteData in ipairs(emotes) do
 		local button = Instance.new("TextButton")
 		button.Name = emoteData.name
@@ -431,6 +487,10 @@ local function toggleFrame()
 	mainFrame.Visible = not mainFrame.Visible
 
 	if mainFrame.Visible then
+		mainFrame.AnchorPoint = Vector2.new(1, 0)
+		mainFrame.Position = UDim2.new(1, -16, 0, 58)
+		lastFramePosition = mainFrame.Position
+
 		if CONFIG.EnableSearch then
 			searchBar.Text = ""
 		end
@@ -638,3 +698,30 @@ table.insert(globalConnections, Players.PlayerRemoving:Connect(function(leavingP
 		loadedAnimations = {}
 	end
 end))
+
+
+local TextChatService = game:GetService("TextChatService")
+local function onChatMessage(msg)
+	local clean = string.lower(string.gsub(msg, "^%s+", ""):gsub("%s+$", ""))
+	if clean == "/dance" or clean == "/emote" or clean == "/emotes" or clean == "/joget" then
+		toggleFrame()
+	end
+end
+player.Chatted:Connect(onChatMessage)
+task.spawn(function()
+	pcall(function()
+		if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+			local textChannels = TextChatService:WaitForChild("TextChannels", 5)
+			if textChannels then
+				local rbxGeneral = textChannels:WaitForChild("RBXGeneral", 5)
+				if rbxGeneral and rbxGeneral:IsA("TextChannel") then
+					rbxGeneral.MessageReceived:Connect(function(textChatMessage)
+						if textChatMessage.TextSource and textChatMessage.TextSource.UserId == player.UserId then
+							onChatMessage(textChatMessage.Text)
+						end
+					end)
+				end
+			end
+		end
+	end)
+end)

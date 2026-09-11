@@ -37,16 +37,19 @@ local BATTERY_Y = 1.6
 
 -- Lakeside park, the far bank opposite (centre ~(0, -122)). Bursts lean this
 -- way so they open over open water, framed from the islet and the park alike.
+-- Lakeside park, the far bank opposite (centre ~(0, -122)). Bursts lean gently
+-- this way so they open over open water, framed high in the sky from the islet
+-- and the lakeside park alike.
 local PARK_VIEWPOINT = Vector3.new(0, 0, -122)
-local PARK_LEAN_MIN = 90
-local PARK_LEAN_MAX = 340
+local PARK_LEAN_MIN = 60
+local PARK_LEAN_MAX = 180
 
 -- Every shell swings its own way inside this arc around the park heading, and
 -- jitters its apex. Firing each one along the same bearing to the same height
 -- is what piled the whole show into one column over the same patch of sky.
-local BEARING_SPREAD = 48
-local APEX_JITTER_LOW = 0.78
-local APEX_JITTER_HIGH = 1.32
+local BEARING_SPREAD = 42
+local APEX_JITTER_LOW = 0.88
+local APEX_JITTER_HIGH = 1.22
 
 local NORMAL_DURATION = 10 * 60
 local AUGUST_15_DURATION = 60 * 60
@@ -65,14 +68,16 @@ local BANG_SOUNDS = {
 local FireworksFestivalService = {}
 local running = false
 
+-- Authentic Japanese Hanabi Festival Color Harmonies (諏訪湖花火の伝統色)
 local palette = {
-	Color3.fromRGB(255, 87, 72),
-	Color3.fromRGB(255, 208, 74),
-	Color3.fromRGB(106, 196, 255),
-	Color3.fromRGB(129, 255, 159),
-	Color3.fromRGB(225, 125, 255),
-	Color3.fromRGB(255, 245, 220),
-	Color3.fromRGB(255, 150, 60),
+	Color3.fromRGB(255, 115, 165), -- Sakura Blossom Pink (桜色)
+	Color3.fromRGB(255, 215, 90),  -- Nishiki Radiant Gold (錦黄金)
+	Color3.fromRGB(50, 185, 255),  -- Suwa Ruri Azure (瑠璃色)
+	Color3.fromRGB(195, 80, 255),  -- Imperial Violet (紫藤)
+	Color3.fromRGB(60, 240, 140),  -- Emerald Pine Green (若草/青緑)
+	Color3.fromRGB(255, 60, 75),   -- Crimson Ruby (紅緋)
+	Color3.fromRGB(255, 155, 45),  -- Warm Sunset Amber (琥珀)
+	Color3.fromRGB(245, 250, 255), -- Pure Silver Strobe (白銀)
 }
 
 type ShellClass = {
@@ -86,36 +91,38 @@ type ShellClass = {
 	climb: number,
 }
 
+-- Grand high-sky altitudes: shells bloom majestically high in the starry sky
+-- over Lake Suwa, perfectly framed above the lake and hills without blinding the player.
 local SHELL_CLASSES: { [string]: ShellClass } = {
 	small = {
-		apexLow = 175,
-		apexHigh = 230,
-		radius = 44,
-		particles = 240,
-		volume = 2.0,
+		apexLow = 290,
+		apexHigh = 360,
+		radius = 56,
+		particles = 180,
+		volume = 2.4,
 		pitch = 0.95,
-		range = 460,
-		climb = 1.45,
+		range = 650,
+		climb = 1.65,
 	},
 	large = {
-		apexLow = 265,
-		apexHigh = 340,
-		radius = 82,
-		particles = 420,
+		apexLow = 390,
+		apexHigh = 480,
+		radius = 98,
+		particles = 290,
 		volume = 3.8,
-		pitch = 0.68,
-		range = 820,
-		climb = 1.8,
+		pitch = 0.72,
+		range = 1000,
+		climb = 2.05,
 	},
 	huge = {
-		apexLow = 360,
-		apexHigh = 460,
-		radius = 135,
-		particles = 620,
+		apexLow = 500,
+		apexHigh = 620,
+		radius = 155,
+		particles = 440,
 		volume = 5.5,
-		pitch = 0.5,
-		range = 1250,
-		climb = 2.2,
+		pitch = 0.52,
+		range = 1450,
+		climb = 2.45,
 	},
 }
 
@@ -218,8 +225,9 @@ local function makeNeonPart(parent: Instance, name: string, size: Vector3, cfram
 	return object
 end
 
--- Per-style particle behaviour. Drag + downward acceleration is what separates
--- a crisp peony from a slow, drooping willow.
+-- Per-style particle behaviour for authentic Japanese Hanabi (牡丹, 菊, 錦冠菊, 千輪).
+-- Round pyrotechnic stars (FacingCamera) create pure floral spheres (Warimono),
+-- while weeping willows use gentle teardrop trails rather than sharp rigid spikes.
 type BurstStyle = {
 	speedLow: number,
 	speedHigh: number,
@@ -232,32 +240,28 @@ type BurstStyle = {
 }
 
 local BURST_STYLES: { [string]: BurstStyle } = {
-	peony = { speedLow = 76, speedHigh = 86, lifeLow = 1.3, lifeHigh = 1.9, drag = 6, gravity = 8, sizeScale = 1.0, streak = 4.5 },
+	-- Botan / Peony: Classic spherical break of bright, clean round stars.
+	peony = { speedLow = 54, speedHigh = 66, lifeLow = 2.1, lifeHigh = 2.7, drag = 6.4, gravity = 10, sizeScale = 1.05, streak = 0 },
+	-- Kiku / Chrysanthemum: Expanding floral stars with subtle trailing spark tails and color transition.
 	chrysanthemum = {
-		speedLow = 68,
-		speedHigh = 78,
-		lifeLow = 2.1,
-		lifeHigh = 2.9,
-		drag = 5,
-		gravity = 20,
-		sizeScale = 1.1,
-		streak = 5.5,
+		speedLow = 58,
+		speedHigh = 72,
+		lifeLow = 2.5,
+		lifeHigh = 3.3,
+		drag = 5.5,
+		gravity = 15,
+		sizeScale = 1.0,
+		streak = 0.25,
 	},
-	-- Kamuro: opens, then the stars rain down and hang instead of snapping out.
-	-- Low drag + long life is what keeps the curtain in the air.
-	willow = { speedLow = 48, speedHigh = 58, lifeLow = 4.6, lifeHigh = 6.4, drag = 2.2, gravity = 26, sizeScale = 1.2, streak = 7.5 },
-	-- Opens slowly and holds its shape: the flower-in-bloom look.
-	bloom = { speedLow = 58, speedHigh = 66, lifeLow = 2.6, lifeHigh = 3.4, drag = 7, gravity = 6, sizeScale = 1.05, streak = 6 },
-	scatter = { speedLow = 75, speedHigh = 125, lifeLow = 0.8, lifeHigh = 1.5, drag = 9, gravity = 12, sizeScale = 0.7, streak = 3.2 },
-	-- Yashi: a handful of very thick, slow rays instead of a fine sphere. Reads
-	-- as a palm tree rather than a ball, which is the point of having it.
-	palm = { speedLow = 40, speedHigh = 50, lifeLow = 2.8, lifeHigh = 3.9, drag = 1.5, gravity = 30, sizeScale = 2.2, streak = 9.5 },
-	-- Emitted into a plane rather than a sphere, so it draws a hoop.
-	ring = { speedLow = 70, speedHigh = 76, lifeLow = 1.9, lifeHigh = 2.5, drag = 4.5, gravity = 9, sizeScale = 1.0, streak = 5 },
-	-- Nishiki kamuro: barely spreads, just falls. A gold curtain down the sky.
-	horsetail = { speedLow = 24, speedHigh = 34, lifeLow = 5.0, lifeHigh = 7.2, drag = 1.3, gravity = 34, sizeScale = 1.5, streak = 8.5 },
-	-- Tight and short-lived, because the secondary breaks are the show here.
-	crossette = { speedLow = 60, speedHigh = 70, lifeLow = 0.9, lifeHigh = 1.4, drag = 7.5, gravity = 10, sizeScale = 0.9, streak = 3.8 },
+	-- Nishiki Kamuro: Golden weeping willow streamers that float and drift gracefully down towards the lake.
+	willow = { speedLow = 38, speedHigh = 50, lifeLow = 4.2, lifeHigh = 5.8, drag = 2.6, gravity = 20, sizeScale = 1.15, streak = 0.5 },
+	-- Full blooming flower that opens smoothly and lingers.
+	bloom = { speedLow = 48, speedHigh = 58, lifeLow = 2.6, lifeHigh = 3.5, drag = 6.8, gravity = 7, sizeScale = 1.15, streak = 0 },
+	scatter = { speedLow = 65, speedHigh = 95, lifeLow = 1.2, lifeHigh = 1.8, drag = 7.5, gravity = 12, sizeScale = 0.85, streak = 0 },
+	palm = { speedLow = 36, speedHigh = 46, lifeLow = 3.0, lifeHigh = 4.2, drag = 2.2, gravity = 24, sizeScale = 1.3, streak = 0.4 },
+	ring = { speedLow = 55, speedHigh = 64, lifeLow = 2.2, lifeHigh = 2.9, drag = 5.0, gravity = 9, sizeScale = 1.0, streak = 0 },
+	horsetail = { speedLow = 22, speedHigh = 32, lifeLow = 4.4, lifeHigh = 6.0, drag = 1.8, gravity = 28, sizeScale = 1.2, streak = 0.35 },
+	crossette = { speedLow = 52, speedHigh = 62, lifeLow = 1.1, lifeHigh = 1.6, drag = 6.8, gravity = 10, sizeScale = 0.95, streak = 0 },
 }
 
 local function emitParticleBurst(
@@ -271,111 +275,100 @@ local function emitParticleBurst(
 	local style = BURST_STYLES[styleName] or BURST_STYLES.peony
 	local host = makeNeonPart(parent, 'BurstOrigin', Vector3.one * 0.2, CFrame.new(position), color)
 	host.Transparency = 1
-	-- A ring shell is emitted into a plane instead of a sphere. The plane is
-	-- turned to face the audience, or it reads as a bare line edge-on.
+	-- A ring shell is emitted into a plane facing the audience.
 	local planar = styleName == 'ring'
 	if planar and facing then
 		host.CFrame = CFrame.lookAt(position, position + facing) * RING_PLANE
 	end
 
+	-- 1. Main Burning Stars (Hoshi / 火薬の星)
 	local emitter = Instance.new('ParticleEmitter')
 	emitter.Name = 'Stars'
 	emitter.Texture = SPARK_TEXTURE
-	emitter.LightEmission = 0.85
+	emitter.LightEmission = 0.75
 	emitter.LightInfluence = 0
-	-- Kept low deliberately: additive sprites stack, and at the old value a big
-	-- shell washed out to a solid white ball with no colour left in it.
-	emitter.Brightness = 4.5
-	-- Real hanabi read as long radial RAYS, not dots. Aligning each star to its
-	-- own velocity and squashing it along that axis is what draws the streak.
-	emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
-	-- Colour change (iro-henka): hold the first colour, then switch late in the
-	-- burn so the change is actually seen instead of blending into a smear.
-	-- Kamuro willows stay gold and deepen to amber, the way the real ones do.
+	-- Balanced brightness so colors stay vibrant and rich without blowing out into blinding white
+	emitter.Brightness = 1.8
+	-- Round glowing embers facing camera for peonies and blooms; gentle teardrop for willows
+	emitter.Orientation = if style.streak > 0 then Enum.ParticleOrientation.VelocityParallel else Enum.ParticleOrientation.FacingCamera
+	
+	-- Color change (iro-henka): hold initial jewel tone, transition gracefully near the end
 	local isWillow = styleName == 'willow'
 	local first = if isWillow then KAMURO_GOLD else color
 	local second = if isWillow then KAMURO_EMBER else pickDistinct(color)
 	emitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 252, 240)),
-		ColorSequenceKeypoint.new(0.05, first),
-		ColorSequenceKeypoint.new(0.5, first),
-		ColorSequenceKeypoint.new(0.74, second),
+		ColorSequenceKeypoint.new(0.06, first),
+		ColorSequenceKeypoint.new(0.55, first),
+		ColorSequenceKeypoint.new(0.82, second),
 		ColorSequenceKeypoint.new(1, second),
 	})
-	-- Small stars, many of them: large sprites read as clumps of mini-fireworks
-	-- rather than one shell opening.
-	local starSize = class.radius * 0.055 * style.sizeScale
+
+	local starSize = class.radius * 0.045 * style.sizeScale
 	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, starSize * 1.4),
+		NumberSequenceKeypoint.new(0, starSize * 1.5),
 		NumberSequenceKeypoint.new(0.7, starSize),
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	emitter.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.65, 0.15),
+		NumberSequenceKeypoint.new(0.72, 0.1),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	emitter.Lifetime = NumberRange.new(style.lifeLow, style.lifeHigh)
-	-- A tight speed band keeps the shell's outer edge crisp instead of smeared.
 	local speedScale = class.radius / 36
 	emitter.Speed = NumberRange.new(style.speedLow * speedScale, style.speedHigh * speedScale)
 	emitter.SpreadAngle = if planar then Vector2.new(180, 5) else Vector2.new(180, 180)
 	emitter.Drag = style.drag
 	emitter.Acceleration = Vector3.new(0, -style.gravity, 0)
 	emitter.Rate = 0
-	-- Negative squash stretches along the velocity axis. Positive squashes
-	-- across it, which renders the burst as horizontal bars instead of rays.
-	emitter.Squash = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, -style.streak),
-		NumberSequenceKeypoint.new(0.6, -style.streak * 0.6),
-		NumberSequenceKeypoint.new(1, 0),
-	})
+
+	if style.streak > 0 then
+		emitter.Squash = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, -style.streak),
+			NumberSequenceKeypoint.new(0.65, -style.streak * 0.5),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+	end
 	emitter.Enabled = false
 	emitter.Parent = host
-
 	emitter:Emit(class.particles)
 
-	-- Senrin: a fine crackling shimmer riding on top of the main stars. The
-	-- wide lifetime spread is what makes it twinkle rather than just glow --
-	-- individual specks wink out at different moments.
+	-- 2. Senrin Shimmer & Twinkle (千輪の金銀閃光)
 	local glitter = Instance.new('ParticleEmitter')
 	glitter.Name = 'Glitter'
 	glitter.Texture = SPARK_TEXTURE
-	glitter.LightEmission = 1
+	glitter.LightEmission = 0.82
 	glitter.LightInfluence = 0
-	glitter.Brightness = 8
+	glitter.Brightness = 2.2
 	glitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 245)),
-		ColorSequenceKeypoint.new(0.6, if isWillow then KAMURO_GOLD else Color3.fromRGB(255, 240, 200)),
+		ColorSequenceKeypoint.new(0.5, if isWillow then KAMURO_GOLD else Color3.fromRGB(255, 235, 180)),
 		ColorSequenceKeypoint.new(1, second),
 	})
-	local fleck = starSize * 0.28
+	local fleck = starSize * 0.32
 	glitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, fleck),
-		NumberSequenceKeypoint.new(0.5, fleck * 1.25),
+		NumberSequenceKeypoint.new(0, fleck * 1.1),
+		NumberSequenceKeypoint.new(0.5, fleck * 1.4),
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	glitter.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.35, 0.55),
-		NumberSequenceKeypoint.new(0.55, 0),
-		NumberSequenceKeypoint.new(0.8, 0.6),
+		NumberSequenceKeypoint.new(0.35, 0.4),
+		NumberSequenceKeypoint.new(0.6, 0.1),
+		NumberSequenceKeypoint.new(0.85, 0.5),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	glitter.Lifetime = NumberRange.new(style.lifeLow * 0.35, style.lifeHigh * 1.1)
-	glitter.Speed = NumberRange.new(style.speedLow * 0.6 * (class.radius / 36), style.speedHigh * 1.15 * (class.radius / 36))
-	glitter.SpreadAngle = if planar then Vector2.new(180, 9) else Vector2.new(180, 180)
-	glitter.Drag = style.drag * 1.6
-	glitter.Acceleration = Vector3.new(0, -style.gravity * 0.8, 0)
+	glitter.Lifetime = NumberRange.new(style.lifeLow * 0.4, style.lifeHigh * 1.05)
+	glitter.Speed = NumberRange.new(style.speedLow * 0.5 * (class.radius / 36), style.speedHigh * 1.05 * (class.radius / 36))
+	glitter.SpreadAngle = if planar then Vector2.new(180, 8) else Vector2.new(180, 180)
+	glitter.Drag = style.drag * 1.4
+	glitter.Acceleration = Vector3.new(0, -style.gravity * 0.85, 0)
 	glitter.Rate = 0
-	glitter.Orientation = Enum.ParticleOrientation.VelocityParallel
-	glitter.Squash = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, -style.streak * 0.4),
-		NumberSequenceKeypoint.new(1, 0),
-	})
+	glitter.Orientation = Enum.ParticleOrientation.FacingCamera
 	glitter.Enabled = false
 	glitter.Parent = host
-	glitter:Emit(math.floor(class.particles * 0.6))
+	glitter:Emit(math.floor(class.particles * 0.55))
 
 	Debris:AddItem(host, style.lifeHigh * 1.1 + 1.5)
 end
@@ -599,7 +592,8 @@ local function launchShell(launchFrom: Vector3, className: string?)
 end
 
 -- Low fan jets off the barge deck: the wall of angled sprays at water level
--- that sits under the shells in every Japanese festival photo.
+-- Gentle, sparkling lake fountains off the battery deck (Torinoko / Niagara).
+-- Soft glowing embers rise in graceful arcs across the water.
 local function fireFanJet(origin: Vector3, tilt: number, color: Color3)
 	local host = makeNeonPart(workspace, 'FanJet', Vector3.one * 0.3, CFrame.new(origin), color)
 	host.Transparency = 1
@@ -607,48 +601,44 @@ local function fireFanJet(origin: Vector3, tilt: number, color: Color3)
 	local jet = Instance.new('ParticleEmitter')
 	jet.Name = 'Fan'
 	jet.Texture = SPARK_TEXTURE
-	jet.LightEmission = 1
+	jet.LightEmission = 0.8
 	jet.LightInfluence = 0
-	jet.Brightness = 20
-	jet.Orientation = Enum.ParticleOrientation.VelocityParallel
+	jet.Brightness = 2.0
+	jet.Orientation = Enum.ParticleOrientation.FacingCamera
 	jet.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 245)),
-		ColorSequenceKeypoint.new(0.55, color),
-		ColorSequenceKeypoint.new(1, color),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 250, 230)),
+		ColorSequenceKeypoint.new(0.45, color),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 140, 40)),
 	})
 	jet.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 2.4),
-		NumberSequenceKeypoint.new(0.7, 1.8),
+		NumberSequenceKeypoint.new(0, 1.4),
+		NumberSequenceKeypoint.new(0.55, 2.0),
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	jet.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.7, 0.2),
+		NumberSequenceKeypoint.new(0.65, 0.15),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	jet.Squash = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, -6),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	jet.Lifetime = NumberRange.new(1.6, 2.4)
-	jet.Speed = NumberRange.new(70, 105)
-	jet.SpreadAngle = Vector2.new(7, 7)
-	jet.Drag = 2.5
-	jet.Acceleration = Vector3.new(0, -42, 0)
+	jet.Lifetime = NumberRange.new(1.8, 2.5)
+	jet.Speed = NumberRange.new(35, 52)
+	jet.SpreadAngle = Vector2.new(12, 12)
+	jet.Drag = 3.2
+	jet.Acceleration = Vector3.new(0, -25, 0)
 	jet.EmissionDirection = Enum.NormalId.Top
-	jet.Rate = 130
+	jet.Rate = 90
 	jet.Parent = host
 
-	-- Lean the whole jet outward so a row of them reads as a fan.
+	-- Lean the whole jet outward so a row of them reads as a soft fan.
 	host.CFrame = CFrame.new(origin) * CFrame.Angles(0, 0, tilt)
 
-	playPositionalSound(host, CRACKLE_SOUND, 1.1, randomRange(0.9, 1.15), 420)
-	task.delay(2.0, function()
+	playPositionalSound(host, CRACKLE_SOUND, 0.8, randomRange(0.9, 1.15), 380)
+	task.delay(2.2, function()
 		if host.Parent then
 			jet.Enabled = false
 		end
 	end)
-	Debris:AddItem(host, 5)
+	Debris:AddItem(host, 5.5)
 end
 
 -- A wall of fan jets across the whole battery, splayed outward from the middle.
@@ -1222,6 +1212,27 @@ local function attachConsole(base: BasePart)
 	prompt.Triggered:Connect(function()
 		triggerShow(0)
 	end)
+
+	-- Chat command triggers (/firework, /fireworks, /hanabi, /kembangapi)
+	local Players = game:GetService('Players')
+	local function onChatMessage(player: Player, msg: string)
+		local clean = string.lower(string.gsub(msg, '^%s+', ''):gsub('%s+$', ''))
+		if clean == '/firework' or clean == '/fireworks' or clean == '/hanabi' or clean == '/kembangapi' or clean:match('^/firework%s') then
+			print(string.format('[Fireworks] Chat command triggered by %s: %s', player.Name, clean))
+			triggerShow(0)
+		end
+	end
+
+	Players.PlayerAdded:Connect(function(player)
+		player.Chatted:Connect(function(msg)
+			onChatMessage(player, msg)
+		end)
+	end)
+	for _, player in ipairs(Players:GetPlayers()) do
+		player.Chatted:Connect(function(msg)
+			onChatMessage(player, msg)
+		end)
+	end
 
 	-- Automated daily schedule: start show automatically at 20:30 JST.
 	-- If a server starts or players join mid-show (e.g. at 20:31 or 20:35),

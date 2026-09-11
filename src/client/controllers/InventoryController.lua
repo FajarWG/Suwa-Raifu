@@ -401,7 +401,7 @@ local function buildGui()
 	local touch = UIScaling.isTouch()
 
 	-- 1. Top-Right Dock Button
-	local bagButton = UIDock.pillButton(if touch then 'Bag' else 'Bag [B]', 4)
+	local bagButton = UIDock.pillButton(if touch then 'Bag' else 'Bag [B]', 3)
 	bagButton.Name = 'BagButton'
 	bagButton.ZIndex = 2
 	bagButton.Parent = UIDock.getTopRightRow()
